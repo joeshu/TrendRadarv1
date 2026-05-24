@@ -1,0 +1,87 @@
+name: Get Hot News
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "33 * * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hotnews-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  crawl:
+    name: crawl-hotnews
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      GITHUB_ACTIONS: true
+      GH_TOKEN: ${{ secrets.GH_TOKEN }}
+      PYTHONUNBUFFERED: "1"
+      PIP_DISABLE_PIP_VERSION_CHECK: "1"
+      PIP_NO_INPUT: "1"
+      UV_SYSTEM_PYTHON: "1"
+      UV_NO_PROGRESS: "1"
+      UV_LINK_MODE: copy
+      FEISHU_WEBHOOK_URL: ${{ secrets.FEISHU_WEBHOOK_URL }}
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      DINGTALK_WEBHOOK_URL: ${{ secrets.DINGTALK_WEBHOOK_URL }}
+      WEWORK_WEBHOOK_URL: ${{ secrets.WEWORK_WEBHOOK_URL }}
+      WEWORK_MSG_TYPE: ${{ secrets.WEWORK_MSG_TYPE }}
+      EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+      EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+      EMAIL_TO: ${{ secrets.EMAIL_TO }}
+      EMAIL_SMTP_SERVER: ${{ secrets.EMAIL_SMTP_SERVER }}
+      EMAIL_SMTP_PORT: ${{ secrets.EMAIL_SMTP_PORT }}
+      NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+      NTFY_SERVER_URL: ${{ secrets.NTFY_SERVER_URL }}
+      NTFY_TOKEN: ${{ secrets.NTFY_TOKEN }}
+      BARK_URL: ${{ secrets.BARK_URL }}
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      GENERIC_WEBHOOK_URL: ${{ secrets.GENERIC_WEBHOOK_URL }}
+      GENERIC_WEBHOOK_TEMPLATE: ${{ secrets.GENERIC_WEBHOOK_TEMPLATE }}
+      AI_ANALYSIS_ENABLED: ${{ secrets.AI_ANALYSIS_ENABLED }}
+      AI_API_KEY: ${{ secrets.AI_API_KEY }}
+      AI_MODEL: ${{ secrets.AI_MODEL }}
+      AI_API_BASE: ${{ secrets.AI_API_BASE }}
+      S3_BUCKET_NAME: ${{ secrets.S3_BUCKET_NAME }}
+      S3_ACCESS_KEY_ID: ${{ secrets.S3_ACCESS_KEY_ID }}
+      S3_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRET_ACCESS_KEY }}
+      S3_ENDPOINT_URL: ${{ secrets.S3_ENDPOINT_URL }}
+      S3_REGION: ${{ secrets.S3_REGION }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+          clean: true
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Validate repository files
+        run: |
+          test -f pyproject.toml || { echo '❌ pyproject.toml is missing'; exit 1; }
+          test -f config/config.yaml || { echo '❌ config/config.yaml is missing'; exit 1; }
+
+      - name: Sync dependencies
+        run: uv sync --frozen --no-dev
+
+      - name: Run crawler
+        run: timeout 10m uv run python -m trendradar
