@@ -110,7 +110,7 @@ final class NewsItemTests: XCTestCase {
             NewsItem(id: "swift", title: "Swift on iPhone", source: "Feed A", isFavorite: true),
             NewsItem(id: "other", title: "Other story", source: "Feed B")
         ]
-        let request = ReportGenerationRequest(type: .manual, trigger: .manual, generatedAt: Date(timeIntervalSince1970: 100), settings: settings)
+        let request = ReportGenerationRequest(batchID: UUID().uuidString, type: .manual, trigger: .manual, generatedAt: Date(timeIntervalSince1970: 100), settings: settings)
         let report = ReportGenerationService().generate(request: request, items: items)
 
         XCTAssertEqual(report.statistics.newsCount, 1)
@@ -137,6 +137,22 @@ final class NewsItemTests: XCTestCase {
         XCTAssertTrue(text.contains("测试报告"))
         XCTAssertTrue(text.contains("情报 1 条"))
         XCTAssertTrue(text.contains("Local story"))
+    }
+
+    func testKeywordRulesRequireRequiredWordsAndRejectExcludedWords() {
+        let rules = KeywordRuleSet(keywords: ["AI, +发布, !广告"], globalExcluded: ["spam"])
+
+        XCTAssertTrue(rules.matches("AI 发布新产品"))
+        XCTAssertFalse(rules.matches("AI 新产品"))
+        XCTAssertFalse(rules.matches("AI 发布广告"))
+        XCTAssertFalse(rules.matches("AI 发布 spam"))
+    }
+
+    func testKeywordRulesAllowAllTitlesWhenNoNormalWordsExist() {
+        let rules = KeywordRuleSet(keywords: ["+发布"], globalExcluded: [])
+
+        XCTAssertTrue(rules.matches("产品发布"))
+        XCTAssertFalse(rules.matches("产品评测"))
     }
 
     func testRSSParserReadsRSSItemAndHTMLEntities() throws {

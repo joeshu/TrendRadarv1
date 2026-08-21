@@ -4,14 +4,30 @@ import Combine
 @MainActor
 final class ReportStore: ObservableObject {
     @Published private(set) var reports: [ReportSummary] = []
+    @Published var searchText = ""
+    @Published var selectedType: ReportType?
+    @Published var favoritesOnly = false
     @Published private(set) var isLoading = false
     @Published private(set) var isGenerating = false
     @Published var errorMessage: String?
 
     private let localStore = LocalStore()
     private let generator = ReportGenerationService()
+    private var completedBatches = Set<String>()
+
+    var filteredReports: [ReportSummary] {
+        reports.filter { report in
+            let matchesType = selectedType == nil || report.type == selectedType
+            let matchesFavorite = !favoritesOnly || report.isFavorite
+            let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+            let matchesSearch = query.isEmpty || report.title.localizedCaseInsensitiveContains(query)
+            return matchesType && matchesFavorite && matchesSearch
+        }
+    }
 
     func load() async {
+        isLoading = true
+        defer { isLoading = false }
         reports = await localStore.loadReportSummaries()
     }
 
@@ -24,14 +40,17 @@ final class ReportStore: ObservableObject {
         }
     }
 
-    func generate(type: ReportType, settings: AppSettings, items: [NewsItem], trigger: ReportTrigger = .manual) async {
+    func generate(type: ReportType, settings: AppSettings, items: [NewsItem], trigger: ReportTrigger = .manual, batchID: String? = nil) async {
+        let resolvedBatchID = batchID ?? "\(type.rawValue):\(items.map(\.id).sorted().joined(separator: ","))"
+        guard !completedBatches.contains(resolvedBatchID) else { return }
         guard !isGenerating else { return }
         isGenerating = true
         defer { isGenerating = false }
-        let request = ReportGenerationRequest(type: type, trigger: trigger, generatedAt: Date(), settings: settings)
+        let request = ReportGenerationRequest(batchID: resolvedBatchID, type: type, trigger: trigger, generatedAt: Date(), settings: settings)
         do {
             let report = generator.generate(request: request, items: items)
             try await localStore.save(report)
+            completedBatches.insert(resolvedBatchID)
             await load()
         } catch {
             errorMessage = "报告保存失败：\(error.localizedDescription)"

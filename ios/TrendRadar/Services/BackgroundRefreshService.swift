@@ -59,7 +59,8 @@ enum BackgroundRefreshService {
             await localStore.save(merged)
             try Task.checkCancellation()
             if settings.scheduleEnabled, let reportType = ReportType(rawValue: settings.report.mode) {
-                let request = ReportGenerationRequest(type: reportType, trigger: .backgroundRefresh, generatedAt: Date(), settings: settings)
+                let batchID = "backgroundRefresh:\(merged.map(\.id).sorted().joined(separator: ","))"
+                let request = ReportGenerationRequest(batchID: batchID, type: reportType, trigger: .backgroundRefresh, generatedAt: Date(), settings: settings)
                 let report = ReportGenerationService().generate(request: request, items: merged)
                 try Task.checkCancellation()
                 try? await localStore.save(report)

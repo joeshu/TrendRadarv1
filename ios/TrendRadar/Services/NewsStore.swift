@@ -91,15 +91,13 @@ final class NewsStore: ObservableObject {
 
     private func generateReport(trigger: ReportTrigger) async {
         guard let type = ReportType(rawValue: settings.report.mode) else { return }
-        let request = ReportGenerationRequest(type: type, trigger: trigger, generatedAt: Date(), settings: settings)
+        let request = ReportGenerationRequest(batchID: "\(trigger.rawValue):\(items.map(\.id).sorted().joined(separator: ","))", type: type, trigger: trigger, generatedAt: Date(), settings: settings)
         let report = ReportGenerationService().generate(request: request, items: items)
         try? await localStore.save(report)
     }
 
     private func matchesConfiguredFilters(_ item: NewsItem) -> Bool {
-        let title = item.title
-        guard !settings.globalFilterWords.contains(where: { title.localizedCaseInsensitiveContains($0) }) else { return false }
-        guard settings.keywords.isEmpty || settings.keywords.contains(where: { title.localizedCaseInsensitiveContains($0) }) else { return false }
+        guard KeywordRuleSet(keywords: settings.keywords, globalExcluded: settings.globalFilterWords).matches(item.title) else { return false }
         guard settings.rssFreshnessEnabled, settings.rssMaxAgeDays > 0, let publishedAt = item.publishedAt else { return true }
         return publishedAt >= Date(timeIntervalSinceNow: -Double(settings.rssMaxAgeDays) * 86_400)
     }

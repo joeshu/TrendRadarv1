@@ -1,6 +1,7 @@
 import Foundation
 
 struct ReportGenerationRequest: Sendable {
+    let batchID: String
     let type: ReportType
     let trigger: ReportTrigger
     let generatedAt: Date
@@ -9,26 +10,24 @@ struct ReportGenerationRequest: Sendable {
 
 struct ReportGenerationService: Sendable {
     func generate(request: ReportGenerationRequest, items: [NewsItem]) -> ReportDetail {
-        let matchingItems = items.filter { item in
-            let blocked = request.settings.globalFilterWords.contains { item.title.localizedCaseInsensitiveContains($0) }
-            let included = request.settings.keywords.isEmpty || request.settings.keywords.contains { item.title.localizedCaseInsensitiveContains($0) }
-            return !blocked && included
-        }
+        let rules = KeywordRuleSet(keywords: request.settings.keywords, globalExcluded: request.settings.globalFilterWords)
+        let matchingItems = items.filter { rules.matches($0.title) }
 
         let sections = makeSections(items: matchingItems, settings: request.settings)
+        let ruleSet = KeywordRuleSet(keywords: request.settings.keywords, globalExcluded: [])
         let sourceCount = Set(matchingItems.map(\.source)).count
         let statistics = ReportStatistics(
             newsCount: matchingItems.count,
             sourceCount: sourceCount,
             unreadCount: matchingItems.filter { !$0.isRead }.count,
             favoriteCount: matchingItems.filter(\.isFavorite).count,
-            keywordCount: request.settings.keywords.filter { keyword in
+            keywordCount: (ruleSet.normal + ruleSet.required).filter { keyword in
                 matchingItems.contains { $0.title.localizedCaseInsensitiveContains(keyword) }
             }.count
         )
         let title = "\(request.type.displayName) · \(request.generatedAt.formatted(date: .abbreviated, time: .shortened))"
         return ReportDetail(
-            id: UUID(),
+            id: UUID(uuidString: request.batchID) ?? UUID(),
             title: title,
             type: request.type,
             trigger: request.trigger,
@@ -50,7 +49,9 @@ struct ReportGenerationService: Sendable {
         } else if settings.keywords.isEmpty {
             grouped = [("all", "全部情报", items)]
         } else {
-            grouped = settings.keywords.compactMap { keyword in
+            let ruleSet = KeywordRuleSet(keywords: settings.keywords, globalExcluded: [])
+            let sectionKeywords = ruleSet.normal.isEmpty ? ruleSet.required : ruleSet.normal
+            grouped = sectionKeywords.compactMap { keyword in
                 let matching = items.filter { $0.title.localizedCaseInsensitiveContains(keyword) }
                 return matching.isEmpty ? nil : (keyword, keyword, matching)
             }

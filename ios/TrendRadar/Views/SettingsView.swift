@@ -140,8 +140,11 @@ struct SettingsView: View {
 
     private var filterSection: some View {
         Section("关键词与筛选") {
-            TextField("关注关键词，使用逗号分隔", text: $keywordText, axis: .vertical)
+            TextField("关键词：普通词、+必须词、!过滤词", text: $keywordText, axis: .vertical)
             TextField("全局过滤词，使用逗号分隔", text: $filterText, axis: .vertical)
+            Text("示例：AI, +发布, !广告。必须词全部命中，普通词命中任意一个，过滤词命中后排除。")
+                .font(.caption)
+                .foregroundStyle(.secondary)
             Picker("筛选方式", selection: $settingsStore.settings.ai.filterMethod) {
                 Text("关键词匹配").tag("keyword")
                 Text("AI 智能分类").tag("ai")

@@ -298,15 +298,41 @@ struct ArchiveView: View {
                         .foregroundStyle(AppTheme.textTertiary)
                 }
             }
-            if reportStore.reports.isEmpty {
+            HStack(spacing: 8) {
+                TextField("搜索报告", text: $reportStore.searchText)
+                    .textFieldStyle(.plain)
+                    .font(AppTheme.captionFont)
+                    .padding(10)
+                    .background(AppTheme.card)
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                Menu {
+                    Button("全部类型") { reportStore.selectedType = nil }
+                    ForEach(ReportType.allCases, id: \.self) { type in
+                        Button(type.displayName) { reportStore.selectedType = type }
+                    }
+                    Divider()
+                    Toggle("仅收藏", isOn: $reportStore.favoritesOnly)
+                } label: {
+                    Image(systemName: reportStore.selectedType == nil && !reportStore.favoritesOnly ? "line.3.horizontal.decrease.circle" : "line.3.horizontal.decrease.circle.fill")
+                        .foregroundStyle(AppTheme.cyan)
+                }
+            }
+            if reportStore.isLoading {
+                ProgressView("加载本地报告")
+                    .tint(AppTheme.cyan)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            } else if reportStore.reports.isEmpty {
                 Text("报告会保存生成时的本地新闻快照，后续刷新不会改变历史内容。")
                     .font(AppTheme.captionFont)
                     .foregroundStyle(AppTheme.textSecondary)
                 Button("生成第一份报告") { showingReportGenerator = true }
                     .font(AppTheme.headlineFont)
                     .foregroundStyle(AppTheme.cyan)
+            } else if reportStore.filteredReports.isEmpty {
+                FeatureEmptyState(icon: "line.3.horizontal.decrease.circle", title: "没有匹配报告", message: "调整搜索词或筛选条件后重试。")
+                    .frame(maxWidth: .infinity)
             } else {
-                ForEach((showingAllReports ? reportStore.reports : Array(reportStore.reports.prefix(3)))) { report in
+                ForEach((showingAllReports ? reportStore.filteredReports : Array(reportStore.filteredReports.prefix(3)))) { report in
                     NavigationLink {
                         ReportDetailView(reportID: report.id)
                     } label: {
@@ -314,7 +340,7 @@ struct ArchiveView: View {
                     }
                     .buttonStyle(.plain)
                 }
-                if reportStore.reports.count > 3 {
+                if reportStore.filteredReports.count > 3 {
                     Button(showingAllReports ? "收起报告" : "查看全部报告") {
                         withAnimation(AppAnimation.standard) { showingAllReports.toggle() }
                     }
