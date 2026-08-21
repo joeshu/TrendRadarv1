@@ -116,8 +116,8 @@ struct ContentView: View {
                     .foregroundStyle(AppTheme.cyan.opacity(0.8))
             }
             HStack(spacing: 10) {
-                MetricPill(value: "\(store.items.count)", label: "条情报", tint: .appCyan)
-                MetricPill(value: "\(store.items.filter { !$0.isRead }.count)", label: "未读", tint: .appYellow)
+                MetricPill(value: "\(store.items.count)", label: "条情报", tint: AppTheme.cyan)
+                MetricPill(value: "\(store.items.filter { !$0.isRead }.count)", label: "未读", tint: AppTheme.yellow)
                 MetricPill(value: "\(store.items.filter(\.isFavorite).count)", label: "收藏", tint: AppTheme.pink)
             }
         }

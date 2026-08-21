@@ -21,7 +21,7 @@ actor LocalStore {
             migrateLegacyJSON(into: context)
             records = (try? context.fetch(descriptor)) ?? []
         }
-        return records.map(\.asNewsItem)
+        return records.map { $0.asNewsItem() }
     }
 
     func save(_ items: [NewsItem]) {
