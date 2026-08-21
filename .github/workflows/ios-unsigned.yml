@@ -46,6 +46,7 @@ jobs:
       - name: Build unsigned app
         working-directory: ios
         run: |
+          mkdir -p build
           set -o pipefail
           xcodebuild \
             -project TrendRadar.xcodeproj \
