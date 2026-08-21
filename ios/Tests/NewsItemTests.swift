@@ -104,6 +104,16 @@ final class NewsItemTests: XCTestCase {
         XCTAssertFalse(matches[1].score >= 0 && matches[1].score <= 1)
     }
 
+    func testInterestTagsRoundTripAndUpdateDecoding() throws {
+        var settings = AppSettings()
+        settings.ai.interestTags = [AIInterestTag(id: 1, tag: "人工智能", description: "模型与应用")]
+        let restored = try JSONDecoder().decode(AppSettings.self, from: JSONEncoder().encode(settings))
+        XCTAssertEqual(restored.ai.interestTags, settings.ai.interestTags)
+        let update = try JSONDecoder().decode(AIInterestTagUpdate.self, from: Data("{\"keep\":[],\"add\":[{\"tag\":\"芯片\",\"description\":\"处理器\"}],\"remove\":[],\"change_ratio\":0.2}".utf8))
+        XCTAssertEqual(update.changeRatio, 0.2)
+        XCTAssertEqual(update.add.first?.tag, "芯片")
+    }
+
     func testTimelineHandlesNormalAndCrossDayPeriods() {
         let calendar = Calendar(identifier: .gregorian)
         let day = calendar.date(from: DateComponents(year: 2026, month: 8, day: 21, hour: 20, minute: 30))!

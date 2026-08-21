@@ -101,6 +101,13 @@ struct AISettings: Codable, Equatable, Sendable {
     var filterPromptFile = "prompt.txt"
     var extractPromptFile = "extract_prompt.txt"
     var updateTagsPromptFile = "update_tags_prompt.txt"
+    var interestTags: [AIInterestTag] = []
+}
+
+struct AIInterestTag: Codable, Equatable, Hashable, Sendable, Identifiable {
+    var id: Int
+    var tag: String
+    var description: String
 }
 
 struct AIAnalysisSettings: Codable, Equatable, Sendable {

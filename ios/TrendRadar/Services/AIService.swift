@@ -79,11 +79,13 @@ struct AIService: Sendable {
         guard !items.isEmpty else { return [] }
         let interests = settings.ai.interests.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !interests.isEmpty else { return [] }
-        let tags = interests.components(separatedBy: .newlines)
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
+        let tags = settings.ai.interestTags.isEmpty
+            ? interests.components(separatedBy: .newlines).map { AIInterestTag(id: 0, tag: $0, description: $0) }
+            : settings.ai.interestTags
+        let tagsText = tags
+            .filter { !$0.tag.isEmpty }
             .enumerated()
-            .map { "\($0.offset + 1). \($0.element)" }
+            .map { "\($0.offset + 1). \($0.element.tag) - \($0.element.description)" }
             .joined(separator: "\n")
         let newsList = items.enumerated().map { "\($0.offset + 1). \($0.element.title)" }.joined(separator: "\n")
         let fallback = AIPromptMessages(
@@ -93,7 +95,7 @@ struct AIService: Sendable {
         let prompt = AIPromptTemplate.load(fileName: settings.ai.filterPromptFile, fallback: fallback)
         let messages = prompt.messages(values: [
             "interests_content": interests,
-            "tags_list": tags,
+            "tags_list": tagsText,
             "news_count": String(items.count),
             "news_list": newsList
         ])
@@ -113,6 +115,28 @@ struct AIService: Sendable {
         let json = normalizedJSON(content)
         let matches = try JSONDecoder().decode([AIFilterMatch].self, from: Data(json.utf8))
         return matches.filter { $0.id > 0 && $0.tagID > 0 && $0.score >= 0 && $0.score <= 1 }
+    }
+
+    func extractInterestTags(settings: AppSettings) async throws -> [AIInterestTag] {
+        let interests = settings.ai.interests.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !interests.isEmpty else { return [] }
+        let fallback = AIPromptMessages(system: "你是兴趣标签提取器。只输出严格 JSON。", user: "兴趣描述：\n{interests_content}\n返回 {\"tags\":[{\"tag\":\"名称\",\"description\":\"描述\"}]}。")
+        let prompt = AIPromptTemplate.load(fileName: settings.ai.extractPromptFile, fallback: fallback)
+        let messages = prompt.messages(values: ["interests_content": interests])
+        let content = try await request(messages: messages, settings: settings)
+        let response = try JSONDecoder().decode(AIInterestTagResponse.self, from: Data(normalizedJSON(content).utf8))
+        return response.tags.enumerated().prefix(20).map { AIInterestTag(id: $0.offset + 1, tag: $0.element.tag, description: $0.element.description) }
+    }
+
+    func updateInterestTags(settings: AppSettings) async throws -> AIInterestTagUpdate {
+        let interests = settings.ai.interests.trimmingCharacters(in: .whitespacesAndNewlines)
+        let oldTags = try JSONEncoder().encode(settings.ai.interestTags)
+        let oldTagsJSON = String(data: oldTags, encoding: .utf8) ?? "[]"
+        let fallback = AIPromptMessages(system: "你是标签管理器。只输出严格 JSON。", user: "旧标签：\n{old_tags_json}\n新兴趣：\n{interests_content}\n返回 keep、add、remove、change_ratio。")
+        let prompt = AIPromptTemplate.load(fileName: settings.ai.updateTagsPromptFile, fallback: fallback)
+        let messages = prompt.messages(values: ["old_tags_json": oldTagsJSON, "interests_content": interests])
+        let content = try await request(messages: messages, settings: settings)
+        return try JSONDecoder().decode(AIInterestTagUpdate.self, from: Data(normalizedJSON(content).utf8))
     }
 
     func filter(_ items: [NewsItem], settings: AppSettings) async throws -> [NewsItem] {
@@ -164,6 +188,15 @@ struct AIService: Sendable {
         throw lastError
     }
 
+    private func request(messages: AIPromptMessages, settings: AppSettings) async throws -> String {
+        let baseURL = keychain.read("api-base").trimmingCharacters(in: .whitespacesAndNewlines)
+        let apiKey = keychain.read("api-key")
+        guard !baseURL.isEmpty, !apiKey.isEmpty else { throw AIError.missingConfiguration }
+        let endpoint = baseURL.hasSuffix("/chat/completions") ? baseURL : baseURL.trimmingCharacters(in: CharacterSet(charactersIn: "/")) + "/chat/completions"
+        guard let url = URL(string: endpoint) else { throw AIError.invalidURL }
+        return try await requestContent(url: url, apiKey: apiKey, models: modelCandidates(primary: keychain.read("ai-model"), settings: settings), messages: [Message(role: "system", content: messages.system), Message(role: "user", content: messages.user)], settings: settings)
+    }
+
     private func normalizedJSON(_ content: String) -> String {
         content.trimmingCharacters(in: .whitespacesAndNewlines)
             .replacingOccurrences(of: "```json", with: "")
@@ -192,6 +225,27 @@ struct AIFilterMatch: Codable, Equatable, Sendable {
     enum CodingKeys: String, CodingKey {
         case id, score
         case tagID = "tag_id"
+    }
+}
+
+private struct AIInterestTagResponse: Codable, Sendable {
+    let tags: [AIInterestTagPayload]
+}
+
+struct AIInterestTagPayload: Codable, Equatable, Sendable {
+    let tag: String
+    let description: String
+}
+
+struct AIInterestTagUpdate: Codable, Equatable, Sendable {
+    let keep: [AIInterestTagPayload]
+    let add: [AIInterestTagPayload]
+    let remove: [String]
+    let changeRatio: Double
+
+    enum CodingKeys: String, CodingKey {
+        case keep, add, remove
+        case changeRatio = "change_ratio"
     }
 }
 

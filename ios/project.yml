@@ -25,6 +25,8 @@ targets:
     resources:
       - path: ../config/ai_analysis_prompt.txt
       - path: ../config/ai_filter/prompt.txt
+      - path: ../config/ai_filter/extract_prompt.txt
+      - path: ../config/ai_filter/update_tags_prompt.txt
     scheme:
       gatherCoverageData: true
       testTargets:

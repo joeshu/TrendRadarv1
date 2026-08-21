@@ -16,6 +16,7 @@ struct SettingsView: View {
     @State private var editingFeed: ConfigFeed?
     @State private var showingSettingsImporter = false
     @State private var settingsMessage: String?
+    @State private var isUpdatingInterestTags = false
     @State private var originalSettings: AppSettings?
     @State private var originalKeychainValues: [String: String] = [:]
     private let keychain = KeychainStore()
@@ -234,6 +235,15 @@ struct SettingsView: View {
             TextField("模型名称", text: $aiModel).textInputAutocapitalization(.never).autocorrectionDisabled()
             TextField("AI 分析语言", text: $settingsStore.settings.ai.language)
             TextField("兴趣描述", text: $interestText, axis: .vertical).lineLimit(3...8)
+            Button(isUpdatingInterestTags ? "正在更新兴趣标签..." : "根据兴趣描述更新标签") {
+                updateInterestTags()
+            }
+            .disabled(isUpdatingInterestTags || interestText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            if !settingsStore.settings.ai.interestTags.isEmpty {
+                Text("当前标签：" + settingsStore.settings.ai.interestTags.map(\.tag).joined(separator: "、"))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
             Toggle("按兴趣顺序排序", isOn: $settingsStore.settings.ai.prioritySortEnabled)
             Stepper("AI 筛选批量：\(settingsStore.settings.ai.batchSize) 条", value: $settingsStore.settings.ai.batchSize, in: 1...1000, step: 10)
             Stepper("AI 筛选批次间隔：\(settingsStore.settings.ai.batchInterval) 秒", value: $settingsStore.settings.ai.batchInterval, in: 0...60)
@@ -483,6 +493,31 @@ struct SettingsView: View {
         originalSettings = settingsStore.settings
         BackgroundRefreshService.schedule(after: settingsStore.settings.refreshInterval * 60)
         dismiss()
+    }
+
+    private func updateInterestTags() {
+        isUpdatingInterestTags = true
+        var pendingSettings = settingsStore.settings
+        pendingSettings.ai.interests = interestText
+        Task {
+            do {
+                let update = try await AIService().updateInterestTags(settings: pendingSettings)
+                let kept = update.keep.enumerated().map { AIInterestTag(id: $0.offset + 1, tag: $0.element.tag, description: $0.element.description) }
+                let additions = update.add.enumerated().map { AIInterestTag(id: kept.count + $0.offset + 1, tag: $0.element.tag, description: $0.element.description) }
+                pendingSettings.ai.interestTags = Array((kept + additions).prefix(20))
+                await MainActor.run {
+                    settingsStore.settings = pendingSettings
+                    newsStore.settings = pendingSettings
+                    settingsMessage = "兴趣标签已更新"
+                    isUpdatingInterestTags = false
+                }
+            } catch {
+                await MainActor.run {
+                    settingsMessage = "兴趣标签更新失败：\(error.localizedDescription)"
+                    isUpdatingInterestTags = false
+                }
+            }
+        }
     }
 
     private var settingsJSON: String {
