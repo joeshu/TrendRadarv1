@@ -24,7 +24,9 @@ enum BackgroundRefreshService {
     private static func refresh(task: BGAppRefreshTask) async {
         do {
             let settings = loadSettings()
-            let timelineAction = TimelineCatalog.preset(for: settings.schedulePreset).action(at: Date())
+            let preset = TimelineCatalog.preset(for: settings.schedulePreset)
+            let match = preset.match(at: Date())
+            let timelineAction = TimelineExecutionStore().claim(presetID: preset.id, periodID: match.periodID, action: match.action)
             guard timelineAction.collect else {
                 schedule(after: settings.refreshInterval * 60)
                 task.setTaskCompleted(success: true)

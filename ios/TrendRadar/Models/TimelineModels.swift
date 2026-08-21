@@ -35,9 +35,57 @@ struct TimelinePreset: Identifiable, Equatable, Sendable {
     let periods: [TimelinePeriod]
 
     func action(at date: Date, calendar: Calendar = .current) -> TimelineAction {
+        match(at: date, calendar: calendar).action
+    }
+
+    func match(at date: Date, calendar: Calendar = .current) -> (periodID: String?, action: TimelineAction) {
         let components = calendar.dateComponents([.hour, .minute], from: date)
         let minute = (components.hour ?? 0) * 60 + (components.minute ?? 0)
-        return periods.first { $0.contains(minute: minute) }?.action ?? defaultAction
+        if let period = periods.first(where: { $0.contains(minute: minute) }) {
+            return (period.id, period.action)
+        }
+        return (nil, defaultAction)
+    }
+}
+
+struct TimelineExecutionStore: Sendable {
+    private let defaults = UserDefaults.standard
+    private let key = "trendradar.timeline.executions"
+
+    func claim(presetID: String, periodID: String?, action: TimelineAction, at date: Date = Date(), calendar: Calendar = .current) -> TimelineAction {
+        let dateKey = executionDateKey(periodID: periodID, at: date, calendar: calendar)
+        var executions = defaults.stringArray(forKey: key) ?? []
+        executions = executions.filter { marker in
+            marker.split(separator: "|").dropFirst(2).first.map(String.init) == dateKey
+        }
+        var result = action
+        let prefix = "\(presetID)|\(periodID ?? "default")|\(dateKey)|"
+        if action.onceAnalyze {
+            let marker = prefix + "analyze"
+            result.analyze = !executions.contains(marker) && action.analyze
+            if result.analyze { executions.append(marker) }
+        }
+        if action.oncePush {
+            let marker = prefix + "push"
+            result.push = !executions.contains(marker) && action.push
+            if result.push { executions.append(marker) }
+        }
+        defaults.set(executions, forKey: key)
+        return result
+    }
+
+    private func executionDateKey(periodID: String?, at date: Date, calendar: Calendar) -> String {
+        var executionDate = date
+        if let periodID, periodID != "default" {
+            let components = calendar.dateComponents([.hour, .minute], from: date)
+            let minute = (components.hour ?? 0) * 60 + (components.minute ?? 0)
+            let preset = TimelineCatalog.presets.flatMap(\.periods).first { $0.id == periodID }
+            if let preset, preset.startMinutes > preset.endMinutes, minute < preset.endMinutes {
+                executionDate = calendar.date(byAdding: .day, value: -1, to: date) ?? date
+            }
+        }
+        let components = calendar.dateComponents([.year, .month, .day], from: executionDate)
+        return String(format: "%04d-%02d-%02d", components.year ?? 0, components.month ?? 0, components.day ?? 0)
     }
 }
 

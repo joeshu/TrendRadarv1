@@ -99,6 +99,34 @@ final class NewsItemTests: XCTestCase {
         XCTAssertTrue(preset.action(at: night, calendar: calendar).push)
     }
 
+    func testTimelineExecutionStoreClaimsOnceActions() {
+        let defaults = UserDefaults.standard
+        defaults.removeObject(forKey: "trendradar.timeline.executions")
+        let action = TimelineAction(collect: true, analyze: true, push: true, reportMode: .daily, aiMode: .daily, onceAnalyze: true, oncePush: true)
+        let date = Date(timeIntervalSince1970: 1_756_000_000)
+        let store = TimelineExecutionStore()
+        let first = store.claim(presetID: "test", periodID: "period", action: action, at: date, calendar: Calendar(identifier: .gregorian))
+        let second = store.claim(presetID: "test", periodID: "period", action: action, at: date, calendar: Calendar(identifier: .gregorian))
+        XCTAssertTrue(first.analyze)
+        XCTAssertTrue(first.push)
+        XCTAssertFalse(second.analyze)
+        XCTAssertFalse(second.push)
+    }
+
+    func testTimelineExecutionStoreSeparatesExecutionDays() {
+        let defaults = UserDefaults.standard
+        defaults.removeObject(forKey: "trendradar.timeline.executions")
+        let action = TimelineAction(collect: true, analyze: true, push: true, reportMode: .daily, aiMode: .daily, onceAnalyze: true, oncePush: true)
+        let calendar = Calendar(identifier: .gregorian)
+        let firstDay = calendar.date(from: DateComponents(year: 2026, month: 8, day: 21, hour: 20))!
+        let secondDay = calendar.date(from: DateComponents(year: 2026, month: 8, day: 22, hour: 20))!
+        let store = TimelineExecutionStore()
+        _ = store.claim(presetID: "test", periodID: "period", action: action, at: firstDay, calendar: calendar)
+        let secondDayResult = store.claim(presetID: "test", periodID: "period", action: action, at: secondDay, calendar: calendar)
+        XCTAssertTrue(secondDayResult.analyze)
+        XCTAssertTrue(secondDayResult.push)
+    }
+
     func testSettingsRoundTripPreservesRichConfiguration() throws {
         var settings = AppSettings()
         settings.keywords = ["Swift", "AI"]

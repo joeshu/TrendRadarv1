@@ -50,7 +50,9 @@ final class NewsStore: ObservableObject {
             items = refreshedItems + items.filter { !refreshedIDs.contains($0.id) }
             await localStore.save(items)
             lastUpdated = Date()
-            let timelineAction = TimelineCatalog.preset(for: settings.schedulePreset).action(at: Date())
+            let preset = TimelineCatalog.preset(for: settings.schedulePreset)
+            let match = preset.match(at: Date())
+            let timelineAction = TimelineExecutionStore().claim(presetID: preset.id, periodID: match.periodID, action: match.action)
             if settings.scheduleEnabled, timelineAction.push {
                 await generateReport(trigger: .foregroundRefresh, type: timelineAction.reportMode)
             }
