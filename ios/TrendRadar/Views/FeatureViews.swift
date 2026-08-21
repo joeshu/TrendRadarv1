@@ -23,9 +23,8 @@ struct FeedsView: View {
                 AppTheme.background.ignoresSafeArea()
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 16) {
-                        pageHeader
-                        feedSummary
-                        feedPicker
+                         feedIntro
+                         feedPicker
                         if enabledFeeds.isEmpty {
                             FeatureEmptyState(icon: "antenna.radiowaves.left.and.right.slash", title: "还没有启用订阅源", message: "在设置中启用 RSS 源，再回来刷新你的信息流。")
                                 .frame(maxWidth: .infinity)
@@ -67,17 +66,13 @@ struct FeedsView: View {
         }
     }
 
-    private var pageHeader: some View {
+    private var feedIntro: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("FEED NETWORK")
-                .font(AppTheme.captionFont)
-                .tracking(1.6)
-                .foregroundStyle(AppTheme.cyan)
-            Text("你的信息源")
-                .font(AppTheme.titleFont)
+            Text("管理信息源")
+                .font(AppTheme.headlineFont)
                 .foregroundStyle(.white)
-            Text("把分散的订阅，收束成一条安静的信息流。")
-                .font(AppTheme.bodyFont)
+            Text("选择来源，阅读对应的订阅内容。")
+                .font(AppTheme.captionFont)
                 .foregroundStyle(AppTheme.textSecondary)
         }
     }
@@ -99,9 +94,7 @@ struct FeedsView: View {
             FeedSummaryMetric(value: "\(feedItems.count)", label: selectedFeedID == nil ? "全部文章" : "当前源文章", tint: AppTheme.yellow)
             FeedSummaryMetric(value: "\(feedItems.filter { !$0.isRead }.count)", label: "待阅读", tint: AppTheme.pink)
         }
-        .padding(14)
-        .background(AppTheme.surface)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .padding(.vertical, 4)
     }
 }
 
@@ -149,15 +142,11 @@ struct InsightView: View {
 
     private var insightHeader: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("INTELLIGENCE")
-                .font(AppTheme.captionFont)
-                .tracking(1.6)
-                .foregroundStyle(AppTheme.yellow)
             Text("今天值得关注什么")
-                .font(AppTheme.titleFont)
+                .font(AppTheme.headlineFont)
                 .foregroundStyle(.white)
-            Text("本地统计来自当前已抓取的新闻，不替代真实 AI 研判。")
-                .font(AppTheme.bodyFont)
+            Text("基于当前已抓取的新闻。")
+                .font(AppTheme.captionFont)
                 .foregroundStyle(AppTheme.textSecondary)
         }
     }
@@ -205,7 +194,7 @@ struct InsightView: View {
     private var hotNewsInsightCard: some View {
         InsightPanel(title: "热榜趋势", icon: "chart.line.uptrend.xyaxis", tint: AppTheme.pink) {
             if hotNewsStore.topics.isEmpty {
-                Text("完成至少一次热榜刷新后，这里会显示跨平台主题和排名变化。")
+                Text("暂无跨平台主题数据。")
                     .font(AppTheme.bodyFont)
                     .foregroundStyle(AppTheme.textSecondary)
             } else {
@@ -242,7 +231,7 @@ struct InsightView: View {
     private var anomalyCard: some View {
         InsightPanel(title: "热点异动", icon: "bolt.fill", tint: AppTheme.red) {
             if hotNewsStore.anomalies.isEmpty {
-                Text("排名变化达到 3 位后，这里会显示可解释的热点异动。")
+                Text("暂无达到阈值的热点异动。")
                     .font(AppTheme.bodyFont)
                     .foregroundStyle(AppTheme.textSecondary)
             } else {
@@ -284,14 +273,9 @@ struct HotNewsView: View {
                 AppTheme.background.ignoresSafeArea()
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 16) {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("热榜")
-                                .font(AppTheme.titleFont)
-                                .foregroundStyle(.white)
-                            Text("查看各平台当前排名，以及真实的跨平台变化。")
-                                .font(AppTheme.bodyFont)
-                                .foregroundStyle(AppTheme.textSecondary)
-                        }
+                        Text("查看各平台当前排名，以及真实的跨平台变化。")
+                            .font(AppTheme.captionFont)
+                            .foregroundStyle(AppTheme.textSecondary)
                         hotNewsFilters
                         if hotNewsStore.items.isEmpty {
                             FeatureEmptyState(icon: "flame", title: "暂无热榜数据", message: "刷新后显示平台热榜和排名变化。")
@@ -515,14 +499,9 @@ struct ReportCenterView: View {
                 AppTheme.background.ignoresSafeArea()
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 16) {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("报告")
-                                .font(AppTheme.titleFont)
-                                .foregroundStyle(.white)
-                            Text("保存采集时刻的本地快照和分析结果。")
-                                .font(AppTheme.bodyFont)
-                                .foregroundStyle(AppTheme.textSecondary)
-                        }
+                        Text("保存采集时刻的本地快照和分析结果。")
+                            .font(AppTheme.captionFont)
+                            .foregroundStyle(AppTheme.textSecondary)
                         reportToolbar
                         if reportStore.isLoading {
                             ProgressView("加载报告")

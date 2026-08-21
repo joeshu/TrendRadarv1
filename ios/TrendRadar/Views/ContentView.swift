@@ -106,13 +106,12 @@ struct RadarView: View {
         VStack(alignment: .leading, spacing: 16) {
             HStack(alignment: .bottom) {
                 VStack(alignment: .leading, spacing: 5) {
-                    Text("早上好，观察员")
-                        .font(.system(size: 14, weight: .medium, design: .rounded))
-                        .foregroundStyle(AppTheme.cyan)
-                    Text("今天的世界\n正在发生什么")
-                        .font(.system(size: 31, weight: .bold, design: .rounded))
+                    Text("最新情报")
+                        .font(.system(size: 26, weight: .bold, design: .rounded))
                         .foregroundStyle(.white)
-                        .lineSpacing(2)
+                    Text("来自你关注的信息源。")
+                        .font(AppTheme.captionFont)
+                        .foregroundStyle(AppTheme.textSecondary)
                 }
                 Spacer()
                 Image(systemName: "waveform.path.ecg")
@@ -264,10 +263,10 @@ private struct NewsCard: View {
                     if item.isFavorite { Image(systemName: "star.fill").font(.caption).foregroundStyle(AppTheme.yellow) }
                 }
                 Text(item.title)
-                    .font(.system(size: 17, weight: item.isRead ? .medium : .bold, design: .rounded))
+                    .font(.system(size: 16, weight: item.isRead ? .regular : .semibold, design: .rounded))
                     .foregroundStyle(item.isRead ? .white.opacity(0.58) : .white)
                     .multilineTextAlignment(.leading)
-                    .lineLimit(3)
+                    .lineLimit(2)
                 HStack(spacing: 7) {
                     Text(item.publishedAt?.relativeDescription ?? "刚刚")
                     if item.summary != nil { Text("·"); Label("已摘要", systemImage: "sparkles") }
@@ -276,10 +275,11 @@ private struct NewsCard: View {
                 .foregroundStyle(.white.opacity(0.42))
             }
         }
-        .padding(16)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 13)
         .background(AppTheme.card)
         .overlay(RoundedRectangle(cornerRadius: 18).stroke(Color.white.opacity(0.06), lineWidth: 1))
-        .clipShape(RoundedRectangle(cornerRadius: 18))
+        .clipShape(RoundedRectangle(cornerRadius: 14))
     }
 }
 
