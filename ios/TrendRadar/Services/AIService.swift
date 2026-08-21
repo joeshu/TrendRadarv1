@@ -118,8 +118,8 @@ struct AIService: Sendable {
     func filter(_ items: [NewsItem], settings: AppSettings) async throws -> [NewsItem] {
         let matches = try await classify(items, settings: settings)
         let minimumScore = min(max(settings.ai.minimumScore, 0), 1)
-        let acceptedIDs = Set(matches.filter { $0.score >= minimumScore }.compactMap { index in
-            guard index.id <= items.count else { return nil }
+        let acceptedIDs: Set<String> = Set(matches.filter { $0.score >= minimumScore }.compactMap { index in
+            guard index.id > 0, index.id <= items.count else { return nil }
             return items[index.id - 1].id
         })
         return items.filter { acceptedIDs.contains($0.id) }
