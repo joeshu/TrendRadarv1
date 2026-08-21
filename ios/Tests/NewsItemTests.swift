@@ -89,6 +89,13 @@ final class NewsItemTests: XCTestCase {
         XCTAssertEqual(restored.ai.fallbackModels, ["backup-model"])
     }
 
+    func testAIPromptTemplateReplacesConfiguredVariables() {
+        let template = AIPromptTemplate(content: "[system]\n语言：{language}\n[user]\n新闻：{news_content}")
+        let messages = template.messages(values: ["language": "中文", "news_content": "测试新闻"])
+        XCTAssertEqual(messages.system, "语言：中文")
+        XCTAssertEqual(messages.user, "新闻：测试新闻")
+    }
+
     func testTimelineHandlesNormalAndCrossDayPeriods() {
         let calendar = Calendar(identifier: .gregorian)
         let day = calendar.date(from: DateComponents(year: 2026, month: 8, day: 21, hour: 20, minute: 30))!

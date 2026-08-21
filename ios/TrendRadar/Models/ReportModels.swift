@@ -90,6 +90,29 @@ struct StructuredAIAnalysis: Codable, Equatable, Hashable, Sendable {
     var sentimentNegative: Double
     var weakSignals: [String]
     var recommendation: String
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        overview = try container.decodeIfPresent(String.self, forKey: .overview)
+            ?? (try container.decodeIfPresent(String.self, forKey: .coreTrends))
+            ?? ""
+        sentimentPositive = try container.decodeIfPresent(Double.self, forKey: .sentimentPositive) ?? 0
+        sentimentNeutral = try container.decodeIfPresent(Double.self, forKey: .sentimentNeutral) ?? 1
+        sentimentNegative = try container.decodeIfPresent(Double.self, forKey: .sentimentNegative) ?? 0
+        weakSignals = try container.decodeIfPresent([String].self, forKey: .weakSignals)
+            ?? (try container.decodeIfPresent([String].self, forKey: .signals))
+            ?? []
+        recommendation = try container.decodeIfPresent(String.self, forKey: .recommendation)
+            ?? (try container.decodeIfPresent(String.self, forKey: .outlookStrategy))
+            ?? ""
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case overview, coreTrends = "core_trends"
+        case sentimentPositive, sentimentNeutral, sentimentNegative
+        case weakSignals, signals
+        case recommendation, outlookStrategy = "outlook_strategy"
+    }
 }
 
 struct ReportSection: Codable, Equatable, Hashable, Identifiable, Sendable {

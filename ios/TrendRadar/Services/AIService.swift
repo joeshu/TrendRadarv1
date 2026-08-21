@@ -39,14 +39,30 @@ struct AIService: Sendable {
         let analysisItems = settings.aiAnalysis.maxNewsForAnalysis > 0
             ? Array(items.prefix(settings.aiAnalysis.maxNewsForAnalysis))
             : items
-        let input = analysisItems.enumerated().map { "\($0.offset + 1). \($0.element.title)" }.joined(separator: "\n")
+        let input = analysisItems.enumerated().map { index, item in
+            "\(index + 1). [\(item.source)] \(item.title)\(item.summary.map { "\n   \($0)" } ?? "")"
+        }.joined(separator: "\n")
+        let prompt = AIPromptTemplate.load(fileName: settings.aiAnalysis.promptFile)
+        let messages = prompt.messages(values: [
+            "language": settings.aiAnalysis.language,
+            "report_mode": settings.aiAnalysis.mode,
+            "report_type": settings.report.mode,
+            "current_time": Date().formatted(date: .abbreviated, time: .shortened),
+            "news_count": String(analysisItems.count),
+            "rss_count": String(analysisItems.filter { $0.source.lowercased().contains("rss") }.count),
+            "keywords": settings.keywords.joined(separator: ", "),
+            "platforms": Array(Set(analysisItems.map(\.source))).sorted().joined(separator: ", "),
+            "news_content": input,
+            "rss_content": settings.aiAnalysis.includeRSS ? input : "暂无RSS数据",
+            "standalone_content": settings.aiAnalysis.includeStandalone ? input : "暂无独立展示区数据"
+        ])
         let content = try await requestContent(
             url: url,
             apiKey: apiKey,
             models: modelCandidates(primary: model, settings: settings),
             messages: [
-                Message(role: "system", content: "你是新闻情报分析器。只输出合法 JSON，不要 Markdown 代码块。字段为 overview(string), sentimentPositive(number 0-1), sentimentNeutral(number 0-1), sentimentNegative(number 0-1), weakSignals(array of strings), recommendation(string)。三个情绪数值之和应为 1。"),
-                Message(role: "user", content: input)
+                Message(role: "system", content: messages.system + "\n应用接口要求：只输出包含 overview、sentimentPositive、sentimentNeutral、sentimentNegative、weakSignals、recommendation 字段的 JSON。三个情绪数值之和应为 1。"),
+                Message(role: "user", content: messages.user)
             ],
             settings: settings
         )

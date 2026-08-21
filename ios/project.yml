@@ -22,6 +22,8 @@ targets:
         CURRENT_PROJECT_VERSION: 1
         MARKETING_VERSION: 0.1.0
         SWIFT_EMIT_LOC_STRINGS: YES
+    resources:
+      - path: ../config/ai_analysis_prompt.txt
     scheme:
       gatherCoverageData: true
       testTargets:
