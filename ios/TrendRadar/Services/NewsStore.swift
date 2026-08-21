@@ -11,13 +11,11 @@ final class NewsStore: ObservableObject {
     private let localStore = LocalStore()
     private let crawler = NewsCrawler()
     private let aiService = AIService()
-    let feeds = [
-        RSSFeed(id: "hn", name: "Hacker News", url: URL(string: "https://news.ycombinator.com/rss")!),
-        RSSFeed(id: "bbc", name: "BBC News", url: URL(string: "https://feeds.bbci.co.uk/news/rss.xml")!),
-        RSSFeed(id: "nasa", name: "NASA", url: URL(string: "https://www.nasa.gov/rss/dyn/breaking_news.rss")!)
-    ]
-
     var settings: AppSettings = AppSettings()
+
+    var feeds: [RSSFeed] {
+        settings.customFeeds.compactMap(\.rssFeed)
+    }
 
     func load() async {
         items = await localStore.load()
@@ -32,14 +30,17 @@ final class NewsStore: ObservableObject {
         do {
             let crawler = self.crawler
             let results = try await withThrowingTaskGroup(of: [NewsItem].self) { group in
-                for feed in feeds where settings.enabledFeedIDs.contains(feed.id) {
+                for feed in feeds where settings.rssEnabled && settings.customFeeds.first(where: { $0.id == feed.id })?.isEnabled == true {
                     group.addTask { try await crawler.fetch(feed: feed) }
                 }
                 return try await group.reduce(into: []) { $0.append(contentsOf: $1) }
             }
             let oldByID = items.reduce(into: [String: NewsItem]()) { $0[$1.id] = $1 }
             let uniqueResults = results.reduce(into: [String: NewsItem]()) { $0[$1.id] = $1 }.values
-            let refreshedItems = uniqueResults.map { item in
+            let filteredResults = uniqueResults.filter { item in
+                settings.keywords.isEmpty || settings.keywords.contains { item.title.localizedCaseInsensitiveContains($0) }
+            }
+            let refreshedItems = filteredResults.map { item in
                 var updated = item
                 updated.isRead = oldByID[item.id]?.isRead ?? false
                 updated.isFavorite = oldByID[item.id]?.isFavorite ?? false

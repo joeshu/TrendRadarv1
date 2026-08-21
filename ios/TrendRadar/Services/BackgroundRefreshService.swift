@@ -24,14 +24,10 @@ enum BackgroundRefreshService {
     private static func refresh(task: BGAppRefreshTask) async {
         do {
             let settings = loadSettings()
-            let feeds = [
-                RSSFeed(id: "hn", name: "Hacker News", url: URL(string: "https://news.ycombinator.com/rss")!),
-                RSSFeed(id: "bbc", name: "BBC News", url: URL(string: "https://feeds.bbci.co.uk/news/rss.xml")!),
-                RSSFeed(id: "nasa", name: "NASA", url: URL(string: "https://www.nasa.gov/rss/dyn/breaking_news.rss")!)
-            ]
+            let feeds = settings.customFeeds.compactMap(\.rssFeed)
             let crawler = NewsCrawler()
             var freshItems: [NewsItem] = []
-            for feed in feeds where settings.enabledFeedIDs.contains(feed.id) {
+            for feed in feeds where settings.rssEnabled && settings.customFeeds.first(where: { $0.id == feed.id })?.isEnabled == true {
                 try Task.checkCancellation()
                 freshItems.append(contentsOf: try await crawler.fetch(feed: feed))
             }
@@ -56,7 +52,9 @@ enum BackgroundRefreshService {
             await localStore.save(merged)
             try Task.checkCancellation()
             let newCount = freshItems.filter { !oldIDs.contains($0.id) }.count
-            if newCount > 0 { await notify(newCount: newCount) }
+            if newCount > 0 && settings.notification.enabled && settings.notification.localAlerts {
+                await notify(newCount: newCount, soundEnabled: settings.notification.soundEnabled)
+            }
             schedule(after: settings.refreshInterval * 60)
             task.setTaskCompleted(success: true)
         } catch {
@@ -73,11 +71,11 @@ enum BackgroundRefreshService {
         return settings
     }
 
-    private static func notify(newCount: Int) async {
+    private static func notify(newCount: Int, soundEnabled: Bool) async {
         let content = UNMutableNotificationContent()
         content.title = "TrendRadar"
         content.body = "发现 \(newCount) 条新热点"
-        content.sound = .default
+        content.sound = soundEnabled ? .default : nil
         let request = UNNotificationRequest(identifier: "new-news", content: content, trigger: nil)
         try? await UNUserNotificationCenter.current().add(request)
     }

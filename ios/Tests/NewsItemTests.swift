@@ -24,6 +24,23 @@ final class NewsItemTests: XCTestCase {
         XCTAssertTrue(settings.enabledFeedIDs.contains("hn"))
         XCTAssertTrue(settings.enabledFeedIDs.contains("bbc"))
         XCTAssertEqual(settings.refreshInterval, 60)
+        XCTAssertEqual(settings.schedulePreset, "night_owl")
+        XCTAssertTrue(settings.platformSources.contains { $0.id == "zhihu" })
+    }
+
+    func testSettingsRoundTripPreservesRichConfiguration() throws {
+        var settings = AppSettings()
+        settings.keywords = ["Swift", "AI"]
+        settings.schedulePreset = "office_hours"
+        settings.rssMaxAgeDays = 3
+        settings.customFeeds.append(ConfigFeed(id: "custom", name: "Custom", url: "https://example.com/feed.xml"))
+        settings.display.showAIAnalysis = false
+        settings.ai.filterMethod = "ai"
+
+        let data = try JSONEncoder().encode(settings)
+        let restored = try JSONDecoder().decode(AppSettings.self, from: data)
+
+        XCTAssertEqual(restored, settings)
     }
 
     func testRSSParserReadsRSSItemAndHTMLEntities() throws {
