@@ -82,11 +82,12 @@ jobs:
         run: |
           APP_PATH="build/DerivedData/Build/Products/Release-iphoneos/TrendRadar.app"
           test -d "$APP_PATH"
+          test -f "$APP_PATH/Info.plist"
           mkdir -p build/Payload
           cp -R "$APP_PATH" build/Payload/TrendRadar.app
           cd build
           ditto -c -k --sequesterRsrc Payload TrendRadar-unsigned.ipa
-          unzip -Z1 TrendRadar-unsigned.ipa | grep -Fx "Payload/TrendRadar.app/Info.plist"
+          unzip -t TrendRadar-unsigned.ipa >/dev/null
 
       - name: Upload unsigned IPA
         uses: actions/upload-artifact@v4
@@ -95,3 +96,11 @@ jobs:
           path: ios/build/TrendRadar-unsigned.ipa
           if-no-files-found: error
           retention-days: 14
+
+      - name: Upload IPA on packaging failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: TrendRadar-iOS-packaging-debug
+          path: ios/build/TrendRadar-unsigned.ipa
+          if-no-files-found: warn
