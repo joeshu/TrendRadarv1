@@ -113,7 +113,7 @@ struct SettingsView: View {
                 }
                 .contentShape(Rectangle())
                 .onTapGesture {
-                    editingFeed = feed.wrappedValue
+                    editingFeed = feed
                     showingFeedEditor = true
                 }
             }
