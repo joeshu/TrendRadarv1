@@ -37,6 +37,13 @@ enum BackgroundRefreshService {
                     settings.keywords.contains { item.title.localizedCaseInsensitiveContains($0) }
                 }
             }
+            freshItems = freshItems.filter { item in
+                !settings.globalFilterWords.contains { item.title.localizedCaseInsensitiveContains($0) }
+            }
+            if settings.rssFreshnessEnabled && settings.rssMaxAgeDays > 0 {
+                let cutoff = Date(timeIntervalSinceNow: -Double(settings.rssMaxAgeDays) * 86_400)
+                freshItems = freshItems.filter { $0.publishedAt.map { $0 >= cutoff } ?? true }
+            }
             let localStore = LocalStore()
             let oldItems = await localStore.load()
             let oldByID = oldItems.reduce(into: [String: NewsItem]()) { $0[$1.id] = $1 }

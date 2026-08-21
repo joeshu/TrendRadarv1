@@ -77,6 +77,7 @@ struct DisplaySettings: Codable, Equatable, Sendable {
     var showRSS = true
     var showStandalone = false
     var showAIAnalysis = true
+    var regionOrder: [String] = ["new_items", "hotlist", "rss", "standalone", "ai_analysis"]
     var standalonePlatforms: [String] = ["zhihu", "wallstreetcn-hot"]
     var standaloneRSSFeeds: [String] = []
     var standaloneMaxItems = 20
@@ -97,12 +98,105 @@ struct AISettings: Codable, Equatable, Sendable {
     var retries = 1
     var fallbackModels: [String] = []
     var interests: String = ""
+    var filterPromptFile = "prompt.txt"
+    var extractPromptFile = "extract_prompt.txt"
+    var updateTagsPromptFile = "update_tags_prompt.txt"
+}
+
+struct AIAnalysisSettings: Codable, Equatable, Sendable {
+    var enabled = true
+    var language = "Chinese"
+    var promptFile = "ai_analysis_prompt.txt"
+    var mode = "follow_report"
+    var maxNewsForAnalysis = 150
+    var includeRSS = false
+    var includeStandalone = true
+    var includeRankTimeline = true
+}
+
+struct AITranslationSettings: Codable, Equatable, Sendable {
+    var enabled = true
+    var language = "中文"
+    var promptFile = "ai_translation_prompt.txt"
+    var batchSize = 100
+    var batchInterval = 2
+    var translateHotlist = false
+    var translateRSS = true
+    var translateStandalone = true
+}
+
+struct NotificationChannelSettings: Codable, Equatable, Sendable {
+    var feishuWebhook = ""
+    var dingtalkWebhook = ""
+    var weworkWebhook = ""
+    var weworkMessageType = "markdown"
+    var telegramBotToken = ""
+    var telegramChatID = ""
+    var emailFrom = ""
+    var emailTo = ""
+    var emailSMTPServer = ""
+    var emailSMTPPort = ""
+    var ntfyServerURL = "https://ntfy.sh"
+    var ntfyTopic = ""
+    var barkURL = ""
+    var slackWebhook = ""
+    var genericWebhook = ""
+    var genericPayloadTemplate = ""
+}
+
+struct StorageSettings: Codable, Equatable, Sendable {
+    var backend = "auto"
+    var sqliteEnabled = true
+    var txtEnabled = false
+    var htmlEnabled = true
+    var localDataDirectory = "output"
+    var localRetentionDays = 0
+    var remoteRetentionDays = 0
+    var remoteEndpointURL = ""
+    var remoteBucketName = ""
+    var remoteRegion = ""
+    var pullEnabled = false
+    var pullDays = 7
+}
+
+struct CrawlerAdvancedSettings: Codable, Equatable, Sendable {
+    var requestIntervalMilliseconds = 2000
+    var useProxy = false
+    var defaultProxy = "http://127.0.0.1:10801"
+}
+
+struct RSSAdvancedSettings: Codable, Equatable, Sendable {
+    var requestIntervalMilliseconds = 1000
+    var timeout = 15
+    var useProxy = false
+    var proxyURL = ""
+}
+
+struct AdvancedSettings: Codable, Equatable, Sendable {
+    var debug = false
+    var versionCheckURL = "https://raw.githubusercontent.com/sansan0/TrendRadar/refs/heads/master/version"
+    var mcpVersionCheckURL = "https://raw.githubusercontent.com/sansan0/TrendRadar/refs/heads/master/version_mcp"
+    var configsVersionCheckURL = "https://raw.githubusercontent.com/sansan0/TrendRadar/refs/heads/master/version_configs"
+    var crawler = CrawlerAdvancedSettings()
+    var rss = RSSAdvancedSettings()
+    var rankWeight = 0.6
+    var frequencyWeight = 0.3
+    var hotnessWeight = 0.1
+    var maxAccountsPerChannel = 3
+    var defaultBatchSize = 4000
+    var dingtalkBatchSize = 20000
+    var feishuBatchSize = 30000
+    var barkBatchSize = 4000
+    var slackBatchSize = 4000
+    var batchSendInterval = 3
+    var feishuMessageSeparator = "━━━━━━━━━━━━━━━━"
 }
 
 struct NotificationSettings: Codable, Equatable, Sendable {
     var enabled = true
     var localAlerts = true
     var soundEnabled = true
+    var channels = NotificationChannelSettings()
 }
 
 struct AppSettings: Codable, Equatable, Sendable {
@@ -123,12 +217,18 @@ struct AppSettings: Codable, Equatable, Sendable {
     var report = ReportSettings()
     var display = DisplaySettings()
     var ai = AISettings()
+    var aiAnalysis = AIAnalysisSettings()
+    var aiTranslation = AITranslationSettings()
     var notification = NotificationSettings()
+    var storage = StorageSettings()
+    var advanced = AdvancedSettings()
     var globalFilterWords: [String] = ["震惊"]
 
     static let defaultFeeds = [
         ConfigFeed(id: "hn", name: "Hacker News", url: "https://hnrss.org/frontpage"),
         ConfigFeed(id: "bbc", name: "BBC News", url: "https://feeds.bbci.co.uk/news/rss.xml"),
+        ConfigFeed(id: "ruanyifeng", name: "阮一峰的网络日志", url: "http://www.ruanyifeng.com/blog/atom.xml", isEnabled: false),
+        ConfigFeed(id: "yahoo-finance", name: "雅虎财经", url: "https://finance.yahoo.com/news/rssindex"),
         ConfigFeed(id: "nasa", name: "NASA", url: "https://www.nasa.gov/rss/dyn/breaking_news.rss", isEnabled: false)
     ]
 
@@ -150,7 +250,7 @@ struct AppSettings: Codable, Equatable, Sendable {
         case keywords, enabledFeedIDs, refreshInterval, timezone, showVersionUpdate
         case scheduleEnabled, schedulePreset, platformsEnabled, platformAPIURL, platformSources
         case rssEnabled, rssFreshnessEnabled, rssMaxAgeDays, customFeeds, report, display, ai
-        case notification, globalFilterWords
+        case aiAnalysis, aiTranslation, notification, storage, advanced, globalFilterWords
     }
 
     init() {}
@@ -174,7 +274,11 @@ struct AppSettings: Codable, Equatable, Sendable {
         report = try container.decodeIfPresent(ReportSettings.self, forKey: .report) ?? ReportSettings()
         display = try container.decodeIfPresent(DisplaySettings.self, forKey: .display) ?? DisplaySettings()
         ai = try container.decodeIfPresent(AISettings.self, forKey: .ai) ?? AISettings()
+        aiAnalysis = try container.decodeIfPresent(AIAnalysisSettings.self, forKey: .aiAnalysis) ?? AIAnalysisSettings()
+        aiTranslation = try container.decodeIfPresent(AITranslationSettings.self, forKey: .aiTranslation) ?? AITranslationSettings()
         notification = try container.decodeIfPresent(NotificationSettings.self, forKey: .notification) ?? NotificationSettings()
+        storage = try container.decodeIfPresent(StorageSettings.self, forKey: .storage) ?? StorageSettings()
+        advanced = try container.decodeIfPresent(AdvancedSettings.self, forKey: .advanced) ?? AdvancedSettings()
         globalFilterWords = try container.decodeIfPresent([String].self, forKey: .globalFilterWords) ?? ["震惊"]
     }
 }

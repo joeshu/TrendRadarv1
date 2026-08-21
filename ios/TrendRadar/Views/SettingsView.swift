@@ -10,6 +10,9 @@ struct SettingsView: View {
     @State private var apiBase = ""
     @State private var apiKey = ""
     @State private var aiModel = ""
+    @State private var channelSecrets: [String: String] = [:]
+    @State private var showingFeedEditor = false
+    @State private var editingFeed: ConfigFeed?
     private let keychain = KeychainStore()
 
     var body: some View {
@@ -20,8 +23,12 @@ struct SettingsView: View {
                 sourceSection
                 filterSection
                 aiSection
+                aiAnalysisSection
+                aiTranslationSection
                 displaySection
                 notificationSection
+                storageSection
+                advancedSection
             }
             .navigationTitle("配置中心")
             .navigationBarTitleDisplayMode(.inline)
@@ -34,6 +41,16 @@ struct SettingsView: View {
                 ToolbarItem(placement: .confirmationAction) { Button("保存", action: save) }
             }
             .onAppear(perform: load)
+            .sheet(isPresented: $showingFeedEditor) {
+                FeedEditorView(feed: editingFeed) { feed in
+                    if let index = settingsStore.settings.customFeeds.firstIndex(where: { $0.id == feed.id }) {
+                        settingsStore.settings.customFeeds[index] = feed
+                    } else {
+                        settingsStore.settings.customFeeds.append(feed)
+                    }
+                    editingFeed = nil
+                }
+            }
         }
     }
 
@@ -76,7 +93,12 @@ struct SettingsView: View {
         Section("数据源") {
             Toggle("启用热榜平台", isOn: $settingsStore.settings.platformsEnabled)
             ForEach($settingsStore.settings.platformSources) { $source in
-                Toggle(source.name, isOn: $source.isEnabled)
+                VStack(alignment: .leading, spacing: 6) {
+                    Toggle("启用 \(source.wrappedValue.name)", isOn: $source.isEnabled)
+                    TextField("平台名称", text: $source.name)
+                    TextField("安全校验域名", text: $source.expectedDomain)
+                        .textInputAutocapitalization(.never).autocorrectionDisabled()
+                }
             }
             TextField("自定义热榜 API 地址", text: $settingsStore.settings.platformAPIURL)
                 .textInputAutocapitalization(.never).autocorrectionDisabled()
@@ -89,7 +111,18 @@ struct SettingsView: View {
                     Spacer()
                     Text(feed.id).font(.caption2).foregroundStyle(.secondary)
                 }
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    editingFeed = feed.wrappedValue
+                    showingFeedEditor = true
+                }
             }
+            Button("添加 RSS 源") {
+                editingFeed = nil
+                showingFeedEditor = true
+            }
+            Text("点击已有 RSS 源可编辑名称、地址、启用状态和单源新鲜度覆盖。")
+                .font(.caption).foregroundStyle(.secondary)
         }
     }
 
@@ -124,6 +157,19 @@ struct SettingsView: View {
             TextField("模型名称", text: $aiModel).textInputAutocapitalization(.never).autocorrectionDisabled()
             TextField("AI 分析语言", text: $settingsStore.settings.ai.language)
             TextField("兴趣描述", text: $interestText, axis: .vertical).lineLimit(3...8)
+            Toggle("按兴趣顺序排序", isOn: $settingsStore.settings.ai.prioritySortEnabled)
+            Stepper("AI 筛选批量：\(settingsStore.settings.ai.batchSize) 条", value: $settingsStore.settings.ai.batchSize, in: 1...1000, step: 10)
+            Stepper("AI 筛选批次间隔：\(settingsStore.settings.ai.batchInterval) 秒", value: $settingsStore.settings.ai.batchInterval, in: 0...60)
+            Stepper("最低筛选分数：\(settingsStore.settings.ai.minimumScore, specifier: "%.2f")", value: $settingsStore.settings.ai.minimumScore, in: 0...1, step: 0.05)
+            Stepper("重分类阈值：\(settingsStore.settings.ai.reclassifyThreshold, specifier: "%.2f")", value: $settingsStore.settings.ai.reclassifyThreshold, in: 0...1, step: 0.05)
+            Stepper("Temperature：\(settingsStore.settings.ai.temperature, specifier: "%.1f")", value: $settingsStore.settings.ai.temperature, in: 0...2, step: 0.1)
+            TextField("备用模型，使用逗号分隔", text: Binding(
+                get: { settingsStore.settings.ai.fallbackModels.joined(separator: ", ") },
+                set: { settingsStore.settings.ai.fallbackModels = split($0) }
+            ))
+            TextField("AI 筛选提示词文件", text: $settingsStore.settings.ai.filterPromptFile)
+            TextField("AI 标签提取提示词文件", text: $settingsStore.settings.ai.extractPromptFile)
+            TextField("AI 标签更新提示词文件", text: $settingsStore.settings.ai.updateTagsPromptFile)
             Stepper("请求超时：\(settingsStore.settings.ai.timeout) 秒", value: $settingsStore.settings.ai.timeout, in: 10...600, step: 10)
             Stepper("最大生成 Token：\(settingsStore.settings.ai.maxTokens == 0 ? "不限" : "\(settingsStore.settings.ai.maxTokens)")", value: $settingsStore.settings.ai.maxTokens, in: 0...20000, step: 500)
             Stepper("失败重试：\(settingsStore.settings.ai.retries) 次", value: $settingsStore.settings.ai.retries, in: 0...5)
@@ -139,7 +185,52 @@ struct SettingsView: View {
             Toggle("RSS 区域", isOn: $settingsStore.settings.display.showRSS)
             Toggle("独立展示区", isOn: $settingsStore.settings.display.showStandalone)
             Toggle("AI 分析区域", isOn: $settingsStore.settings.display.showAIAnalysis)
+            TextField("区域顺序，使用逗号分隔", text: Binding(
+                get: { settingsStore.settings.display.regionOrder.joined(separator: ", ") },
+                set: { settingsStore.settings.display.regionOrder = split($0) }
+            ))
+            TextField("独立展示平台 ID，使用逗号分隔", text: Binding(
+                get: { settingsStore.settings.display.standalonePlatforms.joined(separator: ", ") },
+                set: { settingsStore.settings.display.standalonePlatforms = split($0) }
+            ))
+            TextField("独立展示 RSS ID，使用逗号分隔", text: Binding(
+                get: { settingsStore.settings.display.standaloneRSSFeeds.joined(separator: ", ") },
+                set: { settingsStore.settings.display.standaloneRSSFeeds = split($0) }
+            ))
             Stepper("独立展示最多：\(settingsStore.settings.display.standaloneMaxItems) 条", value: $settingsStore.settings.display.standaloneMaxItems, in: 0...100)
+        }
+    }
+
+    private var aiAnalysisSection: some View {
+        Section("AI 分析功能") {
+            Toggle("启用 AI 分析", isOn: $settingsStore.settings.aiAnalysis.enabled)
+            TextField("分析语言", text: $settingsStore.settings.aiAnalysis.language)
+            Picker("分析模式", selection: $settingsStore.settings.aiAnalysis.mode) {
+                Text("跟随报告模式").tag("follow_report")
+                Text("当前榜单").tag("current")
+                Text("当日汇总").tag("daily")
+                Text("增量内容").tag("incremental")
+            }
+            Stepper("最多分析新闻：\(settingsStore.settings.aiAnalysis.maxNewsForAnalysis) 条", value: $settingsStore.settings.aiAnalysis.maxNewsForAnalysis, in: 0...1000, step: 10)
+            Toggle("包含 RSS 内容", isOn: $settingsStore.settings.aiAnalysis.includeRSS)
+            Toggle("包含独立展示区", isOn: $settingsStore.settings.aiAnalysis.includeStandalone)
+            Toggle("包含排名时间线", isOn: $settingsStore.settings.aiAnalysis.includeRankTimeline)
+            TextField("提示词文件", text: $settingsStore.settings.aiAnalysis.promptFile)
+                .textInputAutocapitalization(.never).autocorrectionDisabled()
+        }
+    }
+
+    private var aiTranslationSection: some View {
+        Section("AI 翻译功能") {
+            Toggle("启用标题翻译", isOn: $settingsStore.settings.aiTranslation.enabled)
+            TextField("目标语言", text: $settingsStore.settings.aiTranslation.language)
+            TextField("提示词文件", text: $settingsStore.settings.aiTranslation.promptFile)
+                .textInputAutocapitalization(.never).autocorrectionDisabled()
+            Stepper("每批翻译：\(settingsStore.settings.aiTranslation.batchSize) 条", value: $settingsStore.settings.aiTranslation.batchSize, in: 1...1000, step: 10)
+            Stepper("批次间隔：\(settingsStore.settings.aiTranslation.batchInterval) 秒", value: $settingsStore.settings.aiTranslation.batchInterval, in: 0...60)
+            Toggle("翻译热榜标题", isOn: $settingsStore.settings.aiTranslation.translateHotlist)
+            Toggle("翻译 RSS 标题", isOn: $settingsStore.settings.aiTranslation.translateRSS)
+            Toggle("翻译独立展示标题", isOn: $settingsStore.settings.aiTranslation.translateStandalone)
         }
     }
 
@@ -148,8 +239,82 @@ struct SettingsView: View {
             Toggle("启用通知总开关", isOn: $settingsStore.settings.notification.enabled)
             Toggle("允许本地提醒", isOn: $settingsStore.settings.notification.localAlerts)
             Toggle("提醒声音", isOn: $settingsStore.settings.notification.soundEnabled)
+            Text("服务端通知渠道")
+                .font(.subheadline).foregroundStyle(AppTheme.cyan)
+            SecureField("飞书 Webhook", text: channelBinding("feishu"))
+            SecureField("钉钉 Webhook", text: channelBinding("dingtalk"))
+            SecureField("企业微信 Webhook", text: channelBinding("wework"))
+            TextField("企业微信消息类型", text: $settingsStore.settings.notification.channels.weworkMessageType)
+            SecureField("Telegram Bot Token", text: channelBinding("telegram-token"))
+            TextField("Telegram Chat ID", text: channelBinding("telegram-chat"))
+            TextField("邮件发件人", text: $settingsStore.settings.notification.channels.emailFrom)
+            SecureField("邮件密码或授权码", text: channelBinding("email-password"))
+            TextField("邮件收件人（逗号分隔）", text: $settingsStore.settings.notification.channels.emailTo)
+            TextField("SMTP 服务器", text: $settingsStore.settings.notification.channels.emailSMTPServer)
+            TextField("SMTP 端口", text: $settingsStore.settings.notification.channels.emailSMTPPort)
+            TextField("ntfy 服务地址", text: $settingsStore.settings.notification.channels.ntfyServerURL)
+            TextField("ntfy 主题", text: $settingsStore.settings.notification.channels.ntfyTopic)
+            SecureField("ntfy Token", text: channelBinding("ntfy-token"))
+            SecureField("Bark URL", text: channelBinding("bark"))
+            SecureField("Slack Webhook", text: channelBinding("slack"))
+            SecureField("通用 Webhook", text: channelBinding("generic"))
+            TextField("通用 JSON Payload 模板", text: $settingsStore.settings.notification.channels.genericPayloadTemplate, axis: .vertical)
             Text("手机端使用系统本地通知。飞书、钉钉、Telegram 等服务端渠道保留在原项目配置中。")
                 .font(.caption).foregroundStyle(.secondary)
+        }
+    }
+
+    private var storageSection: some View {
+        Section("存储") {
+            Picker("存储后端", selection: $settingsStore.settings.storage.backend) {
+                Text("自动选择").tag("auto")
+                Text("本地").tag("local")
+                Text("远程 S3").tag("remote")
+            }
+            Toggle("SQLite 主存储", isOn: $settingsStore.settings.storage.sqliteEnabled)
+            Toggle("生成 TXT 快照", isOn: $settingsStore.settings.storage.txtEnabled)
+            Toggle("生成 HTML 报告", isOn: $settingsStore.settings.storage.htmlEnabled)
+            TextField("本地数据目录", text: $settingsStore.settings.storage.localDataDirectory)
+            Stepper("本地保留天数：\(settingsStore.settings.storage.localRetentionDays == 0 ? "永久" : "\(settingsStore.settings.storage.localRetentionDays)")", value: $settingsStore.settings.storage.localRetentionDays, in: 0...3650)
+            Stepper("远程保留天数：\(settingsStore.settings.storage.remoteRetentionDays == 0 ? "永久" : "\(settingsStore.settings.storage.remoteRetentionDays)")", value: $settingsStore.settings.storage.remoteRetentionDays, in: 0...3650)
+            TextField("S3 Endpoint URL", text: $settingsStore.settings.storage.remoteEndpointURL)
+                .textInputAutocapitalization(.never).autocorrectionDisabled()
+            TextField("S3 Bucket", text: $settingsStore.settings.storage.remoteBucketName)
+            SecureField("S3 Access Key ID", text: channelBinding("s3-access"))
+            SecureField("S3 Secret Access Key", text: channelBinding("s3-secret"))
+            TextField("S3 Region", text: $settingsStore.settings.storage.remoteRegion)
+            Toggle("启动时拉取远程数据", isOn: $settingsStore.settings.storage.pullEnabled)
+            Stepper("拉取最近：\(settingsStore.settings.storage.pullDays) 天", value: $settingsStore.settings.storage.pullDays, in: 1...365)
+        }
+    }
+
+    private var advancedSection: some View {
+        Section("高级设置") {
+            Toggle("调试模式", isOn: $settingsStore.settings.advanced.debug)
+            TextField("版本检查地址", text: $settingsStore.settings.advanced.versionCheckURL)
+            TextField("MCP 版本检查地址", text: $settingsStore.settings.advanced.mcpVersionCheckURL)
+            TextField("配置版本检查地址", text: $settingsStore.settings.advanced.configsVersionCheckURL)
+            Stepper("热榜请求间隔：\(settingsStore.settings.advanced.crawler.requestIntervalMilliseconds) ms", value: $settingsStore.settings.advanced.crawler.requestIntervalMilliseconds, in: 0...60000, step: 100)
+            Toggle("热榜使用代理", isOn: $settingsStore.settings.advanced.crawler.useProxy)
+            TextField("默认代理", text: $settingsStore.settings.advanced.crawler.defaultProxy)
+            Stepper("RSS 请求间隔：\(settingsStore.settings.advanced.rss.requestIntervalMilliseconds) ms", value: $settingsStore.settings.advanced.rss.requestIntervalMilliseconds, in: 0...60000, step: 100)
+            Stepper("RSS 超时：\(settingsStore.settings.advanced.rss.timeout) 秒", value: $settingsStore.settings.advanced.rss.timeout, in: 1...300)
+            Toggle("RSS 使用代理", isOn: $settingsStore.settings.advanced.rss.useProxy)
+            TextField("RSS 专属代理", text: $settingsStore.settings.advanced.rss.proxyURL)
+            Stepper("账号渠道上限：\(settingsStore.settings.advanced.maxAccountsPerChannel)", value: $settingsStore.settings.advanced.maxAccountsPerChannel, in: 1...20)
+            Stepper("默认消息批次：\(settingsStore.settings.advanced.defaultBatchSize) 字节", value: $settingsStore.settings.advanced.defaultBatchSize, in: 500...50000, step: 500)
+            Stepper("钉钉消息批次：\(settingsStore.settings.advanced.dingtalkBatchSize) 字节", value: $settingsStore.settings.advanced.dingtalkBatchSize, in: 500...50000, step: 500)
+            Stepper("飞书消息批次：\(settingsStore.settings.advanced.feishuBatchSize) 字节", value: $settingsStore.settings.advanced.feishuBatchSize, in: 500...50000, step: 500)
+            Stepper("Bark 消息批次：\(settingsStore.settings.advanced.barkBatchSize) 字节", value: $settingsStore.settings.advanced.barkBatchSize, in: 500...50000, step: 500)
+            Stepper("Slack 消息批次：\(settingsStore.settings.advanced.slackBatchSize) 字节", value: $settingsStore.settings.advanced.slackBatchSize, in: 500...50000, step: 500)
+            Text("排序权重")
+            Slider(value: $settingsStore.settings.advanced.rankWeight, in: 0...1) { Text("排名") }
+            Slider(value: $settingsStore.settings.advanced.frequencyWeight, in: 0...1) { Text("频次") }
+            Slider(value: $settingsStore.settings.advanced.hotnessWeight, in: 0...1) { Text("热度") }
+            Text(String(format: "排名 %.2f / 频次 %.2f / 热度 %.2f", settingsStore.settings.advanced.rankWeight, settingsStore.settings.advanced.frequencyWeight, settingsStore.settings.advanced.hotnessWeight))
+                .font(.caption).foregroundStyle(.secondary)
+            Stepper("批次发送间隔：\(settingsStore.settings.advanced.batchSendInterval) 秒", value: $settingsStore.settings.advanced.batchSendInterval, in: 0...60)
+            TextField("飞书消息分隔符", text: $settingsStore.settings.advanced.feishuMessageSeparator)
         }
     }
 
@@ -170,6 +335,20 @@ struct SettingsView: View {
         apiBase = keychain.read("api-base")
         apiKey = keychain.read("api-key")
         aiModel = keychain.read("ai-model")
+        channelSecrets = [
+            "feishu": keychain.read("notify-feishu"),
+            "dingtalk": keychain.read("notify-dingtalk"),
+            "wework": keychain.read("notify-wework"),
+            "telegram-token": keychain.read("notify-telegram-token"),
+            "telegram-chat": keychain.read("notify-telegram-chat"),
+            "email-password": keychain.read("notify-email-password"),
+            "ntfy-token": keychain.read("notify-ntfy-token"),
+            "bark": keychain.read("notify-bark"),
+            "slack": keychain.read("notify-slack"),
+            "generic": keychain.read("notify-generic"),
+            "s3-access": keychain.read("storage-s3-access"),
+            "s3-secret": keychain.read("storage-s3-secret")
+        ]
     }
 
     private func save() {
@@ -180,11 +359,79 @@ struct SettingsView: View {
         keychain.write(apiBase, for: "api-base")
         keychain.write(apiKey, for: "api-key")
         keychain.write(aiModel, for: "ai-model")
+        let secretKeys = [
+            "feishu": "notify-feishu", "dingtalk": "notify-dingtalk", "wework": "notify-wework",
+            "telegram-token": "notify-telegram-token", "telegram-chat": "notify-telegram-chat", "email-password": "notify-email-password",
+            "ntfy-token": "notify-ntfy", "bark": "notify-bark", "slack": "notify-slack",
+            "generic": "notify-generic", "s3-access": "storage-s3-access", "s3-secret": "storage-s3-secret"
+        ]
+        for (field, key) in secretKeys { keychain.write(channelSecrets[field] ?? "", for: key) }
         newsStore.settings = settingsStore.settings
         dismiss()
     }
 
+    private func channelBinding(_ key: String) -> Binding<String> {
+        Binding(
+            get: { channelSecrets[key] ?? "" },
+            set: { channelSecrets[key] = $0 }
+        )
+    }
+
     private func split(_ value: String) -> [String] {
         value.split(separator: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+    }
+}
+
+private struct FeedEditorView: View {
+    @Environment(\.dismiss) private var dismiss
+    @State private var id: String
+    @State private var name: String
+    @State private var url: String
+    @State private var isEnabled: Bool
+    @State private var maxAgeDays: Int
+    private let onSave: (ConfigFeed) -> Void
+
+    init(feed: ConfigFeed?, onSave: @escaping (ConfigFeed) -> Void) {
+        _id = State(initialValue: feed?.id ?? "custom-feed")
+        _name = State(initialValue: feed?.name ?? "自定义源")
+        _url = State(initialValue: feed?.url ?? "https://example.com/feed.xml")
+        _isEnabled = State(initialValue: feed?.isEnabled ?? true)
+        _maxAgeDays = State(initialValue: feed?.maxAgeDays ?? 0)
+        self.onSave = onSave
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("RSS 基本信息") {
+                    TextField("唯一 ID", text: $id)
+                        .textInputAutocapitalization(.never).autocorrectionDisabled()
+                    TextField("显示名称", text: $name)
+                    TextField("订阅地址", text: $url)
+                        .textInputAutocapitalization(.never).autocorrectionDisabled()
+                    Toggle("启用此源", isOn: $isEnabled)
+                }
+                Section("新鲜度") {
+                    Stepper("单源最大年龄：\(maxAgeDays == 0 ? "跟随全局" : "\(maxAgeDays) 天")", value: $maxAgeDays, in: 0...30)
+                }
+            }
+            .navigationTitle("编辑 RSS")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("保存") {
+                        let normalizedID = id.trimmingCharacters(in: .whitespacesAndNewlines)
+                        let normalizedURL = url.trimmingCharacters(in: .whitespacesAndNewlines)
+                        guard !normalizedID.isEmpty, !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                              URL(string: normalizedURL) != nil else { return }
+                        onSave(ConfigFeed(id: normalizedID, name: name, url: normalizedURL, isEnabled: isEnabled, maxAgeDays: maxAgeDays))
+                        dismiss()
+                    }
+                }
+            }
+            .preferredColorScheme(.dark)
+            .tint(AppTheme.cyan)
+        }
     }
 }

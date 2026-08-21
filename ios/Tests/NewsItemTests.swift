@@ -43,6 +43,17 @@ final class NewsItemTests: XCTestCase {
         XCTAssertEqual(restored, settings)
     }
 
+    func testNewSettingsDecodeKeepsDefaultsForLegacyJSON() throws {
+        let legacy = Data("{\"keywords\":[\"swift\"],\"enabledFeedIDs\":[\"hn\"],\"refreshInterval\":30}".utf8)
+        let settings = try JSONDecoder().decode(AppSettings.self, from: legacy)
+
+        XCTAssertEqual(settings.keywords, ["swift"])
+        XCTAssertEqual(settings.refreshInterval, 30)
+        XCTAssertEqual(settings.schedulePreset, "night_owl")
+        XCTAssertFalse(settings.customFeeds.isEmpty)
+        XCTAssertEqual(settings.advanced.rss.timeout, 15)
+    }
+
     func testRSSParserReadsRSSItemAndHTMLEntities() throws {
         let data = Data("""
         <?xml version="1.0"?>

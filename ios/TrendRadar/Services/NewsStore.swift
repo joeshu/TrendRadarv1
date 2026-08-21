@@ -37,9 +37,7 @@ final class NewsStore: ObservableObject {
             }
             let oldByID = items.reduce(into: [String: NewsItem]()) { $0[$1.id] = $1 }
             let uniqueResults = results.reduce(into: [String: NewsItem]()) { $0[$1.id] = $1 }.values
-            let filteredResults = uniqueResults.filter { item in
-                settings.keywords.isEmpty || settings.keywords.contains { item.title.localizedCaseInsensitiveContains($0) }
-            }
+            let filteredResults = uniqueResults.filter { matchesConfiguredFilters($0) }
             let refreshedItems = filteredResults.map { item in
                 var updated = item
                 updated.isRead = oldByID[item.id]?.isRead ?? false
@@ -74,7 +72,7 @@ final class NewsStore: ObservableObject {
     func summarize(_ item: NewsItem) async {
         guard let index = items.firstIndex(where: { $0.id == item.id }) else { return }
         do {
-            items[index].summary = try await aiService.summarize(items[index])
+            items[index].summary = try await aiService.summarize(items[index], settings: settings)
             await localStore.save(items)
         } catch {
             errorMessage = error.localizedDescription
@@ -83,5 +81,13 @@ final class NewsStore: ObservableObject {
 
     func requestNotifications() async {
         _ = try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge])
+    }
+
+    private func matchesConfiguredFilters(_ item: NewsItem) -> Bool {
+        let title = item.title
+        guard !settings.globalFilterWords.contains(where: { title.localizedCaseInsensitiveContains($0) }) else { return false }
+        guard settings.keywords.isEmpty || settings.keywords.contains(where: { title.localizedCaseInsensitiveContains($0) }) else { return false }
+        guard settings.rssFreshnessEnabled, settings.rssMaxAgeDays > 0, let publishedAt = item.publishedAt else { return true }
+        return publishedAt >= Date(timeIntervalSinceNow: -Double(settings.rssMaxAgeDays) * 86_400)
     }
 }

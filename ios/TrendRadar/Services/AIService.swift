@@ -3,7 +3,7 @@ import Foundation
 struct AIService: Sendable {
     private let keychain = KeychainStore()
 
-    func summarize(_ item: NewsItem) async throws -> String {
+    func summarize(_ item: NewsItem, settings: AppSettings = AppSettings()) async throws -> String {
         let baseURL = keychain.read("api-base").trimmingCharacters(in: .whitespacesAndNewlines)
         let apiKey = keychain.read("api-key")
         let model = keychain.read("ai-model").trimmingCharacters(in: .whitespacesAndNewlines)
@@ -22,11 +22,12 @@ struct AIService: Sendable {
                 Message(role: "system", content: "请用简体中文概括新闻，输出不超过三句话。"),
                 Message(role: "user", content: item.title + "\n" + (item.summary ?? ""))
             ],
-            temperature: 0.2
+            temperature: settings.ai.temperature,
+            maxTokens: settings.ai.maxTokens == 0 ? nil : settings.ai.maxTokens
         )
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
-        request.timeoutInterval = 45
+        request.timeoutInterval = TimeInterval(settings.ai.timeout)
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONEncoder().encode(requestBody)
@@ -64,6 +65,20 @@ private struct RequestBody: Encodable {
     let model: String
     let messages: [Message]
     let temperature: Double
+    let maxTokens: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case model, messages, temperature
+        case maxTokens = "max_tokens"
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(model, forKey: .model)
+        try container.encode(messages, forKey: .messages)
+        try container.encode(temperature, forKey: .temperature)
+        try container.encodeIfPresent(maxTokens, forKey: .maxTokens)
+    }
 }
 
 private struct Message: Codable {
