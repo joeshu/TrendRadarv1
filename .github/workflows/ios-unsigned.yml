@@ -83,6 +83,8 @@ jobs:
           APP_PATH="build/DerivedData/Build/Products/Release-iphoneos/TrendRadar.app"
           test -d "$APP_PATH"
           test -f "$APP_PATH/Info.plist"
+          /usr/libexec/PlistBuddy -c "Print :CFBundleExecutable" "$APP_PATH/Info.plist"
+          test -x "$APP_PATH/TrendRadar"
           mkdir -p build/Payload
           cp -R "$APP_PATH" build/Payload/TrendRadar.app
           cd build
