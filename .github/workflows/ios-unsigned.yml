@@ -5,6 +5,13 @@ on:
   push:
     branches:
       - "260821-feat-ios-pure-mobile"
+    paths:
+      - "ios/**"
+      - ".github/workflows/ios-unsigned.yml"
+
+concurrency:
+  group: ios-unsigned-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -25,6 +32,13 @@ jobs:
       - name: Generate Xcode project
         working-directory: ios
         run: xcodegen generate
+
+      - name: Validate iOS project inputs
+        working-directory: ios
+        run: |
+          test -f project.yml
+          test -f TrendRadar/Resources/Info.plist
+          test -d TrendRadar
 
       - name: Build unsigned app
         working-directory: ios
@@ -54,3 +68,5 @@ jobs:
         with:
           name: TrendRadar-iOS-unsigned
           path: ios/build/TrendRadar-unsigned.ipa
+          if-no-files-found: error
+          retention-days: 14

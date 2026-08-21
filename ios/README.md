@@ -31,3 +31,11 @@ xcodebuild -project TrendRadar.xcodeproj -scheme TrendRadar -sdk iphonesimulator
 GitHub Actions 提供 `Build Unsigned TrendRadar IPA` 工作流生成无签名 IPA。无签名 IPA 只适合作为侧载工具的输入文件，安装前需要使用 SideStore、AltStore、Sideloadly 或其他兼容工具完成重新签名。
 
 无签名构建不需要 Apple Developer 证书、Provisioning Profile 或 App Store Connect Secret。侧载工具仍需要用户自己的 Apple 账号或签名服务，并且受 iOS 侧载有效期和设备限制影响。
+
+推送以下内容到 `260821-feat-ios-pure-mobile` 分支时，Workflow 会自动运行：
+
+- `ios/` 下的 Swift 源码
+- `ios/project.yml`
+- `.github/workflows/ios-unsigned.yml`
+
+构建完成后，在 GitHub Actions 的 Artifacts 中下载 `TrendRadar-iOS-unsigned`。Artifact 保留 14 天。
