@@ -48,7 +48,7 @@ struct TimelinePreset: Identifiable, Equatable, Sendable {
     }
 }
 
-struct TimelineExecutionStore: Sendable {
+struct TimelineExecutionStore: @unchecked Sendable {
     private let defaults = UserDefaults.standard
     private let key = "trendradar.timeline.executions"
 

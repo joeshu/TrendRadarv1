@@ -107,6 +107,16 @@ struct StructuredAIAnalysis: Codable, Equatable, Hashable, Sendable {
             ?? ""
     }
 
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(overview, forKey: .overview)
+        try container.encode(sentimentPositive, forKey: .sentimentPositive)
+        try container.encode(sentimentNeutral, forKey: .sentimentNeutral)
+        try container.encode(sentimentNegative, forKey: .sentimentNegative)
+        try container.encode(weakSignals, forKey: .weakSignals)
+        try container.encode(recommendation, forKey: .recommendation)
+    }
+
     private enum CodingKeys: String, CodingKey {
         case overview, coreTrends = "core_trends"
         case sentimentPositive, sentimentNeutral, sentimentNegative
