@@ -145,7 +145,7 @@ struct ReportDetail: Codable, Equatable, Hashable, Identifiable, Sendable {
         let searchableText = sections.flatMap(\.items).map { item in
             [item.title, item.source, item.summary ?? ""].joined(separator: " ")
         }.joined(separator: " ")
-        ReportSummary(
+        return ReportSummary(
             id: id,
             title: title,
             type: type,
