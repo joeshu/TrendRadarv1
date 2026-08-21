@@ -1,6 +1,6 @@
 import Foundation
 
-struct NewsItem: Codable, Identifiable, Hashable {
+struct NewsItem: Codable, Identifiable, Hashable, Sendable {
     let id: String
     let title: String
     let source: String
@@ -22,13 +22,13 @@ struct NewsItem: Codable, Identifiable, Hashable {
     }
 }
 
-struct RSSFeed: Codable, Identifiable, Hashable {
+struct RSSFeed: Codable, Identifiable, Hashable, Sendable {
     let id: String
     let name: String
     let url: URL
 }
 
-struct AppSettings: Codable, Equatable {
+struct AppSettings: Codable, Equatable, Sendable {
     var keywords: [String] = []
     var enabledFeedIDs: Set<String> = ["hn", "bbc"]
     var refreshInterval: Double = 60

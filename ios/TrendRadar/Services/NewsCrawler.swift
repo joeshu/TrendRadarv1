@@ -19,7 +19,7 @@ struct NewsCrawler: Sendable {
     }
 }
 
-private final class RSSParser: NSObject, XMLParserDelegate, @unchecked Sendable {
+private final class RSSParser: NSObject, XMLParserDelegate {
     let feed: RSSFeed
     var items: [NewsItem] = []
     var error: Error?
