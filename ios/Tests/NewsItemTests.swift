@@ -35,6 +35,17 @@ final class NewsItemTests: XCTestCase {
         XCTAssertEqual(HotNewsItem(id: "y", title: "y", url: nil, platformID: "p", platformName: "P", rank: 1, publishedAt: nil, extraInfo: nil, topicKey: "y", previousRank: nil, isRead: false, isFavorite: false).trend, .new)
     }
 
+    func testHotNewsAnomalyUsesThreeRankChangeThreshold() {
+        let rising = HotNewsItem(id: "p:1", title: "Topic", url: nil, platformID: "p", platformName: "Platform", rank: 2, publishedAt: nil, extraInfo: nil, topicKey: "topic", previousRank: 8, isRead: false, isFavorite: false)
+        let stable = HotNewsItem(id: "p:2", title: "Stable", url: nil, platformID: "p", platformName: "Platform", rank: 5, publishedAt: nil, extraInfo: nil, topicKey: "stable", previousRank: 6, isRead: false, isFavorite: false)
+        let topic = HotNewsTopic(id: "topic", title: "Topic", items: [rising])
+        let anomaly = HotNewsAnomaly(topicKey: topic.id, title: topic.title, rank: rising.rank, previousRank: rising.previousRank, change: rising.previousRank! - rising.rank, platforms: topic.platforms)
+
+        XCTAssertEqual(anomaly.change, 6)
+        XCTAssertTrue(anomaly.isRising)
+        XCTAssertEqual(stable.previousRank! - stable.rank, 1)
+    }
+
     func testStructuredAIAnalysisRoundTrip() throws {
         let analysis = StructuredAIAnalysis(overview: "overview", sentimentPositive: 0.2, sentimentNeutral: 0.5, sentimentNegative: 0.3, weakSignals: ["signal"], recommendation: "watch")
         let restored = try JSONDecoder().decode(StructuredAIAnalysis.self, from: JSONEncoder().encode(analysis))

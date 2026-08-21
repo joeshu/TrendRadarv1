@@ -29,6 +29,18 @@ final class HotNewsStore: ObservableObject {
             .sorted { $0.bestRank < $1.bestRank }
     }
 
+    var anomalies: [HotNewsAnomaly] {
+        topics.compactMap { topic in
+            let rankedItems = topic.items.compactMap { item -> (item: HotNewsItem, change: Int)? in
+                guard let previousRank = item.previousRank else { return nil }
+                return (item, previousRank - item.rank)
+            }
+            guard let strongest = rankedItems.max(by: { abs($0.change) < abs($1.change) }), abs(strongest.change) >= 3 else { return nil }
+            return HotNewsAnomaly(topicKey: topic.id, title: topic.title, rank: strongest.item.rank, previousRank: strongest.item.previousRank, change: strongest.change, platforms: topic.platforms)
+        }
+        .sorted { abs($0.change) > abs($1.change) }
+    }
+
     func trend(for topicKey: String) async -> [TrendPoint] {
         let records = await localStore.loadHotNewsTrend(for: topicKey)
         return records.map { TrendPoint(date: $0.date, rank: $0.rank) }

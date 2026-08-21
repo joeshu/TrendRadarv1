@@ -29,6 +29,19 @@ enum HotNewsTrend: String, Codable, Sendable {
     case new
 }
 
+struct HotNewsAnomaly: Identifiable, Hashable, Sendable {
+    let topicKey: String
+    let title: String
+    let rank: Int
+    let previousRank: Int?
+    let change: Int
+    let platforms: [String]
+
+    var id: String { topicKey }
+
+    var isRising: Bool { change > 0 }
+}
+
 struct HotNewsTopic: Identifiable, Hashable, Sendable {
     let id: String
     let title: String

@@ -1,4 +1,5 @@
 import SwiftUI
+import Charts
 
 struct FeedsView: View {
     @EnvironmentObject private var store: NewsStore
@@ -127,6 +128,7 @@ struct InsightView: View {
                         signalCard
                         keywordCard
                         hotNewsInsightCard
+                        anomalyCard
                         aiCard
                     }
                     .padding(20)
@@ -236,6 +238,40 @@ struct InsightView: View {
             }
         }
     }
+
+    private var anomalyCard: some View {
+        InsightPanel(title: "热点异动", icon: "bolt.fill", tint: AppTheme.red) {
+            if hotNewsStore.anomalies.isEmpty {
+                Text("排名变化达到 3 位后，这里会显示可解释的热点异动。")
+                    .font(AppTheme.bodyFont)
+                    .foregroundStyle(AppTheme.textSecondary)
+            } else {
+                VStack(alignment: .leading, spacing: 12) {
+                    ForEach(hotNewsStore.anomalies.prefix(5)) { anomaly in
+                        NavigationLink {
+                            if let topic = hotNewsStore.topics.first(where: { $0.id == anomaly.topicKey }) {
+                                HotNewsTrendView(topic: topic)
+                            }
+                        } label: {
+                            HStack(spacing: 10) {
+                                Image(systemName: anomaly.isRising ? "arrow.up.right" : "arrow.down.right")
+                                    .foregroundStyle(anomaly.isRising ? AppTheme.green : AppTheme.red)
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text(anomaly.title).font(AppTheme.headlineFont).foregroundStyle(.white).lineLimit(2)
+                                    Text(anomaly.platforms.joined(separator: " · ")).font(AppTheme.captionFont).foregroundStyle(AppTheme.textTertiary)
+                                }
+                                Spacer()
+                                Text(anomaly.isRising ? "+\(anomaly.change)" : "\(anomaly.change)")
+                                    .font(AppTheme.headlineFont)
+                                    .foregroundStyle(anomaly.isRising ? AppTheme.green : AppTheme.red)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+        }
+    }
 }
 
 struct HotNewsTrendView: View {
@@ -293,33 +329,34 @@ private struct TrendChart: View {
     let points: [HotNewsStore.TrendPoint]
 
     var body: some View {
-        GeometryReader { geometry in
-            let maxRank = max(points.map(\.rank).max() ?? 1, 1)
-            let width = max(geometry.size.width, 1)
-            let height = max(geometry.size.height, 1)
-            ZStack {
-                RoundedRectangle(cornerRadius: 16, style: .continuous).fill(AppTheme.card)
-                if points.count >= 2 {
-                    Path { path in
-                        for (index, point) in points.enumerated() {
-                            let x = width * CGFloat(index) / CGFloat(max(points.count - 1, 1))
-                            let y = height * CGFloat(point.rank - 1) / CGFloat(max(maxRank - 1, 1))
-                            if index == 0 { path.move(to: CGPoint(x: x, y: y)) } else { path.addLine(to: CGPoint(x: x, y: y)) }
-                        }
-                    }
-                    .stroke(AppTheme.pink, style: StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round))
+        ZStack {
+            RoundedRectangle(cornerRadius: 16, style: .continuous).fill(AppTheme.card)
+            if points.count >= 2 {
+                Chart(points) { point in
+                    LineMark(x: .value("时间", point.date), y: .value("排名", point.rank))
+                        .foregroundStyle(AppTheme.pink)
+                        .lineStyle(StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round))
+                    PointMark(x: .value("时间", point.date), y: .value("排名", point.rank))
+                        .foregroundStyle(AppTheme.pink)
+                }
+                .chartYScale(domain: .automatic(includesZero: false, reversed: true))
+                .chartYAxis { AxisMarks(position: .leading) }
+                .chartXAxis { AxisMarks(values: .automatic(desiredCount: 4)) }
+                .padding(14)
+                VStack {
+                    Spacer()
                     Text("排名越靠前，曲线越接近顶部")
                         .font(AppTheme.captionFont)
                         .foregroundStyle(AppTheme.textTertiary)
-                        .padding(.top, 12)
-                } else {
-                    Text("数据积累中，至少需要两次采集")
-                        .font(AppTheme.bodyFont)
-                        .foregroundStyle(AppTheme.textSecondary)
+                        .padding(.bottom, 10)
                 }
+            } else {
+                Text("数据积累中，至少需要两次采集")
+                    .font(AppTheme.bodyFont)
+                    .foregroundStyle(AppTheme.textSecondary)
             }
         }
-        .frame(height: 180)
+        .frame(height: 220)
     }
 }
 
