@@ -86,7 +86,7 @@ jobs:
           cp -R "$APP_PATH" build/Payload/TrendRadar.app
           cd build
           ditto -c -k --sequesterRsrc Payload TrendRadar-unsigned.ipa
-          unzip -l TrendRadar-unsigned.ipa | grep -E "Payload/TrendRadar\.app/Info\.plist$"
+          unzip -Z1 TrendRadar-unsigned.ipa | grep -Fx "Payload/TrendRadar.app/Info.plist"
 
       - name: Upload unsigned IPA
         uses: actions/upload-artifact@v4
