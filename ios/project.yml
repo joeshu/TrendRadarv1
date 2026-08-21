@@ -24,6 +24,7 @@ targets:
         SWIFT_EMIT_LOC_STRINGS: YES
     resources:
       - path: ../config/ai_analysis_prompt.txt
+      - path: ../config/ai_filter/prompt.txt
     scheme:
       gatherCoverageData: true
       testTargets:

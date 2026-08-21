@@ -39,7 +39,14 @@ final class NewsStore: ObservableObject {
             }
             let oldByID = items.reduce(into: [String: NewsItem]()) { $0[$1.id] = $1 }
             let uniqueResults = results.reduce(into: [String: NewsItem]()) { $0[$1.id] = $1 }.values
-            let filteredResults = uniqueResults.filter { matchesConfiguredFilters($0) }
+            var filteredResults = uniqueResults.filter { matchesConfiguredFilters($0) }
+            if settings.ai.enabled, settings.ai.filterMethod == "ai", !settings.ai.interests.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                do {
+                    filteredResults = try await aiService.filter(Array(filteredResults), settings: settings)
+                } catch {
+                    errorMessage = "AI 筛选失败，已保留关键词筛选结果：\(error.localizedDescription)"
+                }
+            }
             let refreshedItems = filteredResults.map { item in
                 var updated = item
                 updated.isRead = oldByID[item.id]?.isRead ?? false

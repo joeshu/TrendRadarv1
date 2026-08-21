@@ -52,6 +52,13 @@ enum BackgroundRefreshService {
                 let cutoff = Date(timeIntervalSinceNow: -Double(settings.rssMaxAgeDays) * 86_400)
                 freshItems = freshItems.filter { $0.publishedAt.map { $0 >= cutoff } ?? true }
             }
+            if settings.ai.enabled, settings.ai.filterMethod == "ai", !settings.ai.interests.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                do {
+                    freshItems = try await AIService().filter(freshItems, settings: settings)
+                } catch {
+                    // Keep keyword-filtered items when AI is unavailable.
+                }
+            }
             let localStore = LocalStore()
             let oldItems = await localStore.load()
             let oldByID = oldItems.reduce(into: [String: NewsItem]()) { $0[$1.id] = $1 }

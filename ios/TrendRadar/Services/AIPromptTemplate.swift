@@ -11,26 +11,28 @@ struct AIPromptTemplate: Sendable {
         user: "请分析以下新闻：\n{news_content}"
     )
 
-    static func load(fileName: String, bundle: Bundle = .main) -> AIPromptTemplate {
+    static func load(fileName: String, bundle: Bundle = .main, fallback: AIPromptMessages? = nil) -> AIPromptTemplate {
         let resourceName = (fileName as NSString).deletingPathExtension
         let resourceExtension = (fileName as NSString).pathExtension.isEmpty ? "txt" : (fileName as NSString).pathExtension
         let content = bundle.url(forResource: resourceName, withExtension: resourceExtension)
             .flatMap { try? String(contentsOf: $0, encoding: .utf8) }
-        return AIPromptTemplate(content: content)
+        return AIPromptTemplate(content: content, fallback: fallback ?? Self.fallback)
     }
 
     private let content: String?
+    private let fallback: AIPromptMessages
 
-    init(content: String?) {
+    init(content: String?, fallback: AIPromptMessages = AIPromptTemplate.fallback) {
         self.content = content
+        self.fallback = fallback
     }
 
     func messages(values: [String: String]) -> AIPromptMessages {
         guard let content, !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            return Self.fallback.replacing(values: values)
+            return fallback.replacing(values: values)
         }
         let sections = Self.parseSections(content)
-        let system = sections["system"] ?? Self.fallback.system
+        let system = sections["system"] ?? fallback.system
         let user = sections["user"] ?? content
         return AIPromptMessages(system: Self.replace(system, values: values), user: Self.replace(user, values: values))
     }

@@ -75,6 +75,56 @@ struct AIService: Sendable {
         return analysis
     }
 
+    func classify(_ items: [NewsItem], settings: AppSettings = AppSettings()) async throws -> [AIFilterMatch] {
+        guard !items.isEmpty else { return [] }
+        let interests = settings.ai.interests.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !interests.isEmpty else { return [] }
+        let tags = interests.components(separatedBy: .newlines)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .enumerated()
+            .map { "\($0.offset + 1). \($0.element)" }
+            .joined(separator: "\n")
+        let newsList = items.enumerated().map { "\($0.offset + 1). \($0.element.title)" }.joined(separator: "\n")
+        let fallback = AIPromptMessages(
+            system: "你是新闻分类器。只输出严格 JSON 数组。",
+            user: "用户兴趣：\n{interests_content}\n分类标签：\n{tags_list}\n新闻列表：\n{news_list}\n返回 id、tag_id、score，score 范围为 0 到 1。"
+        )
+        let prompt = AIPromptTemplate.load(fileName: settings.ai.filterPromptFile, fallback: fallback)
+        let messages = prompt.messages(values: [
+            "interests_content": interests,
+            "tags_list": tags,
+            "news_count": String(items.count),
+            "news_list": newsList
+        ])
+        let baseURL = keychain.read("api-base").trimmingCharacters(in: .whitespacesAndNewlines)
+        let apiKey = keychain.read("api-key")
+        guard !baseURL.isEmpty, !apiKey.isEmpty else { throw AIError.missingConfiguration }
+        let model = keychain.read("ai-model").trimmingCharacters(in: .whitespacesAndNewlines)
+        let endpoint = baseURL.hasSuffix("/chat/completions") ? baseURL : baseURL.trimmingCharacters(in: CharacterSet(charactersIn: "/")) + "/chat/completions"
+        guard let url = URL(string: endpoint) else { throw AIError.invalidURL }
+        let content = try await requestContent(
+            url: url,
+            apiKey: apiKey,
+            models: modelCandidates(primary: model, settings: settings),
+            messages: [Message(role: "system", content: messages.system), Message(role: "user", content: messages.user)],
+            settings: settings
+        )
+        let json = normalizedJSON(content)
+        let matches = try JSONDecoder().decode([AIFilterMatch].self, from: Data(json.utf8))
+        return matches.filter { $0.id > 0 && $0.tagID > 0 && $0.score >= 0 && $0.score <= 1 }
+    }
+
+    func filter(_ items: [NewsItem], settings: AppSettings) async throws -> [NewsItem] {
+        let matches = try await classify(items, settings: settings)
+        let minimumScore = min(max(settings.ai.minimumScore, 0), 1)
+        let acceptedIDs = Set(matches.filter { $0.score >= minimumScore }.compactMap { index in
+            guard index.id <= items.count else { return nil }
+            return items[index.id - 1].id
+        })
+        return items.filter { acceptedIDs.contains($0.id) }
+    }
+
     private func modelCandidates(primary: String, settings: AppSettings) -> [String] {
         let configured = primary.isEmpty ? "gpt-4o-mini" : primary
         var candidates: [String] = []
@@ -114,6 +164,13 @@ struct AIService: Sendable {
         throw lastError
     }
 
+    private func normalizedJSON(_ content: String) -> String {
+        content.trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: "```json", with: "")
+            .replacingOccurrences(of: "```", with: "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
     func reportAnalysis(for items: [NewsItem], settings: AppSettings) async -> ReportAIAnalysis {
         guard settings.ai.enabled, settings.aiAnalysis.enabled else {
             return ReportAIAnalysis(enabled: false, model: nil, language: settings.aiAnalysis.language, content: nil, failureMessage: nil)
@@ -124,6 +181,17 @@ struct AIService: Sendable {
         } catch {
             return ReportAIAnalysis(enabled: true, model: keychain.read("ai-model"), language: settings.aiAnalysis.language, content: nil, failureMessage: error.localizedDescription)
         }
+    }
+}
+
+struct AIFilterMatch: Codable, Equatable, Sendable {
+    let id: Int
+    let tagID: Int
+    let score: Double
+
+    enum CodingKeys: String, CodingKey {
+        case id, score
+        case tagID = "tag_id"
     }
 }
 

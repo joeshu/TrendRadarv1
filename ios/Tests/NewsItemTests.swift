@@ -96,6 +96,14 @@ final class NewsItemTests: XCTestCase {
         XCTAssertEqual(messages.user, "新闻：测试新闻")
     }
 
+    func testAIFilterMatchDecodesSnakeCaseAndRejectsInvalidScore() throws {
+        let data = Data("[{\"id\":1,\"tag_id\":2,\"score\":0.9},{\"id\":2,\"tag_id\":1,\"score\":1.2}]".utf8)
+        let matches = try JSONDecoder().decode([AIFilterMatch].self, from: data)
+        XCTAssertEqual(matches[0].tagID, 2)
+        XCTAssertEqual(matches[0].score, 0.9)
+        XCTAssertFalse(matches[1].score >= 0 && matches[1].score <= 1)
+    }
+
     func testTimelineHandlesNormalAndCrossDayPeriods() {
         let calendar = Calendar(identifier: .gregorian)
         let day = calendar.date(from: DateComponents(year: 2026, month: 8, day: 21, hour: 20, minute: 30))!
