@@ -327,7 +327,7 @@ private struct OutlineButtonStyle: ButtonStyle {
     }
 }
 
-private extension Date {
+extension Date {
     var relativeDescription: String {
         RelativeDateTimeFormatter().localizedString(for: self, relativeTo: Date())
     }
