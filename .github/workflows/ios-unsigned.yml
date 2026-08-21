@@ -1,0 +1,56 @@
+name: Build Unsigned TrendRadar IPA
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - "260821-feat-ios-pure-mobile"
+
+permissions:
+  contents: read
+
+jobs:
+  build-unsigned-ipa:
+    name: Build unsigned IPA for sideloading
+    runs-on: macos-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        working-directory: ios
+        run: xcodegen generate
+
+      - name: Build unsigned app
+        working-directory: ios
+        run: |
+          xcodebuild \
+            -project TrendRadar.xcodeproj \
+            -scheme TrendRadar \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build/DerivedData \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build
+
+      - name: Package unsigned IPA
+        working-directory: ios
+        run: |
+          APP_PATH="build/DerivedData/Build/Products/Release-iphoneos/TrendRadar.app"
+          test -d "$APP_PATH"
+          mkdir -p build/Payload
+          cp -R "$APP_PATH" build/Payload/TrendRadar.app
+          ditto -c -k --sequesterRsrc --keepParent build/Payload build/TrendRadar-unsigned.ipa
+
+      - name: Upload unsigned IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: TrendRadar-iOS-unsigned
+          path: ios/build/TrendRadar-unsigned.ipa

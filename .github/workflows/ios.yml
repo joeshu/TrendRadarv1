@@ -1,0 +1,113 @@
+name: Build TrendRadar iOS
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  build-ios:
+    name: Build IPA
+    runs-on: macos-latest
+    timeout-minutes: 30
+    env:
+      TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
+      BUNDLE_ID: com.trendradar.mobile
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        working-directory: ios
+        run: xcodegen generate
+
+      - name: Validate generated project inputs
+        working-directory: ios
+        run: |
+          test -f TrendRadar/Resources/Info.plist
+          test -f project.yml
+          test -n "$TEAM_ID"
+
+      - name: Run unit tests
+        working-directory: ios
+        run: |
+          xcodebuild \
+            -project TrendRadar.xcodeproj \
+            -scheme TrendRadar \
+            -sdk iphonesimulator \
+            -destination 'platform=iOS Simulator,name=iPhone 16' \
+            test
+
+      - name: Import signing certificate
+        uses: apple-actions/import-codesign-certs@v3
+        with:
+          p12-file-base64: ${{ secrets.IOS_CERTIFICATE_BASE64 }}
+          p12-password: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
+
+      - name: Install provisioning profile
+        uses: apple-actions/download-provisioning-profiles@v4
+        with:
+          bundle-id: ${{ env.BUNDLE_ID }}
+          issuer-id: ${{ secrets.APPSTORE_ISSUER_ID }}
+          api-key-id: ${{ secrets.APPSTORE_KEY_ID }}
+          api-private-key: ${{ secrets.APPSTORE_PRIVATE_KEY }}
+
+      - name: Archive application
+        working-directory: ios
+        run: |
+          xcodebuild \
+            -project TrendRadar.xcodeproj \
+            -scheme TrendRadar \
+            -configuration Release \
+            -sdk iphoneos \
+            -archivePath build/TrendRadar.xcarchive \
+            DEVELOPMENT_TEAM="$TEAM_ID" \
+            PRODUCT_BUNDLE_IDENTIFIER="$BUNDLE_ID" \
+            -allowProvisioningUpdates \
+            archive
+
+      - name: Create export options
+        working-directory: ios
+        run: |
+          cat > build/ExportOptions.plist <<'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+          <key>method</key>
+          <string>app-store</string>
+          <key>signingStyle</key>
+          <string>automatic</string>
+          <key>teamID</key>
+          <string>${TEAM_ID}</string>
+          <key>stripSwiftSymbols</key>
+          <true/>
+          </dict>
+          </plist>
+          PLIST
+
+      - name: Export IPA
+        working-directory: ios
+        run: |
+          xcodebuild \
+            -exportArchive \
+            -archivePath build/TrendRadar.xcarchive \
+            -exportOptionsPlist build/ExportOptions.plist \
+            -exportPath build/export \
+            -allowProvisioningUpdates
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: TrendRadar-iOS
+          path: ios/build/export/*.ipa
