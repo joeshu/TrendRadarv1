@@ -56,6 +56,10 @@ struct SettingsView: View {
             }
             .navigationTitle("设置")
             .navigationBarTitleDisplayMode(.inline)
+            .scrollContentBackground(.hidden)
+            .background(Color.appBackground)
+            .preferredColorScheme(.dark)
+            .tint(Color.appCyan)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
@@ -77,4 +81,9 @@ struct SettingsView: View {
             }
         }
     }
+}
+
+private extension Color {
+    static let appBackground = Color(red: 0.035, green: 0.055, blue: 0.10)
+    static let appCyan = Color(red: 0.25, green: 0.90, blue: 0.82)
 }

@@ -4,86 +4,217 @@ struct ContentView: View {
     @EnvironmentObject private var store: NewsStore
     @EnvironmentObject private var settingsStore: SettingsStore
     @State private var searchText = ""
+    @State private var selectedSource = "全部"
     @State private var showingFavorites = false
     @State private var showingSettings = false
+
+    private var sourceNames: [String] {
+        ["全部"] + Array(Set(store.items.map(\.source))).sorted()
+    }
 
     private var filteredItems: [NewsItem] {
         store.items.filter { item in
             let matchesSearch = searchText.isEmpty || item.title.localizedCaseInsensitiveContains(searchText) || item.source.localizedCaseInsensitiveContains(searchText)
             let matchesKeywords = settingsStore.settings.keywords.isEmpty || settingsStore.settings.keywords.contains { item.title.localizedCaseInsensitiveContains($0) }
-            return matchesSearch && matchesKeywords && (!showingFavorites || item.isFavorite)
+            let matchesSource = selectedSource == "全部" || item.source == selectedSource
+            return matchesSearch && matchesKeywords && matchesSource && (!showingFavorites || item.isFavorite)
         }
     }
 
     var body: some View {
         NavigationStack {
-            Group {
-                if filteredItems.isEmpty {
-                    ContentUnavailableView("暂无热点", systemImage: "newspaper", description: Text("下拉刷新或检查网络连接"))
-                } else {
-                    List(filteredItems) { item in
-                        NavigationLink {
-                            NewsDetailView(item: item)
-                                .task { await store.markRead(item) }
-                        } label: {
-                            NewsRow(item: item)
-                        }
-                        .swipeActions(edge: .trailing) {
-                            Button { Task { await store.toggleFavorite(item) } } label: {
-                                Label("收藏", systemImage: item.isFavorite ? "star.slash" : "star")
+            ZStack {
+                Color.appBackground.ignoresSafeArea()
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 18) {
+                        overviewHeader
+                        sourcePicker
+
+                        if filteredItems.isEmpty {
+                            EmptyNewsView(isFavoriteMode: showingFavorites)
+                                .frame(maxWidth: .infinity)
+                                .padding(.top, 44)
+                        } else {
+                            Text(showingFavorites ? "已收藏" : "最新情报")
+                                .font(.system(size: 22, weight: .bold, design: .rounded))
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 20)
+
+                            ForEach(filteredItems) { item in
+                                NavigationLink {
+                                    NewsDetailView(item: item)
+                                        .task { await store.markRead(item) }
+                                } label: {
+                                    NewsCard(item: item)
+                                }
+                                .buttonStyle(.plain)
+                                .contextMenu {
+                                    Button { Task { await store.toggleFavorite(item) } } label: {
+                                        Label(item.isFavorite ? "取消收藏" : "收藏", systemImage: item.isFavorite ? "star.slash" : "star")
+                                    }
+                                }
+                                .padding(.horizontal, 16)
                             }
-                            .tint(.orange)
                         }
                     }
-                    .listStyle(.plain)
+                    .padding(.vertical, 12)
                 }
+                .refreshable { await store.refresh() }
             }
-            .navigationTitle("TrendRadar")
-            .searchable(text: $searchText, prompt: "搜索热点")
+            .toolbarBackground(Color.appBackground, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
+            .searchable(text: $searchText, prompt: "搜索标题或来源")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button { showingFavorites.toggle() } label: {
                         Image(systemName: showingFavorites ? "star.fill" : "star")
+                            .foregroundStyle(showingFavorites ? Color.appYellow : .white)
+                    }
+                }
+                ToolbarItem(placement: .principal) {
+                    HStack(spacing: 6) {
+                        Circle().fill(Color.appCyan).frame(width: 8, height: 8)
+                        Text("TREND RADAR")
+                            .font(.system(size: 13, weight: .heavy, design: .rounded))
+                            .tracking(1.5)
+                            .foregroundStyle(.white)
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    HStack {
-                        Button { Task { await store.refresh() } } label: { Image(systemName: "arrow.clockwise") }
-                            .disabled(store.isRefreshing)
-                        Button { showingSettings = true } label: { Image(systemName: "gear") }
+                    Menu {
+                        Button { Task { await store.refresh() } } label: { Label("立即刷新", systemImage: "arrow.clockwise") }
+                        Button { showingSettings = true } label: { Label("设置", systemImage: "gearshape") }
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
+                            .foregroundStyle(.white)
                     }
                 }
             }
-            .refreshable { await store.refresh() }
             .task { await store.requestNotifications() }
-            .sheet(isPresented: $showingSettings) {
-                SettingsView()
-            }
+            .sheet(isPresented: $showingSettings) { SettingsView() }
             .alert("提示", isPresented: Binding(get: { store.errorMessage != nil }, set: { if !$0 { store.errorMessage = nil } })) {
                 Button("确定", role: .cancel) { store.errorMessage = nil }
-            } message: {
-                Text(store.errorMessage ?? "")
+            } message: { Text(store.errorMessage ?? "") }
+        }
+    }
+
+    private var overviewHeader: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .bottom) {
+                VStack(alignment: .leading, spacing: 5) {
+                    Text("早上好，观察员")
+                        .font(.system(size: 14, weight: .medium, design: .rounded))
+                        .foregroundStyle(Color.appCyan)
+                    Text("今天的世界\n正在发生什么")
+                        .font(.system(size: 31, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white)
+                        .lineSpacing(2)
+                }
+                Spacer()
+                Image(systemName: "waveform.path.ecg")
+                    .font(.system(size: 42, weight: .light))
+                    .foregroundStyle(Color.appCyan.opacity(0.8))
             }
+            HStack(spacing: 10) {
+                MetricPill(value: "\(store.items.count)", label: "条情报", tint: .appCyan)
+                MetricPill(value: "\(store.items.filter { !$0.isRead }.count)", label: "未读", tint: .appYellow)
+                MetricPill(value: "\(store.items.filter(\.isFavorite).count)", label: "收藏", tint: .appPink)
+            }
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 8)
+    }
+
+    private var sourcePicker: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(sourceNames, id: \.self) { source in
+                    Button { selectedSource = source } label: {
+                        Text(source)
+                            .font(.system(size: 13, weight: .semibold, design: .rounded))
+                            .foregroundStyle(selectedSource == source ? Color.appBackground : .white.opacity(0.72))
+                            .padding(.horizontal, 15)
+                            .padding(.vertical, 9)
+                            .background(selectedSource == source ? Color.appCyan : Color.appCard)
+                            .clipShape(Capsule())
+                    }
+                }
+            }
+            .padding(.horizontal, 20)
         }
     }
 }
 
-private struct NewsRow: View {
+private struct MetricPill: View {
+    let value: String
+    let label: String
+    let tint: Color
+
+    var body: some View {
+        HStack(spacing: 7) {
+            Text(value).font(.system(size: 17, weight: .bold, design: .rounded)).foregroundStyle(tint)
+            Text(label).font(.system(size: 12, weight: .medium, design: .rounded)).foregroundStyle(.white.opacity(0.58))
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(Color.appCard)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+}
+
+private struct NewsCard: View {
     let item: NewsItem
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(item.title)
-                .font(.headline)
-                .foregroundStyle(item.isRead ? .secondary : .primary)
-            HStack {
-                Text(item.source)
-                if item.isFavorite { Image(systemName: "star.fill").foregroundStyle(.orange) }
+        HStack(alignment: .top, spacing: 13) {
+            VStack(spacing: 4) {
+                Circle().fill(item.isRead ? Color.white.opacity(0.2) : Color.appCyan).frame(width: 8, height: 8)
+                Rectangle().fill(Color.white.opacity(0.08)).frame(width: 1, height: 48)
             }
-            .font(.caption)
-            .foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Text(item.source.uppercased())
+                        .font(.system(size: 10, weight: .heavy, design: .rounded))
+                        .tracking(1)
+                        .foregroundStyle(Color.appCyan)
+                    Spacer()
+                    if item.isFavorite { Image(systemName: "star.fill").font(.caption).foregroundStyle(Color.appYellow) }
+                }
+                Text(item.title)
+                    .font(.system(size: 17, weight: item.isRead ? .medium : .bold, design: .rounded))
+                    .foregroundStyle(item.isRead ? .white.opacity(0.58) : .white)
+                    .multilineTextAlignment(.leading)
+                    .lineLimit(3)
+                HStack(spacing: 7) {
+                    Text(item.publishedAt?.relativeDescription ?? "刚刚")
+                    if item.summary != nil { Text("·"); Label("已摘要", systemImage: "sparkles") }
+                }
+                .font(.system(size: 11, weight: .medium, design: .rounded))
+                .foregroundStyle(.white.opacity(0.42))
+            }
         }
-        .padding(.vertical, 5)
+        .padding(16)
+        .background(Color.appCard)
+        .overlay(RoundedRectangle(cornerRadius: 18).stroke(Color.white.opacity(0.06), lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: 18))
+    }
+}
+
+private struct EmptyNewsView: View {
+    let isFavoriteMode: Bool
+
+    var body: some View {
+        VStack(spacing: 14) {
+            Image(systemName: isFavoriteMode ? "star" : "dot.radiowaves.left.and.right")
+                .font(.system(size: 34, weight: .light))
+                .foregroundStyle(Color.appCyan)
+            Text(isFavoriteMode ? "还没有收藏" : "等待第一批情报")
+                .font(.system(size: 18, weight: .bold, design: .rounded))
+                .foregroundStyle(.white)
+            Text(isFavoriteMode ? "在新闻卡片上长按即可收藏" : "下拉刷新，开始建立你的信息雷达")
+                .font(.system(size: 13, design: .rounded))
+                .foregroundStyle(.white.opacity(0.45))
+        }
     }
 }
 
@@ -94,32 +225,99 @@ private struct NewsDetailView: View {
     @State private var generatedSummary: String?
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                Text(item.title).font(.title2.bold())
-                Text(item.source).font(.subheadline).foregroundStyle(.secondary)
-                if let summary = generatedSummary ?? item.summary, !summary.isEmpty { Text(summary).font(.body) }
-                Button {
-                    isSummarizing = true
-                    Task {
-                        await store.summarize(item)
-                        generatedSummary = store.items.first(where: { $0.id == item.id })?.summary
-                        isSummarizing = false
+        ZStack {
+            Color.appBackground.ignoresSafeArea()
+            ScrollView {
+                VStack(alignment: .leading, spacing: 22) {
+                    Text(item.source.uppercased())
+                        .font(.system(size: 11, weight: .heavy, design: .rounded))
+                        .tracking(1.5)
+                        .foregroundStyle(Color.appCyan)
+                    Text(item.title)
+                        .font(.system(size: 29, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white)
+                    Text(item.publishedAt?.relativeDescription ?? "刚刚")
+                        .font(.system(size: 12, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.45))
+
+                    if let summary = generatedSummary ?? item.summary, !summary.isEmpty {
+                        VStack(alignment: .leading, spacing: 11) {
+                            Label("AI 摘要", systemImage: "sparkles")
+                                .font(.system(size: 12, weight: .bold, design: .rounded))
+                                .foregroundStyle(Color.appYellow)
+                            Text(summary)
+                                .font(.system(size: 17, weight: .medium, design: .rounded))
+                                .foregroundStyle(.white.opacity(0.84))
+                                .lineSpacing(5)
+                        }
+                        .padding(18)
+                        .background(Color.appCard)
+                        .clipShape(RoundedRectangle(cornerRadius: 18))
                     }
-                } label: {
-                    Label(isSummarizing ? "分析中..." : "AI 摘要", systemImage: "sparkles")
+
+                    HStack(spacing: 10) {
+                        Button {
+                            isSummarizing = true
+                            Task {
+                                await store.summarize(item)
+                                generatedSummary = store.items.first(where: { $0.id == item.id })?.summary
+                                isSummarizing = false
+                            }
+                        } label: {
+                            Label(isSummarizing ? "分析中" : "生成摘要", systemImage: "sparkles")
+                        }
+                        .buttonStyle(AccentButtonStyle())
+                        .disabled(isSummarizing)
+                        if let url = item.url {
+                            Link(destination: url) { Label("阅读原文", systemImage: "arrow.up.right") }
+                                .buttonStyle(OutlineButtonStyle())
+                        }
+                    }
                 }
-                .buttonStyle(.bordered)
-                .disabled(isSummarizing)
-                if let url = item.url {
-                    Link("阅读原文", destination: url)
-                        .buttonStyle(.borderedProminent)
-                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(20)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding()
         }
-        .navigationTitle("详情")
+        .toolbarBackground(Color.appBackground, for: .navigationBar)
+        .toolbarColorScheme(.dark, for: .navigationBar)
+        .navigationTitle("情报详情")
         .navigationBarTitleDisplayMode(.inline)
     }
+}
+
+private struct AccentButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(size: 13, weight: .bold, design: .rounded))
+            .foregroundStyle(Color.appBackground)
+            .padding(.horizontal, 15)
+            .padding(.vertical, 11)
+            .background(Color.appCyan.opacity(configuration.isPressed ? 0.65 : 1))
+            .clipShape(Capsule())
+    }
+}
+
+private struct OutlineButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(size: 13, weight: .bold, design: .rounded))
+            .foregroundStyle(.white.opacity(configuration.isPressed ? 0.55 : 0.85))
+            .padding(.horizontal, 15)
+            .padding(.vertical, 10)
+            .overlay(Capsule().stroke(Color.white.opacity(0.2), lineWidth: 1))
+    }
+}
+
+private extension Date {
+    var relativeDescription: String {
+        RelativeDateTimeFormatter().localizedString(for: self, relativeTo: Date())
+    }
+}
+
+private extension Color {
+    static let appBackground = Color(red: 0.035, green: 0.055, blue: 0.10)
+    static let appCard = Color(red: 0.075, green: 0.105, blue: 0.17)
+    static let appCyan = Color(red: 0.25, green: 0.90, blue: 0.82)
+    static let appYellow = Color(red: 1.0, green: 0.78, blue: 0.30)
+    static let appPink = Color(red: 1.0, green: 0.42, blue: 0.58)
 }
