@@ -11,16 +11,12 @@ struct NewsNowService: Sendable {
             throw URLError(.badServerResponse)
         }
         let payload = try JSONDecoder().decode(NewsNowResponse.self, from: data)
-        return payload.items.compactMap { item in
-            guard Self.isAllowed(url: item.url, expectedDomain: expectedDomain) else { return nil }
-            let id = "\(sourceID):\(item.id)"
-            return HotNewsItem(id: id, title: item.title, url: item.url, platformID: sourceID, platformName: sourceName, rank: 0, publishedAt: item.pubDate.map { Date(timeIntervalSince1970: Double($0) / 1000) }, extraInfo: item.extra?.info, topicKey: Self.topicKey(for: item.title), previousRank: nil, isRead: false, isFavorite: false)
+        let filteredItems: [NewsNowItem] = payload.items.filter { item in
+            Self.isAllowed(url: item.url, expectedDomain: expectedDomain)
         }
-        .enumerated()
-        .map { index, item in
-            var ranked = item
-            ranked.rank = index + 1
-            return ranked
+        return filteredItems.enumerated().map { index, item in
+            let id = "\(sourceID):\(item.id)"
+            return HotNewsItem(id: id, title: item.title, url: item.url, platformID: sourceID, platformName: sourceName, rank: index + 1, publishedAt: item.pubDate.map { Date(timeIntervalSince1970: Double($0) / 1000) }, extraInfo: item.extra?.info, topicKey: Self.topicKey(for: item.title), previousRank: nil, isRead: false, isFavorite: false)
         }
     }
 
