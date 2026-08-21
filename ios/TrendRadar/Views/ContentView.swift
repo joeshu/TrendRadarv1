@@ -2,6 +2,7 @@ import SwiftUI
 
 struct RadarView: View {
     @EnvironmentObject private var store: NewsStore
+    @EnvironmentObject private var hotNewsStore: HotNewsStore
     @EnvironmentObject private var settingsStore: SettingsStore
     @State private var searchText = ""
     @State private var selectedSource = "全部"
@@ -30,6 +31,7 @@ struct RadarView: View {
                         overviewHeader
                         refreshStatus
                         sourcePicker
+                        hotNewsSection
 
                         if filteredItems.isEmpty {
                             EmptyNewsView(isFavoriteMode: showingFavorites)
@@ -60,7 +62,10 @@ struct RadarView: View {
                     }
                     .padding(.vertical, 12)
                 }
-                .refreshable { await store.refresh() }
+                .refreshable {
+                    await store.refresh()
+                    await hotNewsStore.refresh(settings: settingsStore.settings)
+                }
             }
             .toolbarBackground(AppTheme.background, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)
@@ -168,6 +173,42 @@ struct RadarView: View {
         .foregroundStyle(AppTheme.textSecondary)
         .padding(.horizontal, 20)
     }
+
+    private var hotNewsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Label("实时热榜", systemImage: "flame.fill")
+                    .font(AppTheme.headlineFont)
+                    .foregroundStyle(AppTheme.yellow)
+                Spacer()
+                Button { Task { await hotNewsStore.refresh(settings: settingsStore.settings, latest: true) } } label: {
+                    Image(systemName: hotNewsStore.isRefreshing ? "arrow.triangle.2.circlepath" : "arrow.clockwise")
+                }
+                .disabled(hotNewsStore.isRefreshing)
+            }
+            if hotNewsStore.filteredItems.isEmpty {
+                FeatureEmptyState(icon: "flame", title: "暂无热榜缓存", message: "点击刷新获取 NewsNow 公开热榜数据。")
+            } else {
+                hotPlatformPicker
+                ForEach(hotNewsStore.filteredItems.prefix(8)) { item in
+                    HotNewsCard(item: item)
+                }
+            }
+        }
+        .padding(.horizontal, 16)
+    }
+
+    private var hotPlatformPicker: some View {
+        let platforms = Dictionary(hotNewsStore.items.map { ($0.platformID, $0.platformName) }, uniquingKeysWith: { first, _ in first }).sorted { $0.value < $1.value }
+        return ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                FeedFilterChip(title: "全部热榜", isSelected: hotNewsStore.selectedPlatformID == nil) { hotNewsStore.selectedPlatformID = nil }
+                ForEach(platforms, id: \.key) { platform in
+                    FeedFilterChip(title: platform.value, isSelected: hotNewsStore.selectedPlatformID == platform.key) { hotNewsStore.selectedPlatformID = platform.key }
+                }
+            }
+        }
+    }
 }
 
 struct ContentView: View {
@@ -259,6 +300,37 @@ private struct EmptyNewsView: View {
                 .font(.system(size: 13, design: .rounded))
                 .foregroundStyle(.white.opacity(0.45))
         }
+    }
+}
+
+private struct HotNewsCard: View {
+    let item: HotNewsItem
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Text("\(item.rank)")
+                .font(AppTheme.rankFont)
+                .foregroundStyle(item.trend == .up ? AppTheme.red : AppTheme.yellow)
+                .frame(width: 34)
+            VStack(alignment: .leading, spacing: 5) {
+                HStack {
+                    Text(item.platformName)
+                        .font(AppTheme.captionFont)
+                        .foregroundStyle(AppTheme.yellow)
+                    Spacer()
+                    Label(item.trend.rawValue, systemImage: item.trend == .up ? "arrow.up" : item.trend == .down ? "arrow.down" : "minus")
+                        .font(AppTheme.captionFont)
+                        .foregroundStyle(AppTheme.textTertiary)
+                }
+                Text(item.title)
+                    .font(AppTheme.headlineFont)
+                    .foregroundStyle(.white)
+                    .lineLimit(2)
+            }
+        }
+        .padding(14)
+        .background(AppTheme.card)
+        .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
     }
 }
 

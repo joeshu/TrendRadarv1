@@ -13,6 +13,7 @@ final class ReportStore: ObservableObject {
 
     private let localStore = LocalStore()
     private let generator = ReportGenerationService()
+    private let aiService = AIService()
     private var completedBatches = Set<String>()
 
     var filteredReports: [ReportSummary] {
@@ -49,7 +50,10 @@ final class ReportStore: ObservableObject {
         defer { isGenerating = false }
         let request = ReportGenerationRequest(batchID: resolvedBatchID, type: type, trigger: trigger, generatedAt: Date(), settings: settings)
         do {
-            let report = generator.generate(request: request, items: items)
+            var report = generator.generate(request: request, items: items)
+            if settings.aiAnalysis.enabled {
+                report.aiAnalysis = await aiService.reportAnalysis(for: items, settings: settings)
+            }
             try await localStore.save(report)
             completedBatches.insert(resolvedBatchID)
             await load()

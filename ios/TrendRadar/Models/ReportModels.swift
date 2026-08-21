@@ -71,11 +71,25 @@ struct ReportAIAnalysis: Codable, Equatable, Hashable, Sendable {
     var language: String
     var content: String?
     var failureMessage: String?
+    var sentimentPositive: Double? = nil
+    var sentimentNeutral: Double? = nil
+    var sentimentNegative: Double? = nil
+    var weakSignals: [String] = []
+    var recommendation: String? = nil
 
     var hasContent: Bool {
         guard let content else { return false }
         return !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
+}
+
+struct StructuredAIAnalysis: Codable, Equatable, Hashable, Sendable {
+    var overview: String
+    var sentimentPositive: Double
+    var sentimentNeutral: Double
+    var sentimentNegative: Double
+    var weakSignals: [String]
+    var recommendation: String
 }
 
 struct ReportSection: Codable, Equatable, Hashable, Identifiable, Sendable {

@@ -106,6 +106,7 @@ struct FeedsView: View {
 
 struct InsightView: View {
     @EnvironmentObject private var store: NewsStore
+    @EnvironmentObject private var hotNewsStore: HotNewsStore
     @EnvironmentObject private var settingsStore: SettingsStore
     @State private var showingSettings = false
 
@@ -125,6 +126,7 @@ struct InsightView: View {
                         insightHeader
                         signalCard
                         keywordCard
+                        hotNewsInsightCard
                         aiCard
                     }
                     .padding(20)
@@ -190,12 +192,134 @@ struct InsightView: View {
                     .font(AppTheme.bodyFont)
                     .foregroundStyle(AppTheme.textSecondary)
                 if settingsStore.settings.ai.enabled {
-                    Label("当前页面展示本地统计，结构化日报将在数据能力接入后启用。", systemImage: "info.circle")
+                    Label("报告生成时会按结构化 JSON 保存情绪比例、弱信号和策略建议。", systemImage: "info.circle")
                         .font(AppTheme.captionFont)
                         .foregroundStyle(AppTheme.textTertiary)
                 }
             }
         }
+    }
+
+    private var hotNewsInsightCard: some View {
+        InsightPanel(title: "热榜趋势", icon: "chart.line.uptrend.xyaxis", tint: AppTheme.pink) {
+            if hotNewsStore.topics.isEmpty {
+                Text("完成至少一次热榜刷新后，这里会显示跨平台主题和排名变化。")
+                    .font(AppTheme.bodyFont)
+                    .foregroundStyle(AppTheme.textSecondary)
+            } else {
+                VStack(alignment: .leading, spacing: 14) {
+                    ForEach(hotNewsStore.topics.prefix(3)) { topic in
+                        NavigationLink {
+                            HotNewsTrendView(topic: topic)
+                        } label: {
+                            HStack(spacing: 10) {
+                                Text("#\(topic.bestRank)")
+                                    .font(AppTheme.rankFont)
+                                    .foregroundStyle(AppTheme.pink)
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(topic.title)
+                                        .font(AppTheme.headlineFont)
+                                        .foregroundStyle(.white)
+                                        .lineLimit(2)
+                                    Text(topic.platforms.joined(separator: " · "))
+                                        .font(AppTheme.captionFont)
+                                        .foregroundStyle(AppTheme.textTertiary)
+                                }
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .foregroundStyle(AppTheme.textTertiary)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+        }
+    }
+}
+
+struct HotNewsTrendView: View {
+    @EnvironmentObject private var hotNewsStore: HotNewsStore
+    let topic: HotNewsTopic
+    @State private var points: [HotNewsStore.TrendPoint] = []
+
+    var body: some View {
+        ZStack {
+            AppTheme.background.ignoresSafeArea()
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    Text(topic.title)
+                        .font(AppTheme.titleFont)
+                        .foregroundStyle(.white)
+                    Text(topic.platforms.joined(separator: " · "))
+                        .font(AppTheme.captionFont)
+                        .foregroundStyle(AppTheme.textSecondary)
+                    TrendChart(points: points)
+                    ForEach(topic.items) { item in
+                        HotNewsTrendRow(item: item)
+                    }
+                }
+                .padding(20)
+            }
+        }
+        .navigationTitle("排名时间线")
+        .navigationBarTitleDisplayMode(.inline)
+        .task { points = await hotNewsStore.trend(for: topic.id) }
+    }
+}
+
+private struct HotNewsTrendRow: View {
+    let item: HotNewsItem
+
+    var body: some View {
+        HStack {
+            Text("#\(item.rank)")
+                .font(AppTheme.rankFont)
+                .foregroundStyle(item.trend == .up ? AppTheme.green : AppTheme.textSecondary)
+                .frame(width: 56, alignment: .leading)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(item.platformName).font(AppTheme.captionFont).foregroundStyle(AppTheme.yellow)
+                Text(item.title).font(AppTheme.headlineFont).foregroundStyle(.white).lineLimit(2)
+            }
+            Spacer()
+        }
+        .padding(12)
+        .background(AppTheme.card)
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+}
+
+private struct TrendChart: View {
+    let points: [HotNewsStore.TrendPoint]
+
+    var body: some View {
+        GeometryReader { geometry in
+            let maxRank = max(points.map(\.rank).max() ?? 1, 1)
+            let width = max(geometry.size.width, 1)
+            let height = max(geometry.size.height, 1)
+            ZStack {
+                RoundedRectangle(cornerRadius: 16, style: .continuous).fill(AppTheme.card)
+                if points.count >= 2 {
+                    Path { path in
+                        for (index, point) in points.enumerated() {
+                            let x = width * CGFloat(index) / CGFloat(max(points.count - 1, 1))
+                            let y = height * CGFloat(point.rank - 1) / CGFloat(max(maxRank - 1, 1))
+                            if index == 0 { path.move(to: CGPoint(x: x, y: y)) } else { path.addLine(to: CGPoint(x: x, y: y)) }
+                        }
+                    }
+                    .stroke(AppTheme.pink, style: StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round))
+                    Text("排名越靠前，曲线越接近顶部")
+                        .font(AppTheme.captionFont)
+                        .foregroundStyle(AppTheme.textTertiary)
+                        .padding(.top, 12)
+                } else {
+                    Text("数据积累中，至少需要两次采集")
+                        .font(AppTheme.bodyFont)
+                        .foregroundStyle(AppTheme.textSecondary)
+                }
+            }
+        }
+        .frame(height: 180)
     }
 }
 
@@ -392,7 +516,7 @@ private struct CompactFeedCard: View {
     }
 }
 
-private struct FeedFilterChip: View {
+struct FeedFilterChip: View {
     let title: String
     let isSelected: Bool
     let action: () -> Void

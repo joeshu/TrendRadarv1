@@ -6,6 +6,7 @@ struct TrendRadarApp: App {
     @StateObject private var store = NewsStore()
     @StateObject private var settingsStore = SettingsStore()
     @StateObject private var reportStore = ReportStore()
+    @StateObject private var hotNewsStore = HotNewsStore()
 
     init() {
         BGTaskScheduler.shared.register(forTaskWithIdentifier: BackgroundRefreshService.identifier, using: nil) { task in
@@ -23,10 +24,12 @@ struct TrendRadarApp: App {
                 .environmentObject(store)
                 .environmentObject(settingsStore)
                 .environmentObject(reportStore)
+                .environmentObject(hotNewsStore)
                 .task {
                     await store.load()
                     store.settings = settingsStore.settings
                     await reportStore.load()
+                    await hotNewsStore.load()
                     await reportStore.applyRetentionPolicy(days: settingsStore.settings.storage.localRetentionDays)
                 }
                 .onAppear {

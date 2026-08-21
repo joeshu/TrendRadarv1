@@ -22,6 +22,11 @@ final class ReportRecord {
     var isFavorite: Bool
     var failureMessage: String?
     var searchableText: String = ""
+    var aiSentimentPositive: Double?
+    var aiSentimentNeutral: Double?
+    var aiSentimentNegative: Double?
+    var aiWeakSignalsJSON: Data?
+    var aiRecommendation: String?
 
     init(from report: ReportDetail, encoder: JSONEncoder = .trendRadar) throws {
         id = report.id.uuidString
@@ -43,6 +48,11 @@ final class ReportRecord {
         isFavorite = report.isFavorite
         failureMessage = report.failureMessage
         searchableText = report.summary.searchableText
+        aiSentimentPositive = report.aiAnalysis?.sentimentPositive
+        aiSentimentNeutral = report.aiAnalysis?.sentimentNeutral
+        aiSentimentNegative = report.aiAnalysis?.sentimentNegative
+        aiWeakSignalsJSON = try? encoder.encode(report.aiAnalysis?.weakSignals ?? [])
+        aiRecommendation = report.aiAnalysis?.recommendation
     }
 
     func update(from report: ReportDetail, encoder: JSONEncoder = .trendRadar) throws {
@@ -64,6 +74,11 @@ final class ReportRecord {
         isFavorite = report.isFavorite
         failureMessage = report.failureMessage
         searchableText = report.summary.searchableText
+        aiSentimentPositive = report.aiAnalysis?.sentimentPositive
+        aiSentimentNeutral = report.aiAnalysis?.sentimentNeutral
+        aiSentimentNegative = report.aiAnalysis?.sentimentNegative
+        aiWeakSignalsJSON = try? encoder.encode(report.aiAnalysis?.weakSignals ?? [])
+        aiRecommendation = report.aiAnalysis?.recommendation
     }
 
     func asSummary() -> ReportSummary? {
@@ -104,7 +119,7 @@ final class ReportRecord {
         }
 
         let analysis = aiEnabled || aiSummary != nil
-            ? ReportAIAnalysis(enabled: aiEnabled, model: aiModel, language: aiLanguage ?? "Chinese", content: aiSummary, failureMessage: failureMessage)
+            ? ReportAIAnalysis(enabled: aiEnabled, model: aiModel, language: aiLanguage ?? "Chinese", content: aiSummary, failureMessage: failureMessage, sentimentPositive: aiSentimentPositive, sentimentNeutral: aiSentimentNeutral, sentimentNegative: aiSentimentNegative, weakSignals: aiWeakSignalsJSON.flatMap { try? decoder.decode([String].self, from: $0) } ?? [], recommendation: aiRecommendation)
             : nil
         return ReportDetail(
             id: uuid,

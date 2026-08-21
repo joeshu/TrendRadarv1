@@ -80,9 +80,34 @@ struct ReportDetailView: View {
                         statistics(report)
                         if let analysis = report.aiAnalysis, analysis.hasContent {
                             InsightPanel(title: "AI 洞察", icon: "sparkles", tint: AppTheme.cyan) {
-                                Text(analysis.content ?? "")
-                                    .font(AppTheme.bodyFont)
-                                    .foregroundStyle(AppTheme.textSecondary)
+                                VStack(alignment: .leading, spacing: 12) {
+                                    Text(analysis.content ?? "")
+                                        .font(AppTheme.bodyFont)
+                                        .foregroundStyle(AppTheme.textSecondary)
+                                    if let positive = analysis.sentimentPositive,
+                                       let neutral = analysis.sentimentNeutral,
+                                       let negative = analysis.sentimentNegative {
+                                        HStack(spacing: 8) {
+                                            SentimentPill(label: "正面", value: positive, tint: AppTheme.green)
+                                            SentimentPill(label: "中性", value: neutral, tint: AppTheme.yellow)
+                                            SentimentPill(label: "负面", value: negative, tint: AppTheme.red)
+                                        }
+                                    }
+                                    if !analysis.weakSignals.isEmpty {
+                                        Text("弱信号：" + analysis.weakSignals.joined(separator: "、"))
+                                            .font(AppTheme.captionFont)
+                                            .foregroundStyle(AppTheme.textSecondary)
+                                    }
+                                    if let recommendation = analysis.recommendation, !recommendation.isEmpty {
+                                        Label(recommendation, systemImage: "scope")
+                                            .font(AppTheme.captionFont)
+                                            .foregroundStyle(AppTheme.cyan)
+                                    }
+                                }
+                            }
+                        } else if let message = report.aiAnalysis?.failureMessage {
+                            InsightPanel(title: "AI 洞察", icon: "exclamationmark.triangle", tint: AppTheme.yellow) {
+                                Text(message).font(AppTheme.captionFont).foregroundStyle(AppTheme.textSecondary)
                             }
                         }
                         ForEach(report.sections) { section in
@@ -189,5 +214,26 @@ struct ReportDetailView: View {
                 }
             }
         }
+    }
+}
+
+private struct SentimentPill: View {
+    let label: String
+    let value: Double
+    let tint: Color
+
+    var body: some View {
+        VStack(spacing: 3) {
+            Text("\(Int(value * 100))%")
+                .font(AppTheme.headlineFont)
+                .foregroundStyle(tint)
+            Text(label)
+                .font(AppTheme.captionFont)
+                .foregroundStyle(AppTheme.textTertiary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 8)
+        .background(tint.opacity(0.1))
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 }

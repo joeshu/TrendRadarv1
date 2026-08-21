@@ -92,7 +92,10 @@ final class NewsStore: ObservableObject {
     private func generateReport(trigger: ReportTrigger) async {
         guard let type = ReportType(rawValue: settings.report.mode) else { return }
         let request = ReportGenerationRequest(batchID: "\(trigger.rawValue):\(items.map(\.id).sorted().joined(separator: ","))", type: type, trigger: trigger, generatedAt: Date(), settings: settings)
-        let report = ReportGenerationService().generate(request: request, items: items)
+        var report = ReportGenerationService().generate(request: request, items: items)
+        if settings.aiAnalysis.enabled {
+            report.aiAnalysis = await aiService.reportAnalysis(for: items, settings: settings)
+        }
         try? await localStore.save(report)
     }
 

@@ -208,7 +208,7 @@ struct AppSettings: Codable, Equatable, Sendable {
     var scheduleEnabled = true
     var schedulePreset = "night_owl"
     var platformsEnabled = true
-    var platformAPIURL = ""
+    var platformAPIURL = "https://newsnow.busiyi.world/api"
     var platformSources: [PlatformSource] = AppSettings.defaultPlatformSources
     var rssEnabled = true
     var rssFreshnessEnabled = true
@@ -265,7 +265,7 @@ struct AppSettings: Codable, Equatable, Sendable {
         scheduleEnabled = try container.decodeIfPresent(Bool.self, forKey: .scheduleEnabled) ?? true
         schedulePreset = try container.decodeIfPresent(String.self, forKey: .schedulePreset) ?? "night_owl"
         platformsEnabled = try container.decodeIfPresent(Bool.self, forKey: .platformsEnabled) ?? true
-        platformAPIURL = try container.decodeIfPresent(String.self, forKey: .platformAPIURL) ?? ""
+         platformAPIURL = try container.decodeIfPresent(String.self, forKey: .platformAPIURL) ?? "https://newsnow.busiyi.world/api"
         platformSources = try container.decodeIfPresent([PlatformSource].self, forKey: .platformSources) ?? Self.defaultPlatformSources
         rssEnabled = try container.decodeIfPresent(Bool.self, forKey: .rssEnabled) ?? true
         rssFreshnessEnabled = try container.decodeIfPresent(Bool.self, forKey: .rssFreshnessEnabled) ?? true

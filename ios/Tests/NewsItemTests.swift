@@ -28,6 +28,39 @@ final class NewsItemTests: XCTestCase {
         XCTAssertTrue(settings.platformSources.contains { $0.id == "zhihu" })
     }
 
+    func testHotNewsTrendCalculatesRankDirection() {
+        let item = HotNewsItem(id: "weibo:1", title: "Trend", url: nil, platformID: "weibo", platformName: "微博", rank: 2, publishedAt: nil, extraInfo: nil, topicKey: "trend", previousRank: 5, isRead: false, isFavorite: false)
+        XCTAssertEqual(item.trend, .up)
+        XCTAssertEqual(HotNewsItem(id: "x", title: "x", url: nil, platformID: "p", platformName: "P", rank: 5, publishedAt: nil, extraInfo: nil, topicKey: "x", previousRank: 2, isRead: false, isFavorite: false).trend, .down)
+        XCTAssertEqual(HotNewsItem(id: "y", title: "y", url: nil, platformID: "p", platformName: "P", rank: 1, publishedAt: nil, extraInfo: nil, topicKey: "y", previousRank: nil, isRead: false, isFavorite: false).trend, .new)
+    }
+
+    func testStructuredAIAnalysisRoundTrip() throws {
+        let analysis = StructuredAIAnalysis(overview: "overview", sentimentPositive: 0.2, sentimentNeutral: 0.5, sentimentNegative: 0.3, weakSignals: ["signal"], recommendation: "watch")
+        let restored = try JSONDecoder().decode(StructuredAIAnalysis.self, from: JSONEncoder().encode(analysis))
+        XCTAssertEqual(restored, analysis)
+    }
+
+    func testAnalysisLimitZeroMeansUnlimitedByConfiguration() {
+        var settings = AppSettings()
+        settings.aiAnalysis.maxNewsForAnalysis = 0
+        XCTAssertEqual(settings.aiAnalysis.maxNewsForAnalysis, 0)
+    }
+
+    func testNewsNowExtraAcceptsStringAndObjectPayloads() throws {
+        let string = try JSONDecoder().decode(NewsNowExtra.self, from: Data("\"1.2k 赞\"".utf8))
+        let object = try JSONDecoder().decode(NewsNowExtra.self, from: Data("{\"info\":\"热度\"}".utf8))
+        let unsupported = try JSONDecoder().decode(NewsNowExtra.self, from: Data("{\"icon\":{\"url\":\"/icon.png\"}}".utf8))
+        XCTAssertEqual(string.info, "1.2k 赞")
+        XCTAssertEqual(object.info, "热度")
+        XCTAssertNil(unsupported.info)
+    }
+
+    func testTopicKeyRemovesPunctuationButPreservesWords() {
+        XCTAssertEqual(NewsNowService.topicKey(for: "AI：Swift 5.9!"), "aiswift59")
+        XCTAssertEqual(NewsNowService.topicKey(for: "AI Swift 5.9"), "aiswift59")
+    }
+
     func testSettingsRoundTripPreservesRichConfiguration() throws {
         var settings = AppSettings()
         settings.keywords = ["Swift", "AI"]
@@ -137,6 +170,23 @@ final class NewsItemTests: XCTestCase {
         XCTAssertTrue(text.contains("测试报告"))
         XCTAssertTrue(text.contains("情报 1 条"))
         XCTAssertTrue(text.contains("Local story"))
+    }
+
+    func testReportFormatterIncludesStructuredAIFields() {
+        let settings = AppSettings()
+        let report = ReportDetail(
+            id: UUID(), title: "AI 测试", type: .manual, trigger: .manual,
+            generatedAt: Date(timeIntervalSince1970: 100), status: .completed,
+            statistics: ReportStatistics(newsCount: 1),
+            settingsSnapshot: ReportSettingsSnapshot(settings: settings, reportType: .manual, generatedAt: Date(timeIntervalSince1970: 100)),
+            aiAnalysis: ReportAIAnalysis(enabled: true, model: "test", language: "Chinese", content: "overview", failureMessage: nil, sentimentPositive: 0.6, sentimentNeutral: 0.3, sentimentNegative: 0.1, weakSignals: ["signal"], recommendation: "watch"),
+            sections: [], isFavorite: false, failureMessage: nil
+        )
+
+        let text = ReportFormatter().render(report, format: .plainText)
+        XCTAssertTrue(text.contains("正面 60%"))
+        XCTAssertTrue(text.contains("弱信号：signal"))
+        XCTAssertTrue(text.contains("策略建议：watch"))
     }
 
     func testKeywordRulesRequireRequiredWordsAndRejectExcludedWords() {

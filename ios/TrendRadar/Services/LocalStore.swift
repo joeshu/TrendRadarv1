@@ -6,7 +6,7 @@ actor LocalStore {
     private let legacyFileURL: URL
 
     init() {
-        container = try? ModelContainer(for: NewsRecord.self, ReportRecord.self, ReportItemRecord.self)
+        container = try? ModelContainer(for: NewsRecord.self, ReportRecord.self, ReportItemRecord.self, HotNewsRecord.self, HotNewsTrendRecord.self)
         let directory = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         legacyFileURL = directory.appendingPathComponent("news.json")
@@ -130,6 +130,48 @@ actor LocalStore {
             context.delete(report)
         }
         try context.save()
+    }
+
+    func saveHotNews(_ items: [HotNewsItem], seenAt: Date = Date()) throws {
+        guard let container else { throw LocalStoreError.unavailable }
+        let context = ModelContext(container)
+        let existing = try context.fetch(FetchDescriptor<HotNewsRecord>())
+        let recordsByID = existing.reduce(into: [String: HotNewsRecord]()) { $0[$1.id] = $1 }
+        for item in items {
+            if let record = recordsByID[item.id] {
+                record.update(with: item, seenAt: seenAt)
+            } else {
+                context.insert(HotNewsRecord(item: item, seenAt: seenAt))
+            }
+            context.insert(HotNewsTrendRecord(item: item, capturedAt: seenAt))
+        }
+        try context.save()
+    }
+
+    func loadHotNews() -> [HotNewsItem] {
+        guard let container else { return [] }
+        let context = ModelContext(container)
+        let descriptor = FetchDescriptor<HotNewsRecord>(sortBy: [SortDescriptor(\HotNewsRecord.currentRank)])
+        return (try? context.fetch(descriptor).map(\.asItem)) ?? []
+    }
+
+    func loadHotNewsLastUpdated() -> Date? {
+        guard let container else { return nil }
+        let context = ModelContext(container)
+        let descriptor = FetchDescriptor<HotNewsRecord>(sortBy: [SortDescriptor(\HotNewsRecord.lastSeenAt, order: .reverse)])
+        let records = (try? context.fetch(descriptor)) ?? []
+        return records.first?.lastSeenAt
+    }
+
+    func loadHotNewsTrend(for topicKey: String, limit: Int = 24) -> [(date: Date, rank: Int)] {
+        guard let container else { return [] }
+        let context = ModelContext(container)
+        let descriptor = FetchDescriptor<HotNewsTrendRecord>(
+            predicate: #Predicate { $0.topicKey == topicKey },
+            sortBy: [SortDescriptor(\HotNewsTrendRecord.capturedAt, order: .reverse)]
+        )
+        let records = (try? context.fetch(descriptor)) ?? []
+        return Array(records.prefix(limit).map { (date: $0.capturedAt, rank: $0.rank) }.reversed())
     }
 
     private func migrateLegacyJSON(into context: ModelContext) {
