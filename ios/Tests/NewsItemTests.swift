@@ -26,6 +26,7 @@ final class NewsItemTests: XCTestCase {
         XCTAssertEqual(settings.refreshInterval, 60)
         XCTAssertEqual(settings.schedulePreset, "night_owl")
         XCTAssertTrue(settings.platformSources.contains { $0.id == "zhihu" })
+        XCTAssertEqual(settings.aiTranslation.batchInterval, 2)
     }
 
     func testHotNewsTrendCalculatesRankDirection() {

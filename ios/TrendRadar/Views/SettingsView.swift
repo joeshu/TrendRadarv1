@@ -16,11 +16,14 @@ struct SettingsView: View {
     @State private var editingFeed: ConfigFeed?
     @State private var showingSettingsImporter = false
     @State private var settingsMessage: String?
+    @State private var originalSettings: AppSettings?
+    @State private var originalKeychainValues: [String: String] = [:]
     private let keychain = KeychainStore()
 
     var body: some View {
         NavigationStack {
             Form {
+                configurationOverview
                 generalSection
                 scheduleSection
                 sourceSection
@@ -40,8 +43,44 @@ struct SettingsView: View {
             .background(AppTheme.background)
             .preferredColorScheme(.dark)
             .tint(AppTheme.cyan)
+            .onChange(of: settingsStore.settings) { _, newSettings in
+                newsStore.settings = newSettings
+                BackgroundRefreshService.schedule(after: newSettings.refreshInterval * 60)
+            }
+            .onChange(of: keywordText) { _, value in
+                settingsStore.settings.keywords = split(value)
+            }
+            .onChange(of: filterText) { _, value in
+                settingsStore.settings.globalFilterWords = split(value)
+            }
+            .onChange(of: interestText) { _, value in
+                settingsStore.settings.ai.interests = value
+            }
+            .onChange(of: apiBase) { _, value in
+                keychain.write(value, for: "api-base")
+            }
+            .onChange(of: apiKey) { _, value in
+                keychain.write(value, for: "api-key")
+            }
+            .onChange(of: aiModel) { _, value in
+                keychain.write(value, for: "ai-model")
+            }
+            .onChange(of: channelSecrets) { _, values in
+                persistChannelSecrets(values)
+            }
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("取消") {
+                        if let originalSettings {
+                            settingsStore.settings = originalSettings
+                            newsStore.settings = originalSettings
+                        }
+                        for (key, value) in originalKeychainValues {
+                            keychain.write(value, for: key)
+                        }
+                        dismiss()
+                    }
+                }
                 ToolbarItem(placement: .confirmationAction) { Button("保存", action: save) }
             }
             .onAppear(perform: load)
@@ -66,8 +105,29 @@ struct SettingsView: View {
         }
     }
 
+    private var configurationOverview: some View {
+        Section {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("本地配置中心")
+                    .font(AppTheme.headlineFont)
+                    .foregroundStyle(.white)
+                Text("配置按运行、数据源、筛选、AI、展示、通知、存储和高级参数分级管理。带有“高级”标记的参数主要影响调度与请求行为。")
+                    .font(AppTheme.captionFont)
+                    .foregroundStyle(AppTheme.textSecondary)
+                HStack(spacing: 8) {
+                    ConfigStatusPill(title: settingsStore.settings.platformsEnabled ? "热榜已启用" : "热榜已关闭", tint: settingsStore.settings.platformsEnabled ? AppTheme.green : AppTheme.textTertiary)
+                    ConfigStatusPill(title: settingsStore.settings.rssEnabled ? "RSS 已启用" : "RSS 已关闭", tint: settingsStore.settings.rssEnabled ? AppTheme.cyan : AppTheme.textTertiary)
+                    ConfigStatusPill(title: settingsStore.settings.ai.enabled ? "AI 已启用" : "AI 已关闭", tint: settingsStore.settings.ai.enabled ? AppTheme.pink : AppTheme.textTertiary)
+                }
+            }
+            .padding(.vertical, 4)
+        } header: {
+            Text("配置总览")
+        }
+    }
+
     private var generalSection: some View {
-        Section("基础设置") {
+        Section("一级 · 运行与调度") {
             Picker("时区", selection: $settingsStore.settings.timezone) {
                 Text("北京时间").tag("Asia/Shanghai")
                 Text("纽约时间").tag("America/New_York")
@@ -87,7 +147,7 @@ struct SettingsView: View {
     }
 
     private var scheduleSection: some View {
-        Section("调度预设") {
+        Section("二级 · 时间线预设") {
             Toggle("启用调度系统", isOn: $settingsStore.settings.scheduleEnabled)
             Picker("运行模式", selection: $settingsStore.settings.schedulePreset) {
                 Text("全天监控").tag("always_on")
@@ -98,11 +158,13 @@ struct SettingsView: View {
             }
             Text(scheduleDescription)
                 .font(.caption).foregroundStyle(.secondary)
+            Text("对应远程 config.yaml 的 app、schedule 和 timeline 预设。iPhone 后台执行仍由系统决定实际唤醒时间。")
+                .font(.caption).foregroundStyle(.secondary)
         }
     }
 
     private var sourceSection: some View {
-        Section("数据源") {
+        Section("一级 · 数据源") {
             Toggle("启用热榜平台", isOn: $settingsStore.settings.platformsEnabled)
             ForEach($settingsStore.settings.platformSources) { $source in
                 VStack(alignment: .leading, spacing: 6) {
@@ -139,7 +201,7 @@ struct SettingsView: View {
     }
 
     private var filterSection: some View {
-        Section("关键词与筛选") {
+        Section("一级 · 筛选与报告") {
             TextField("关键词：普通词、+必须词、!过滤词", text: $keywordText, axis: .vertical)
             TextField("全局过滤词，使用逗号分隔", text: $filterText, axis: .vertical)
             Text("示例：AI, +发布, !广告。必须词全部命中，普通词命中任意一个，过滤词命中后排除。")
@@ -165,7 +227,7 @@ struct SettingsView: View {
     }
 
     private var aiSection: some View {
-        Section("AI 分析") {
+        Section("一级 · AI 模型与筛选") {
             Toggle("启用 AI 分析", isOn: $settingsStore.settings.ai.enabled)
             TextField("API Base URL", text: $apiBase).textInputAutocapitalization(.never).autocorrectionDisabled()
             SecureField("API Key", text: $apiKey)
@@ -194,7 +256,7 @@ struct SettingsView: View {
     }
 
     private var displaySection: some View {
-        Section("推送内容") {
+        Section("一级 · 展示与区域") {
             Toggle("热榜区域", isOn: $settingsStore.settings.display.showHotlist)
             Toggle("新增热点区域", isOn: $settingsStore.settings.display.showNewItems)
             Toggle("RSS 区域", isOn: $settingsStore.settings.display.showRSS)
@@ -217,7 +279,7 @@ struct SettingsView: View {
     }
 
     private var aiAnalysisSection: some View {
-        Section("AI 分析功能") {
+        Section("二级 · AI 结构化分析") {
             Toggle("启用 AI 分析", isOn: $settingsStore.settings.aiAnalysis.enabled)
             TextField("分析语言", text: $settingsStore.settings.aiAnalysis.language)
             Picker("分析模式", selection: $settingsStore.settings.aiAnalysis.mode) {
@@ -236,7 +298,7 @@ struct SettingsView: View {
     }
 
     private var aiTranslationSection: some View {
-        Section("AI 翻译功能") {
+        Section("二级 · AI 翻译") {
             Toggle("启用标题翻译", isOn: $settingsStore.settings.aiTranslation.enabled)
             TextField("目标语言", text: $settingsStore.settings.aiTranslation.language)
             TextField("提示词文件", text: $settingsStore.settings.aiTranslation.promptFile)
@@ -250,7 +312,7 @@ struct SettingsView: View {
     }
 
     private var notificationSection: some View {
-        Section("通知与本地提醒") {
+        Section("一级 · 通知与本地提醒") {
             Toggle("启用通知总开关", isOn: $settingsStore.settings.notification.enabled)
             Toggle("允许本地提醒", isOn: $settingsStore.settings.notification.localAlerts)
             Toggle("提醒声音", isOn: $settingsStore.settings.notification.soundEnabled)
@@ -280,7 +342,7 @@ struct SettingsView: View {
     }
 
     private var storageSection: some View {
-        Section("存储") {
+        Section("一级 · 存储与同步") {
             Picker("存储后端", selection: $settingsStore.settings.storage.backend) {
                 Text("自动选择").tag("auto")
                 Text("本地").tag("local")
@@ -300,11 +362,13 @@ struct SettingsView: View {
             TextField("S3 Region", text: $settingsStore.settings.storage.remoteRegion)
             Toggle("启动时拉取远程数据", isOn: $settingsStore.settings.storage.pullEnabled)
             Stepper("拉取最近：\(settingsStore.settings.storage.pullDays) 天", value: $settingsStore.settings.storage.pullDays, in: 1...365)
+            Text("S3/R2、账号同步和服务端推送属于可选远程能力。纯本地模式保持独立运行。")
+                .font(.caption).foregroundStyle(.secondary)
         }
     }
 
     private var advancedSection: some View {
-        Section("高级设置") {
+        Section("一级 · 高级参数") {
             Toggle("调试模式", isOn: $settingsStore.settings.advanced.debug)
             TextField("版本检查地址", text: $settingsStore.settings.advanced.versionCheckURL)
             TextField("MCP 版本检查地址", text: $settingsStore.settings.advanced.mcpVersionCheckURL)
@@ -334,7 +398,7 @@ struct SettingsView: View {
     }
 
     private var backupSection: some View {
-        Section("本地配置备份") {
+        Section("一级 · 配置备份") {
             ShareLink(item: settingsJSON) {
                 Label("分享配置 JSON", systemImage: "square.and.arrow.up")
             }
@@ -360,6 +424,7 @@ struct SettingsView: View {
     }
 
     private func load() {
+        originalSettings = settingsStore.settings
         keywordText = settingsStore.settings.keywords.joined(separator: ", ")
         filterText = settingsStore.settings.globalFilterWords.joined(separator: ", ")
         interestText = settingsStore.settings.ai.interests
@@ -380,6 +445,23 @@ struct SettingsView: View {
             "s3-access": keychain.read("storage-s3-access"),
             "s3-secret": keychain.read("storage-s3-secret")
         ]
+        originalKeychainValues = [
+            "api-base": apiBase,
+            "api-key": apiKey,
+            "ai-model": aiModel,
+            "notify-feishu": channelSecrets["feishu"] ?? "",
+            "notify-dingtalk": channelSecrets["dingtalk"] ?? "",
+            "notify-wework": channelSecrets["wework"] ?? "",
+            "notify-telegram-token": channelSecrets["telegram-token"] ?? "",
+            "notify-telegram-chat": channelSecrets["telegram-chat"] ?? "",
+            "notify-email-password": channelSecrets["email-password"] ?? "",
+            "notify-ntfy-token": channelSecrets["ntfy-token"] ?? "",
+            "notify-bark": channelSecrets["bark"] ?? "",
+            "notify-slack": channelSecrets["slack"] ?? "",
+            "notify-generic": channelSecrets["generic"] ?? "",
+            "storage-s3-access": channelSecrets["s3-access"] ?? "",
+            "storage-s3-secret": channelSecrets["s3-secret"] ?? ""
+        ]
     }
 
     private func save() {
@@ -398,6 +480,8 @@ struct SettingsView: View {
         ]
         for (field, key) in secretKeys { keychain.write(channelSecrets[field] ?? "", for: key) }
         newsStore.settings = settingsStore.settings
+        originalSettings = settingsStore.settings
+        BackgroundRefreshService.schedule(after: settingsStore.settings.refreshInterval * 60)
         dismiss()
     }
 
@@ -433,8 +517,33 @@ struct SettingsView: View {
         )
     }
 
+    private func persistChannelSecrets(_ values: [String: String]) {
+        let secretKeys = [
+            "feishu": "notify-feishu", "dingtalk": "notify-dingtalk", "wework": "notify-wework",
+            "telegram-token": "notify-telegram-token", "telegram-chat": "notify-telegram-chat", "email-password": "notify-email-password",
+            "ntfy-token": "notify-ntfy-token", "bark": "notify-bark", "slack": "notify-slack",
+            "generic": "notify-generic", "s3-access": "storage-s3-access", "s3-secret": "storage-s3-secret"
+        ]
+        for (field, key) in secretKeys { keychain.write(values[field] ?? "", for: key) }
+    }
+
     private func split(_ value: String) -> [String] {
         value.split(separator: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+    }
+}
+
+private struct ConfigStatusPill: View {
+    let title: String
+    let tint: Color
+
+    var body: some View {
+        Text(title)
+            .font(AppTheme.captionFont)
+            .foregroundStyle(tint)
+            .padding(.horizontal, 9)
+            .padding(.vertical, 5)
+            .background(tint.opacity(0.12))
+            .clipShape(Capsule())
     }
 }
 
