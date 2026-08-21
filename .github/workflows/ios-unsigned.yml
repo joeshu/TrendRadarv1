@@ -61,6 +61,16 @@ jobs:
 
       - name: Upload build log on failure
         if: failure()
+        run: |
+          {
+            echo "## Xcode build errors"
+            echo '```text'
+            grep -E "error:|fatal error:" build/xcodebuild.log || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload build log artifact on failure
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: TrendRadar-iOS-build-log
