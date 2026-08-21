@@ -54,6 +54,54 @@ final class NewsItemTests: XCTestCase {
         XCTAssertEqual(settings.advanced.rss.timeout, 15)
     }
 
+    func testReportSnapshotPreservesNewsFields() throws {
+        let item = NewsItem(
+            id: "report-news",
+            title: "Snapshot title",
+            source: "Test source",
+            url: URL(string: "https://example.com/story"),
+            publishedAt: Date(timeIntervalSince1970: 100),
+            summary: "Snapshot summary",
+            isRead: true,
+            isFavorite: true
+        )
+        let snapshot = ReportItemSnapshot(
+            orderIndex: 0,
+            sectionID: "rss",
+            sectionTitle: "RSS",
+            item: item
+        )
+
+        let restored = try JSONDecoder().decode(ReportItemSnapshot.self, from: JSONEncoder().encode(snapshot))
+
+        XCTAssertEqual(restored, snapshot)
+        XCTAssertEqual(restored.title, "Snapshot title")
+        XCTAssertTrue(restored.isFavorite)
+    }
+
+    func testReportDetailProducesListSummary() {
+        let settings = AppSettings()
+        let generatedAt = Date(timeIntervalSince1970: 100)
+        let detail = ReportDetail(
+            id: UUID(),
+            title: "今日报告",
+            type: .daily,
+            trigger: .scheduled,
+            generatedAt: generatedAt,
+            status: .completed,
+            statistics: ReportStatistics(newsCount: 12, sourceCount: 3),
+            settingsSnapshot: ReportSettingsSnapshot(settings: settings, reportType: .daily, generatedAt: generatedAt),
+            aiAnalysis: ReportAIAnalysis(enabled: true, model: "test-model", language: "Chinese", content: "分析结论", failureMessage: nil),
+            sections: [],
+            isFavorite: true,
+            failureMessage: nil
+        )
+
+        XCTAssertEqual(detail.summary.newsCount, 12)
+        XCTAssertTrue(detail.summary.hasAIAnalysis)
+        XCTAssertTrue(detail.summary.isFavorite)
+    }
+
     func testRSSParserReadsRSSItemAndHTMLEntities() throws {
         let data = Data("""
         <?xml version="1.0"?>
