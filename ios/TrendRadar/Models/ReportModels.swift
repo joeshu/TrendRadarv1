@@ -1,6 +1,6 @@
 import Foundation
 
-enum ReportType: String, Codable, CaseIterable, Sendable {
+enum ReportType: String, Codable, CaseIterable, Hashable, Sendable {
     case current
     case daily
     case incremental
@@ -16,14 +16,14 @@ enum ReportType: String, Codable, CaseIterable, Sendable {
     }
 }
 
-enum ReportTrigger: String, Codable, Sendable {
+enum ReportTrigger: String, Codable, Hashable, Sendable {
     case manual
     case foregroundRefresh
     case backgroundRefresh
     case scheduled
 }
 
-enum ReportStatus: String, Codable, Sendable {
+enum ReportStatus: String, Codable, Hashable, Sendable {
     case generating
     case completed
     case failed

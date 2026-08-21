@@ -102,6 +102,43 @@ final class NewsItemTests: XCTestCase {
         XCTAssertTrue(detail.summary.isFavorite)
     }
 
+    func testReportGenerationGroupsLocalNewsAndCalculatesStatistics() {
+        var settings = AppSettings()
+        settings.keywords = ["Swift"]
+        settings.report.displayMode = "keyword"
+        let items = [
+            NewsItem(id: "swift", title: "Swift on iPhone", source: "Feed A", isFavorite: true),
+            NewsItem(id: "other", title: "Other story", source: "Feed B")
+        ]
+        let request = ReportGenerationRequest(type: .manual, trigger: .manual, generatedAt: Date(timeIntervalSince1970: 100), settings: settings)
+        let report = ReportGenerationService().generate(request: request, items: items)
+
+        XCTAssertEqual(report.statistics.newsCount, 1)
+        XCTAssertEqual(report.statistics.sourceCount, 1)
+        XCTAssertEqual(report.statistics.favoriteCount, 1)
+        XCTAssertEqual(report.sections.count, 1)
+        XCTAssertEqual(report.sections[0].items[0].title, "Swift on iPhone")
+    }
+
+    func testReportFormatterIncludesHeaderStatisticsAndNews() {
+        let settings = AppSettings()
+        let item = NewsItem(id: "story", title: "Local story", source: "Feed")
+        let snapshot = ReportItemSnapshot(orderIndex: 0, sectionID: "all", sectionTitle: "全部情报", item: item)
+        let report = ReportDetail(
+            id: UUID(), title: "测试报告", type: .manual, trigger: .manual,
+            generatedAt: Date(timeIntervalSince1970: 100),
+            status: .completed, statistics: ReportStatistics(newsCount: 1, sourceCount: 1),
+            settingsSnapshot: ReportSettingsSnapshot(settings: settings, reportType: .manual, generatedAt: Date(timeIntervalSince1970: 100)),
+            aiAnalysis: nil, sections: [ReportSection(id: "all", title: "全部情报", items: [snapshot])],
+            isFavorite: false, failureMessage: nil
+        )
+
+        let text = ReportFormatter().render(report, format: .plainText)
+        XCTAssertTrue(text.contains("测试报告"))
+        XCTAssertTrue(text.contains("情报 1 条"))
+        XCTAssertTrue(text.contains("Local story"))
+    }
+
     func testRSSParserReadsRSSItemAndHTMLEntities() throws {
         let data = Data("""
         <?xml version="1.0"?>

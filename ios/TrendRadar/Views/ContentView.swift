@@ -28,6 +28,7 @@ struct RadarView: View {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 18) {
                         overviewHeader
+                        refreshStatus
                         sourcePicker
 
                         if filteredItems.isEmpty {
@@ -142,6 +143,30 @@ struct RadarView: View {
             }
             .padding(.horizontal, 20)
         }
+    }
+
+    private var refreshStatus: some View {
+        HStack(spacing: 8) {
+            if store.isRefreshing {
+                ProgressView()
+                    .tint(AppTheme.cyan)
+                Text("正在同步本地情报源")
+            } else {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundStyle(AppTheme.green)
+                if let lastUpdated = store.lastUpdated {
+                    Text("最近更新于 \(lastUpdated, style: .relative)")
+                } else {
+                    Text("等待首次刷新")
+                }
+            }
+            Spacer()
+            Text("下拉刷新")
+                .foregroundStyle(AppTheme.textTertiary)
+        }
+        .font(AppTheme.captionFont)
+        .foregroundStyle(AppTheme.textSecondary)
+        .padding(.horizontal, 20)
     }
 }
 

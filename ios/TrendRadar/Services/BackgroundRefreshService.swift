@@ -58,6 +58,12 @@ enum BackgroundRefreshService {
             merged.append(contentsOf: oldItems.filter { old in !freshItems.contains(where: { $0.id == old.id }) })
             await localStore.save(merged)
             try Task.checkCancellation()
+            if settings.scheduleEnabled, let reportType = ReportType(rawValue: settings.report.mode) {
+                let request = ReportGenerationRequest(type: reportType, trigger: .backgroundRefresh, generatedAt: Date(), settings: settings)
+                let report = ReportGenerationService().generate(request: request, items: merged)
+                try Task.checkCancellation()
+                try? await localStore.save(report)
+            }
             let newCount = freshItems.filter { !oldIDs.contains($0.id) }.count
             if newCount > 0 && settings.notification.enabled && settings.notification.localAlerts {
                 await notify(newCount: newCount, soundEnabled: settings.notification.soundEnabled)

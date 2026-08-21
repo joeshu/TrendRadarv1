@@ -23,8 +23,13 @@ struct FeedsView: View {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 16) {
                         pageHeader
+                        feedSummary
                         feedPicker
-                        if feedItems.isEmpty {
+                        if enabledFeeds.isEmpty {
+                            FeatureEmptyState(icon: "antenna.radiowaves.left.and.right.slash", title: "还没有启用订阅源", message: "在设置中启用 RSS 源，再回来刷新你的信息流。")
+                                .frame(maxWidth: .infinity)
+                                .padding(.top, 32)
+                        } else if feedItems.isEmpty {
                             FeatureEmptyState(icon: "newspaper", title: "暂无订阅内容", message: "启用 RSS 源后，下拉刷新获取订阅文章。")
                                 .frame(maxWidth: .infinity)
                                 .padding(.top, 32)
@@ -85,6 +90,17 @@ struct FeedsView: View {
                 }
             }
         }
+    }
+
+    private var feedSummary: some View {
+        HStack(spacing: 12) {
+            FeedSummaryMetric(value: "\(enabledFeeds.count)", label: "启用源", tint: AppTheme.cyan)
+            FeedSummaryMetric(value: "\(feedItems.count)", label: selectedFeedID == nil ? "全部文章" : "当前源文章", tint: AppTheme.yellow)
+            FeedSummaryMetric(value: "\(feedItems.filter { !$0.isRead }.count)", label: "待阅读", tint: AppTheme.pink)
+        }
+        .padding(14)
+        .background(AppTheme.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 }
 
@@ -173,6 +189,11 @@ struct InsightView: View {
                 Text(settingsStore.settings.ai.enabled ? "打开新闻详情即可按需生成摘要。" : "在设置中启用 AI，并配置 API Base URL 与 Key。")
                     .font(AppTheme.bodyFont)
                     .foregroundStyle(AppTheme.textSecondary)
+                if settingsStore.settings.ai.enabled {
+                    Label("当前页面展示本地统计，结构化日报将在数据能力接入后启用。", systemImage: "info.circle")
+                        .font(AppTheme.captionFont)
+                        .foregroundStyle(AppTheme.textTertiary)
+                }
             }
         }
     }
@@ -180,7 +201,11 @@ struct InsightView: View {
 
 struct ArchiveView: View {
     @EnvironmentObject private var store: NewsStore
+    @EnvironmentObject private var settingsStore: SettingsStore
+    @EnvironmentObject private var reportStore: ReportStore
     @State private var showingFavorites = false
+    @State private var showingReportGenerator = false
+    @State private var showingAllReports = false
 
     private var items: [NewsItem] {
         showingFavorites ? store.items.filter(\.isFavorite) : store.items
@@ -194,6 +219,7 @@ struct ArchiveView: View {
                     LazyVStack(alignment: .leading, spacing: 16) {
                         archiveHeader
                         archiveSwitch
+                        reportSection
                         if items.isEmpty {
                             FeatureEmptyState(icon: showingFavorites ? "star" : "archivebox", title: showingFavorites ? "还没有收藏" : "归档为空", message: "在情报流中收藏重要内容，它们会出现在这里。")
                                 .frame(maxWidth: .infinity)
@@ -216,6 +242,22 @@ struct ArchiveView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(AppTheme.background, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button { showingReportGenerator = true } label: {
+                        Image(systemName: "plus.rectangle.on.folder")
+                    }
+                    .accessibilityLabel("生成报告")
+                }
+            }
+            .sheet(isPresented: $showingReportGenerator) {
+                ReportGeneratorSheet { type in
+                    Task {
+                        await reportStore.generate(type: type, settings: settingsStore.settings, items: store.items)
+                    }
+                }
+            }
+            .task { await reportStore.load() }
         }
     }
 
@@ -239,6 +281,51 @@ struct ArchiveView: View {
             FeedFilterChip(title: "全部情报", isSelected: !showingFavorites) { showingFavorites = false }
             FeedFilterChip(title: "我的收藏", isSelected: showingFavorites) { showingFavorites = true }
         }
+    }
+
+    private var reportSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Label("历史报告", systemImage: "doc.text.magnifyingglass")
+                    .font(AppTheme.headlineFont)
+                    .foregroundStyle(AppTheme.pink)
+                Spacer()
+                if reportStore.isGenerating {
+                    ProgressView().tint(AppTheme.cyan)
+                } else {
+                    Text("\(reportStore.reports.count) 份")
+                        .font(AppTheme.captionFont)
+                        .foregroundStyle(AppTheme.textTertiary)
+                }
+            }
+            if reportStore.reports.isEmpty {
+                Text("报告会保存生成时的本地新闻快照，后续刷新不会改变历史内容。")
+                    .font(AppTheme.captionFont)
+                    .foregroundStyle(AppTheme.textSecondary)
+                Button("生成第一份报告") { showingReportGenerator = true }
+                    .font(AppTheme.headlineFont)
+                    .foregroundStyle(AppTheme.cyan)
+            } else {
+                ForEach((showingAllReports ? reportStore.reports : Array(reportStore.reports.prefix(3)))) { report in
+                    NavigationLink {
+                        ReportDetailView(reportID: report.id)
+                    } label: {
+                        ReportSummaryCard(report: report)
+                    }
+                    .buttonStyle(.plain)
+                }
+                if reportStore.reports.count > 3 {
+                    Button(showingAllReports ? "收起报告" : "查看全部报告") {
+                        withAnimation(AppAnimation.standard) { showingAllReports.toggle() }
+                    }
+                    .font(AppTheme.captionFont)
+                    .foregroundStyle(AppTheme.cyan)
+                }
+            }
+        }
+        .padding(18)
+        .background(AppTheme.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
 }
 
@@ -298,7 +385,7 @@ private struct FeedFilterChip: View {
     }
 }
 
-private struct InsightPanel<Content: View>: View {
+struct InsightPanel<Content: View>: View {
     let title: String
     let icon: String
     let tint: Color
@@ -325,7 +412,7 @@ private struct InsightPanel<Content: View>: View {
     }
 }
 
-private struct InsightMetric: View {
+struct InsightMetric: View {
     let value: String
     let label: String
     let tint: Color
@@ -334,6 +421,25 @@ private struct InsightMetric: View {
         VStack(alignment: .leading, spacing: 4) {
             Text(value).font(AppTheme.rankFont).foregroundStyle(tint)
             Text(label).font(AppTheme.captionFont).foregroundStyle(AppTheme.textTertiary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+private struct FeedSummaryMetric: View {
+    let value: String
+    let label: String
+    let tint: Color
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(value)
+                .font(AppTheme.rankFont)
+                .foregroundStyle(tint)
+            Text(label)
+                .font(AppTheme.captionFont)
+                .foregroundStyle(AppTheme.textTertiary)
+                .lineLimit(1)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -359,7 +465,7 @@ private struct FlowLayout: View {
     }
 }
 
-private struct FeatureEmptyState: View {
+struct FeatureEmptyState: View {
     let icon: String
     let title: String
     let message: String

@@ -6,6 +6,7 @@ import UserNotifications
 final class NewsStore: ObservableObject {
     @Published private(set) var items: [NewsItem] = []
     @Published private(set) var isRefreshing = false
+    @Published private(set) var lastUpdated: Date?
     @Published var errorMessage: String?
 
     private let localStore = LocalStore()
@@ -19,6 +20,7 @@ final class NewsStore: ObservableObject {
 
     func load() async {
         items = await localStore.load()
+        lastUpdated = items.compactMap(\.publishedAt).max()
     }
 
     func refresh() async {
@@ -47,6 +49,10 @@ final class NewsStore: ObservableObject {
             let refreshedIDs = Set(refreshedItems.map(\.id))
             items = refreshedItems + items.filter { !refreshedIDs.contains($0.id) }
             await localStore.save(items)
+            lastUpdated = Date()
+            if settings.scheduleEnabled {
+                await generateReport(trigger: .foregroundRefresh)
+            }
         } catch {
             errorMessage = "刷新失败：\(error.localizedDescription)"
         }
@@ -81,6 +87,13 @@ final class NewsStore: ObservableObject {
 
     func requestNotifications() async {
         _ = try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge])
+    }
+
+    private func generateReport(trigger: ReportTrigger) async {
+        guard let type = ReportType(rawValue: settings.report.mode) else { return }
+        let request = ReportGenerationRequest(type: type, trigger: trigger, generatedAt: Date(), settings: settings)
+        let report = ReportGenerationService().generate(request: request, items: items)
+        try? await localStore.save(report)
     }
 
     private func matchesConfiguredFilters(_ item: NewsItem) -> Bool {

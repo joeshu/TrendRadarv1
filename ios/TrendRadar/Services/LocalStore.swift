@@ -6,7 +6,7 @@ actor LocalStore {
     private let legacyFileURL: URL
 
     init() {
-        container = try? ModelContainer(for: NewsRecord.self)
+        container = try? ModelContainer(for: NewsRecord.self, ReportRecord.self, ReportItemRecord.self)
         let directory = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         legacyFileURL = directory.appendingPathComponent("news.json")
@@ -42,6 +42,96 @@ actor LocalStore {
         try? context.save()
     }
 
+    func loadReportSummaries() -> [ReportSummary] {
+        guard let container else { return [] }
+        let context = ModelContext(container)
+        let descriptor = FetchDescriptor<ReportRecord>(sortBy: [SortDescriptor(\ReportRecord.generatedAt, order: .reverse)])
+        return (try? context.fetch(descriptor).compactMap { $0.asSummary() }) ?? []
+    }
+
+    func loadReport(id: UUID) -> ReportDetail? {
+        guard let container else { return nil }
+        let context = ModelContext(container)
+        let reportID = id.uuidString
+        let reportDescriptor = FetchDescriptor<ReportRecord>(
+            predicate: #Predicate { $0.id == reportID }
+        )
+        guard let record = try? context.fetch(reportDescriptor).first else { return nil }
+
+        let itemDescriptor = FetchDescriptor<ReportItemRecord>(
+            predicate: #Predicate { $0.reportID == reportID },
+            sortBy: [SortDescriptor(\ReportItemRecord.orderIndex)]
+        )
+        let items = (try? context.fetch(itemDescriptor)) ?? []
+        return record.asReportDetail(items: items)
+    }
+
+    func save(_ report: ReportDetail) throws {
+        guard let container else { throw LocalStoreError.unavailable }
+        let context = ModelContext(container)
+        let reportID = report.id.uuidString
+        let descriptor = FetchDescriptor<ReportRecord>(predicate: #Predicate { $0.id == reportID })
+
+        if let record = try context.fetch(descriptor).first {
+            try record.update(from: report)
+            let itemDescriptor = FetchDescriptor<ReportItemRecord>(predicate: #Predicate { $0.reportID == reportID })
+            for item in try context.fetch(itemDescriptor) {
+                context.delete(item)
+            }
+        } else {
+            context.insert(try ReportRecord(from: report))
+        }
+
+        for section in report.sections {
+            for snapshot in section.items {
+                context.insert(ReportItemRecord(reportID: reportID, snapshot: snapshot))
+            }
+        }
+        try context.save()
+    }
+
+    func toggleReportFavorite(id: UUID) throws {
+        guard let container else { throw LocalStoreError.unavailable }
+        let context = ModelContext(container)
+        let reportID = id.uuidString
+        let descriptor = FetchDescriptor<ReportRecord>(predicate: #Predicate { $0.id == reportID })
+        guard let record = try context.fetch(descriptor).first else { return }
+        record.isFavorite.toggle()
+        try context.save()
+    }
+
+    func deleteReport(id: UUID) throws {
+        guard let container else { throw LocalStoreError.unavailable }
+        let context = ModelContext(container)
+        let reportID = id.uuidString
+        let reportDescriptor = FetchDescriptor<ReportRecord>(predicate: #Predicate { $0.id == reportID })
+        let itemDescriptor = FetchDescriptor<ReportItemRecord>(predicate: #Predicate { $0.reportID == reportID })
+        for item in try context.fetch(itemDescriptor) {
+            context.delete(item)
+        }
+        for report in try context.fetch(reportDescriptor) {
+            context.delete(report)
+        }
+        try context.save()
+    }
+
+    func applyReportRetention(days: Int, now: Date = Date()) throws {
+        guard days > 0, let container else { return }
+        let context = ModelContext(container)
+        let cutoff = now.addingTimeInterval(-Double(days) * 86_400)
+        let descriptor = FetchDescriptor<ReportRecord>(predicate: #Predicate { !$0.isFavorite && $0.generatedAt < cutoff })
+        let reports = try context.fetch(descriptor)
+        let reportIDs = Set(reports.map(\.id))
+        let itemDescriptor = FetchDescriptor<ReportItemRecord>()
+        for item in try context.fetch(itemDescriptor) where reportIDs.contains(item.reportID) {
+            context.delete(item)
+        }
+        for report in reports {
+            context.delete(report)
+        }
+        try context.save()
+    }
+
     private func migrateLegacyJSON(into context: ModelContext) {
         let legacyItems = loadLegacyJSON()
         for item in legacyItems { context.insert(NewsRecord(from: item)) }
@@ -68,6 +158,10 @@ actor LocalStore {
         guard let data = try? JSONEncoder.trendRadar.encode(items) else { return }
         try? data.write(to: legacyFileURL, options: .atomic)
     }
+}
+
+enum LocalStoreError: Error {
+    case unavailable
 }
 
 private extension JSONDecoder {

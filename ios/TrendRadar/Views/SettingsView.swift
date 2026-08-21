@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct SettingsView: View {
     @EnvironmentObject private var settingsStore: SettingsStore
@@ -13,6 +14,8 @@ struct SettingsView: View {
     @State private var channelSecrets: [String: String] = [:]
     @State private var showingFeedEditor = false
     @State private var editingFeed: ConfigFeed?
+    @State private var showingSettingsImporter = false
+    @State private var settingsMessage: String?
     private let keychain = KeychainStore()
 
     var body: some View {
@@ -29,6 +32,7 @@ struct SettingsView: View {
                 notificationSection
                 storageSection
                 advancedSection
+                backupSection
             }
             .navigationTitle("配置中心")
             .navigationBarTitleDisplayMode(.inline)
@@ -50,6 +54,14 @@ struct SettingsView: View {
                     }
                     editingFeed = nil
                 }
+            }
+            .fileImporter(isPresented: $showingSettingsImporter, allowedContentTypes: [.json]) { result in
+                importSettings(result)
+            }
+            .alert("配置备份", isPresented: Binding(get: { settingsMessage != nil }, set: { if !$0 { settingsMessage = nil } })) {
+                Button("确定", role: .cancel) { settingsMessage = nil }
+            } message: {
+                Text(settingsMessage ?? "")
             }
         }
     }
@@ -318,6 +330,22 @@ struct SettingsView: View {
         }
     }
 
+    private var backupSection: some View {
+        Section("本地配置备份") {
+            ShareLink(item: settingsJSON) {
+                Label("分享配置 JSON", systemImage: "square.and.arrow.up")
+            }
+            Button {
+                showingSettingsImporter = true
+            } label: {
+                Label("导入配置 JSON", systemImage: "square.and.arrow.down")
+            }
+            Text("配置仅保存在本机。API Key 和通知密钥不会写入 JSON，仍由 Keychain 单独管理。")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
+
     private var scheduleDescription: String {
         switch settingsStore.settings.schedulePreset {
         case "always_on": return "全天采集，有新增内容时及时提醒。"
@@ -368,6 +396,31 @@ struct SettingsView: View {
         for (field, key) in secretKeys { keychain.write(channelSecrets[field] ?? "", for: key) }
         newsStore.settings = settingsStore.settings
         dismiss()
+    }
+
+    private var settingsJSON: String {
+        guard let data = try? JSONEncoder().encode(settingsStore.settings),
+              let value = String(data: data, encoding: .utf8) else {
+            return "{}"
+        }
+        return value
+    }
+
+    private func importSettings(_ result: Result<URL, Error>) {
+        do {
+            let url = try result.get()
+            let accessGranted = url.startAccessingSecurityScopedResource()
+            defer {
+                if accessGranted { url.stopAccessingSecurityScopedResource() }
+            }
+            let data = try Data(contentsOf: url)
+            settingsStore.settings = try JSONDecoder().decode(AppSettings.self, from: data)
+            load()
+            newsStore.settings = settingsStore.settings
+            settingsMessage = "配置已导入，敏感凭据继续使用当前 Keychain 内容。"
+        } catch {
+            settingsMessage = "配置导入失败：\(error.localizedDescription)"
+        }
     }
 
     private func channelBinding(_ key: String) -> Binding<String> {
