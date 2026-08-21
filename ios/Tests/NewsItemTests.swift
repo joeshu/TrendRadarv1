@@ -73,6 +73,32 @@ final class NewsItemTests: XCTestCase {
         XCTAssertEqual(NewsNowService.topicKey(for: "AI Swift 5.9"), "aiswift59")
     }
 
+    func testNewsNowDomainValidationRequiresHTTPSAndExpectedDomain() {
+        XCTAssertTrue(NewsNowService.isAllowed(url: URL(string: "https://www.zhihu.com/question/1"), expectedDomain: "zhihu.com"))
+        XCTAssertFalse(NewsNowService.isAllowed(url: URL(string: "http://www.zhihu.com/question/1"), expectedDomain: "zhihu.com"))
+        XCTAssertFalse(NewsNowService.isAllowed(url: URL(string: "https://example.com/story"), expectedDomain: "zhihu.com"))
+        XCTAssertTrue(NewsNowService.isAllowed(url: URL(string: "https://example.com/story"), expectedDomain: nil))
+    }
+
+    func testAISettingsPreserveRetryAndFallbackConfiguration() throws {
+        var settings = AppSettings()
+        settings.ai.retries = 3
+        settings.ai.fallbackModels = ["backup-model"]
+        let restored = try JSONDecoder().decode(AppSettings.self, from: JSONEncoder().encode(settings))
+        XCTAssertEqual(restored.ai.retries, 3)
+        XCTAssertEqual(restored.ai.fallbackModels, ["backup-model"])
+    }
+
+    func testTimelineHandlesNormalAndCrossDayPeriods() {
+        let calendar = Calendar(identifier: .gregorian)
+        let day = calendar.date(from: DateComponents(year: 2026, month: 8, day: 21, hour: 20, minute: 30))!
+        let night = calendar.date(from: DateComponents(year: 2026, month: 8, day: 22, hour: 0, minute: 30))!
+        let preset = TimelineCatalog.preset(for: "night_owl")
+        XCTAssertEqual(preset.action(at: day, calendar: calendar).reportMode, .current)
+        XCTAssertEqual(preset.action(at: night, calendar: calendar).reportMode, .daily)
+        XCTAssertTrue(preset.action(at: night, calendar: calendar).push)
+    }
+
     func testSettingsRoundTripPreservesRichConfiguration() throws {
         var settings = AppSettings()
         settings.keywords = ["Swift", "AI"]

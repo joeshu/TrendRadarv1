@@ -72,7 +72,7 @@ final class HotNewsStore: ObservableObject {
                 for source in enabledSources {
                     group.addTask {
                         do {
-                            return try await service.fetch(sourceID: source.id, sourceName: source.name, baseURL: baseURL, latest: latest)
+                            return try await service.fetch(sourceID: source.id, sourceName: source.name, expectedDomain: source.expectedDomain, baseURL: baseURL, latest: latest)
                         } catch {
                             return []
                         }

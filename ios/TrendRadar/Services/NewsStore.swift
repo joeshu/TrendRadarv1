@@ -50,8 +50,9 @@ final class NewsStore: ObservableObject {
             items = refreshedItems + items.filter { !refreshedIDs.contains($0.id) }
             await localStore.save(items)
             lastUpdated = Date()
-            if settings.scheduleEnabled {
-                await generateReport(trigger: .foregroundRefresh)
+            let timelineAction = TimelineCatalog.preset(for: settings.schedulePreset).action(at: Date())
+            if settings.scheduleEnabled, timelineAction.push {
+                await generateReport(trigger: .foregroundRefresh, type: timelineAction.reportMode)
             }
         } catch {
             errorMessage = "刷新失败：\(error.localizedDescription)"
@@ -89,8 +90,8 @@ final class NewsStore: ObservableObject {
         _ = try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge])
     }
 
-    private func generateReport(trigger: ReportTrigger) async {
-        guard let type = ReportType(rawValue: settings.report.mode) else { return }
+    private func generateReport(trigger: ReportTrigger, type: ReportType? = nil) async {
+        guard let type = type ?? ReportType(rawValue: settings.report.mode) else { return }
         let request = ReportGenerationRequest(batchID: "\(trigger.rawValue):\(items.map(\.id).sorted().joined(separator: ","))", type: type, trigger: trigger, generatedAt: Date(), settings: settings)
         var report = ReportGenerationService().generate(request: request, items: items)
         if settings.aiAnalysis.enabled {

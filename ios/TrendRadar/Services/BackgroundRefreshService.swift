@@ -24,6 +24,12 @@ enum BackgroundRefreshService {
     private static func refresh(task: BGAppRefreshTask) async {
         do {
             let settings = loadSettings()
+            let timelineAction = TimelineCatalog.preset(for: settings.schedulePreset).action(at: Date())
+            guard timelineAction.collect else {
+                schedule(after: settings.refreshInterval * 60)
+                task.setTaskCompleted(success: true)
+                return
+            }
             let feeds = settings.customFeeds.compactMap(\.rssFeed)
             let crawler = NewsCrawler()
             var freshItems: [NewsItem] = []
@@ -58,15 +64,18 @@ enum BackgroundRefreshService {
             merged.append(contentsOf: oldItems.filter { old in !freshItems.contains(where: { $0.id == old.id }) })
             await localStore.save(merged)
             try Task.checkCancellation()
-            if settings.scheduleEnabled, let reportType = ReportType(rawValue: settings.report.mode) {
+            if settings.scheduleEnabled, timelineAction.push, let reportType = ReportType(rawValue: timelineAction.reportMode.rawValue) {
                 let batchID = "backgroundRefresh:\(merged.map(\.id).sorted().joined(separator: ","))"
                 let request = ReportGenerationRequest(batchID: batchID, type: reportType, trigger: .backgroundRefresh, generatedAt: Date(), settings: settings)
-                let report = ReportGenerationService().generate(request: request, items: merged)
+                var report = ReportGenerationService().generate(request: request, items: merged)
+                if timelineAction.analyze {
+                    report.aiAnalysis = await AIService().reportAnalysis(for: merged, settings: settings)
+                }
                 try Task.checkCancellation()
                 try? await localStore.save(report)
             }
             let newCount = freshItems.filter { !oldIDs.contains($0.id) }.count
-            if newCount > 0 && settings.notification.enabled && settings.notification.localAlerts {
+            if newCount > 0 && timelineAction.push && settings.notification.enabled && settings.notification.localAlerts {
                 await notify(newCount: newCount, soundEnabled: settings.notification.soundEnabled)
             }
             schedule(after: settings.refreshInterval * 60)

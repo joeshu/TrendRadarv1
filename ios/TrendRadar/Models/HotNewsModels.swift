@@ -6,7 +6,7 @@ struct HotNewsItem: Codable, Equatable, Hashable, Identifiable, Sendable {
     let url: URL?
     let platformID: String
     let platformName: String
-    let rank: Int
+    var rank: Int
     let publishedAt: Date?
     let extraInfo: String?
     let topicKey: String
