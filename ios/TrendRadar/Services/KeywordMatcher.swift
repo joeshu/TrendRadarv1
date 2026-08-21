@@ -70,6 +70,7 @@ struct KeywordGroup: Sendable, Equatable {
             let name = alias ?? (normal + required).joined(separator: " / ")
             return KeywordGroup(displayName: name, normal: normal, required: required, excluded: excluded, maxCount: maxCount)
         }
+    }
 
     func matches(_ text: String) -> Bool {
         let normalized = text.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)

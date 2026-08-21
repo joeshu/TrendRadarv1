@@ -142,6 +142,9 @@ struct ReportDetail: Codable, Equatable, Hashable, Identifiable, Sendable {
     var failureMessage: String?
 
     var summary: ReportSummary {
+        let searchableText = sections.flatMap(\.items).map { item in
+            [item.title, item.source, item.summary ?? ""].joined(separator: " ")
+        }.joined(separator: " ")
         ReportSummary(
             id: id,
             title: title,
@@ -152,7 +155,7 @@ struct ReportDetail: Codable, Equatable, Hashable, Identifiable, Sendable {
             sourceCount: statistics.sourceCount,
             hasAIAnalysis: aiAnalysis?.hasContent == true,
             isFavorite: isFavorite,
-            searchableText: sections.flatMap(\.items).map { "\($0.title) \($0.source) \($0.summary ?? \"\")" }.joined(separator: " ")
+            searchableText: searchableText
         )
     }
 }
