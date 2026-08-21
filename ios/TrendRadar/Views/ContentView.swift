@@ -31,8 +31,6 @@ struct RadarView: View {
                         overviewHeader
                         refreshStatus
                         sourcePicker
-                        hotNewsSection
-
                         if filteredItems.isEmpty {
                             EmptyNewsView(isFavoriteMode: showingFavorites)
                                 .frame(maxWidth: .infinity)
@@ -218,10 +216,10 @@ struct ContentView: View {
                 .tabItem { Label("发现", systemImage: "dot.radiowaves.left.and.right") }
             FeedsView()
                 .tabItem { Label("订阅", systemImage: "newspaper") }
-            InsightView()
-                .tabItem { Label("洞察", systemImage: "sparkles") }
-            ArchiveView()
-                .tabItem { Label("归档", systemImage: "archivebox") }
+            HotNewsView()
+                .tabItem { Label("热榜", systemImage: "flame") }
+            ReportCenterView()
+                .tabItem { Label("报告", systemImage: "doc.text.magnifyingglass") }
             SettingsView()
                 .tabItem { Label("设置", systemImage: "gearshape") }
         }

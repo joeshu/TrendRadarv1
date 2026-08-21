@@ -274,6 +274,93 @@ struct InsightView: View {
     }
 }
 
+struct HotNewsView: View {
+    @EnvironmentObject private var hotNewsStore: HotNewsStore
+    @EnvironmentObject private var settingsStore: SettingsStore
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                AppTheme.background.ignoresSafeArea()
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 16) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("热榜")
+                                .font(AppTheme.titleFont)
+                                .foregroundStyle(.white)
+                            Text("查看各平台当前排名，以及真实的跨平台变化。")
+                                .font(AppTheme.bodyFont)
+                                .foregroundStyle(AppTheme.textSecondary)
+                        }
+                        hotNewsFilters
+                        if hotNewsStore.items.isEmpty {
+                            FeatureEmptyState(icon: "flame", title: "暂无热榜数据", message: "刷新后显示平台热榜和排名变化。")
+                                .frame(maxWidth: .infinity)
+                                .padding(.top, 32)
+                        } else {
+                            ForEach(hotNewsStore.topics) { topic in
+                                NavigationLink {
+                                    HotNewsTrendView(topic: topic)
+                                } label: {
+                                    HotNewsTopicCard(topic: topic)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                    }
+                    .padding(20)
+                }
+            }
+            .navigationTitle("热榜")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(AppTheme.background, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
+            .refreshable { await hotNewsStore.refresh(settings: settingsStore.settings) }
+            .task { await hotNewsStore.refresh(settings: settingsStore.settings) }
+        }
+    }
+
+    private var hotNewsFilters: some View {
+        let platforms = Dictionary(hotNewsStore.items.map { ($0.platformID, $0.platformName) }, uniquingKeysWith: { first, _ in first }).sorted { $0.value < $1.value }
+        return ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                FeedFilterChip(title: "全部平台", isSelected: hotNewsStore.selectedPlatformID == nil) { hotNewsStore.selectedPlatformID = nil }
+                ForEach(platforms, id: \.key) { platform in
+                    FeedFilterChip(title: platform.value, isSelected: hotNewsStore.selectedPlatformID == platform.key) { hotNewsStore.selectedPlatformID = platform.key }
+                }
+            }
+        }
+    }
+}
+
+private struct HotNewsTopicCard: View {
+    let topic: HotNewsTopic
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Text("#\(topic.bestRank)")
+                .font(AppTheme.rankFont)
+                .foregroundStyle(AppTheme.pink)
+                .frame(width: 48, alignment: .leading)
+            VStack(alignment: .leading, spacing: 5) {
+                Text(topic.title)
+                    .font(AppTheme.headlineFont)
+                    .foregroundStyle(.white)
+                    .lineLimit(2)
+                Text(topic.platforms.joined(separator: " · "))
+                    .font(AppTheme.captionFont)
+                    .foregroundStyle(AppTheme.textTertiary)
+            }
+            Spacer()
+            Image(systemName: "chevron.right")
+                .foregroundStyle(AppTheme.textTertiary)
+        }
+        .padding(16)
+        .background(AppTheme.card)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+}
+
 struct HotNewsTrendView: View {
     @EnvironmentObject private var hotNewsStore: HotNewsStore
     let topic: HotNewsTopic
@@ -360,16 +447,11 @@ private struct TrendChart: View {
     }
 }
 
-struct ArchiveView: View {
+struct FavoritesView: View {
     @EnvironmentObject private var store: NewsStore
-    @EnvironmentObject private var settingsStore: SettingsStore
-    @EnvironmentObject private var reportStore: ReportStore
-    @State private var showingFavorites = false
-    @State private var showingReportGenerator = false
-    @State private var showingAllReports = false
 
     private var items: [NewsItem] {
-        showingFavorites ? store.items.filter(\.isFavorite) : store.items
+        store.items.filter(\.isFavorite)
     }
 
     var body: some View {
@@ -379,10 +461,8 @@ struct ArchiveView: View {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 16) {
                         archiveHeader
-                        archiveSwitch
-                        reportSection
-                        if items.isEmpty {
-                            FeatureEmptyState(icon: showingFavorites ? "star" : "archivebox", title: showingFavorites ? "还没有收藏" : "归档为空", message: "在情报流中收藏重要内容，它们会出现在这里。")
+                         if items.isEmpty {
+                             FeatureEmptyState(icon: "star", title: "还没有收藏", message: "在发现或订阅页面收藏重要内容，它们会出现在这里。")
                                 .frame(maxWidth: .infinity)
                                 .padding(.top, 32)
                         } else {
@@ -399,120 +479,113 @@ struct ArchiveView: View {
                     .padding(20)
                 }
             }
-            .navigationTitle("归档")
+             .navigationTitle("收藏")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(AppTheme.background, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
+        }
+    }
+
+    private var archiveHeader: some View {
+        VStack(alignment: .leading, spacing: 8) {
+             Text("SAVED")
+                .font(AppTheme.captionFont)
+                .tracking(1.6)
+                .foregroundStyle(AppTheme.pink)
+             Text("保存真正重要的信号")
+                .font(AppTheme.titleFont)
+                .foregroundStyle(.white)
+             Text("集中查看你标记的重要新闻。")
+                .font(AppTheme.bodyFont)
+                .foregroundStyle(AppTheme.textSecondary)
+        }
+    }
+
+}
+
+struct ReportCenterView: View {
+    @EnvironmentObject private var store: NewsStore
+    @EnvironmentObject private var settingsStore: SettingsStore
+    @EnvironmentObject private var reportStore: ReportStore
+    @State private var showingReportGenerator = false
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                AppTheme.background.ignoresSafeArea()
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 16) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("报告")
+                                .font(AppTheme.titleFont)
+                                .foregroundStyle(.white)
+                            Text("保存采集时刻的本地快照和分析结果。")
+                                .font(AppTheme.bodyFont)
+                                .foregroundStyle(AppTheme.textSecondary)
+                        }
+                        reportToolbar
+                        if reportStore.isLoading {
+                            ProgressView("加载报告")
+                                .tint(AppTheme.cyan)
+                        } else if reportStore.filteredReports.isEmpty {
+                            FeatureEmptyState(icon: "doc.text.magnifyingglass", title: "暂无报告", message: "生成一份报告后，它会固定保存当时的新闻快照。")
+                                .frame(maxWidth: .infinity)
+                                .padding(.top, 32)
+                        } else {
+                            ForEach(reportStore.filteredReports) { report in
+                                NavigationLink {
+                                    ReportDetailView(reportID: report.id)
+                                } label: {
+                                    ReportSummaryCard(report: report)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                    }
+                    .padding(20)
+                }
+            }
+            .navigationTitle("报告")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(AppTheme.background, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { showingReportGenerator = true } label: {
-                        Image(systemName: "plus.rectangle.on.folder")
+                        Image(systemName: "plus")
                     }
                     .accessibilityLabel("生成报告")
                 }
             }
             .sheet(isPresented: $showingReportGenerator) {
                 ReportGeneratorSheet { type in
-                    Task {
-                        await reportStore.generate(type: type, settings: settingsStore.settings, items: store.items)
-                    }
+                    Task { await reportStore.generate(type: type, settings: settingsStore.settings, items: store.items) }
                 }
             }
             .task { await reportStore.load() }
         }
     }
 
-    private var archiveHeader: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("ARCHIVE")
-                .font(AppTheme.captionFont)
-                .tracking(1.6)
-                .foregroundStyle(AppTheme.pink)
-            Text("留下真正重要的信号")
-                .font(AppTheme.titleFont)
-                .foregroundStyle(.white)
-            Text("历史报告中心将在报告存储接入后与这里合并。")
-                .font(AppTheme.bodyFont)
-                .foregroundStyle(AppTheme.textSecondary)
-        }
-    }
-
-    private var archiveSwitch: some View {
+    private var reportToolbar: some View {
         HStack(spacing: 8) {
-            FeedFilterChip(title: "全部情报", isSelected: !showingFavorites) { showingFavorites = false }
-            FeedFilterChip(title: "我的收藏", isSelected: showingFavorites) { showingFavorites = true }
-        }
-    }
-
-    private var reportSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Label("历史报告", systemImage: "doc.text.magnifyingglass")
-                    .font(AppTheme.headlineFont)
-                    .foregroundStyle(AppTheme.pink)
-                Spacer()
-                if reportStore.isGenerating {
-                    ProgressView().tint(AppTheme.cyan)
-                } else {
-                    Text("\(reportStore.reports.count) 份")
-                        .font(AppTheme.captionFont)
-                        .foregroundStyle(AppTheme.textTertiary)
+            TextField("搜索报告", text: $reportStore.searchText)
+                .textFieldStyle(.plain)
+                .padding(12)
+                .background(AppTheme.card)
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            Menu {
+                Button("全部类型") { reportStore.selectedType = nil }
+                ForEach(ReportType.allCases, id: \.self) { type in
+                    Button(type.displayName) { reportStore.selectedType = type }
                 }
-            }
-            HStack(spacing: 8) {
-                TextField("搜索报告", text: $reportStore.searchText)
-                    .textFieldStyle(.plain)
-                    .font(AppTheme.captionFont)
-                    .padding(10)
-                    .background(AppTheme.card)
-                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                Menu {
-                    Button("全部类型") { reportStore.selectedType = nil }
-                    ForEach(ReportType.allCases, id: \.self) { type in
-                        Button(type.displayName) { reportStore.selectedType = type }
-                    }
-                    Divider()
-                    Toggle("仅收藏", isOn: $reportStore.favoritesOnly)
-                } label: {
-                    Image(systemName: reportStore.selectedType == nil && !reportStore.favoritesOnly ? "line.3.horizontal.decrease.circle" : "line.3.horizontal.decrease.circle.fill")
-                        .foregroundStyle(AppTheme.cyan)
-                }
-            }
-            if reportStore.isLoading {
-                ProgressView("加载本地报告")
-                    .tint(AppTheme.cyan)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            } else if reportStore.reports.isEmpty {
-                Text("报告会保存生成时的本地新闻快照，后续刷新不会改变历史内容。")
-                    .font(AppTheme.captionFont)
-                    .foregroundStyle(AppTheme.textSecondary)
-                Button("生成第一份报告") { showingReportGenerator = true }
-                    .font(AppTheme.headlineFont)
+                Divider()
+                Toggle("仅收藏", isOn: $reportStore.favoritesOnly)
+            } label: {
+                Image(systemName: reportStore.selectedType == nil && !reportStore.favoritesOnly ? "line.3.horizontal.decrease.circle" : "line.3.horizontal.decrease.circle.fill")
+                    .font(.title3)
                     .foregroundStyle(AppTheme.cyan)
-            } else if reportStore.filteredReports.isEmpty {
-                FeatureEmptyState(icon: "line.3.horizontal.decrease.circle", title: "没有匹配报告", message: "调整搜索词或筛选条件后重试。")
-                    .frame(maxWidth: .infinity)
-            } else {
-                ForEach((showingAllReports ? reportStore.filteredReports : Array(reportStore.filteredReports.prefix(3)))) { report in
-                    NavigationLink {
-                        ReportDetailView(reportID: report.id)
-                    } label: {
-                        ReportSummaryCard(report: report)
-                    }
-                    .buttonStyle(.plain)
-                }
-                if reportStore.filteredReports.count > 3 {
-                    Button(showingAllReports ? "收起报告" : "查看全部报告") {
-                        withAnimation(AppAnimation.standard) { showingAllReports.toggle() }
-                    }
-                    .font(AppTheme.captionFont)
-                    .foregroundStyle(AppTheme.cyan)
-                }
             }
         }
-        .padding(18)
-        .background(AppTheme.surface)
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
 }
 
