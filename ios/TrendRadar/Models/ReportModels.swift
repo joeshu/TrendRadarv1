@@ -124,6 +124,7 @@ struct ReportSummary: Codable, Equatable, Hashable, Identifiable, Sendable {
     var sourceCount: Int
     var hasAIAnalysis: Bool
     var isFavorite: Bool
+    var searchableText: String = ""
 }
 
 struct ReportDetail: Codable, Equatable, Hashable, Identifiable, Sendable {
@@ -150,7 +151,8 @@ struct ReportDetail: Codable, Equatable, Hashable, Identifiable, Sendable {
             newsCount: statistics.newsCount,
             sourceCount: statistics.sourceCount,
             hasAIAnalysis: aiAnalysis?.hasContent == true,
-            isFavorite: isFavorite
+            isFavorite: isFavorite,
+            searchableText: sections.flatMap(\.items).map { "\($0.title) \($0.source) \($0.summary ?? \"\")" }.joined(separator: " ")
         )
     }
 }

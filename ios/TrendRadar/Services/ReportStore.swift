@@ -20,7 +20,8 @@ final class ReportStore: ObservableObject {
             let matchesType = selectedType == nil || report.type == selectedType
             let matchesFavorite = !favoritesOnly || report.isFavorite
             let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-            let matchesSearch = query.isEmpty || report.title.localizedCaseInsensitiveContains(query)
+            let searchableText = "\(report.title) \(report.searchableText)"
+            let matchesSearch = query.isEmpty || searchableText.localizedCaseInsensitiveContains(query)
             return matchesType && matchesFavorite && matchesSearch
         }
     }

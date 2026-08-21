@@ -155,6 +155,31 @@ final class NewsItemTests: XCTestCase {
         XCTAssertFalse(rules.matches("产品评测"))
     }
 
+    func testKeywordGroupsSupportAliasesAndMaximumCount() {
+        let groups = KeywordGroup.parse(["[科技] AI, +发布, !广告, @1"])
+
+        XCTAssertEqual(groups.first?.displayName, "科技")
+        XCTAssertEqual(groups.first?.maxCount, 1)
+        XCTAssertTrue(groups.first?.matches("AI 发布新产品") == true)
+        XCTAssertFalse(groups.first?.matches("AI 发布广告") == true)
+    }
+
+    func testReportSummarySearchTextContainsSnapshotFields() {
+        let settings = AppSettings()
+        let item = NewsItem(id: "search", title: "Swift release", source: "Hacker News", summary: "A new release")
+        let snapshot = ReportItemSnapshot(orderIndex: 0, sectionID: "all", sectionTitle: "全部", item: item)
+        let report = ReportDetail(
+            id: UUID(), title: "本地报告", type: .manual, trigger: .manual,
+            generatedAt: Date(), status: .completed, statistics: ReportStatistics(newsCount: 1),
+            settingsSnapshot: ReportSettingsSnapshot(settings: settings, reportType: .manual, generatedAt: Date()),
+            aiAnalysis: nil, sections: [ReportSection(id: "all", title: "全部", items: [snapshot])],
+            isFavorite: false, failureMessage: nil
+        )
+
+        XCTAssertTrue(report.summary.searchableText.contains("Hacker News"))
+        XCTAssertTrue(report.summary.searchableText.contains("A new release"))
+    }
+
     func testRSSParserReadsRSSItemAndHTMLEntities() throws {
         let data = Data("""
         <?xml version="1.0"?>

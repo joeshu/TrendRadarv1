@@ -21,6 +21,7 @@ final class ReportRecord {
     var settingsSnapshotJSON: Data?
     var isFavorite: Bool
     var failureMessage: String?
+    var searchableText: String = ""
 
     init(from report: ReportDetail, encoder: JSONEncoder = .trendRadar) throws {
         id = report.id.uuidString
@@ -41,6 +42,7 @@ final class ReportRecord {
         settingsSnapshotJSON = try encoder.encode(report.settingsSnapshot)
         isFavorite = report.isFavorite
         failureMessage = report.failureMessage
+        searchableText = report.summary.searchableText
     }
 
     func update(from report: ReportDetail, encoder: JSONEncoder = .trendRadar) throws {
@@ -61,6 +63,7 @@ final class ReportRecord {
         settingsSnapshotJSON = try encoder.encode(report.settingsSnapshot)
         isFavorite = report.isFavorite
         failureMessage = report.failureMessage
+        searchableText = report.summary.searchableText
     }
 
     func asSummary() -> ReportSummary? {
@@ -76,7 +79,8 @@ final class ReportRecord {
             newsCount: newsCount,
             sourceCount: sourceCount,
             hasAIAnalysis: aiEnabled && !(aiSummary?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true),
-            isFavorite: isFavorite
+            isFavorite: isFavorite,
+            searchableText: searchableText
         )
     }
 

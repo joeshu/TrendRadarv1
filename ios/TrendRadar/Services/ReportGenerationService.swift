@@ -10,19 +10,20 @@ struct ReportGenerationRequest: Sendable {
 
 struct ReportGenerationService: Sendable {
     func generate(request: ReportGenerationRequest, items: [NewsItem]) -> ReportDetail {
-        let rules = KeywordRuleSet(keywords: request.settings.keywords, globalExcluded: request.settings.globalFilterWords)
-        let matchingItems = items.filter { rules.matches($0.title) }
-
-        let sections = makeSections(items: matchingItems, settings: request.settings)
-        let ruleSet = KeywordRuleSet(keywords: request.settings.keywords, globalExcluded: [])
+        let groups = KeywordGroup.parse(request.settings.keywords)
+        let matchingItems = items.filter { item in
+            guard !request.settings.globalFilterWords.contains(where: { item.title.localizedCaseInsensitiveContains($0) }) else { return false }
+            return groups.isEmpty || groups.contains { $0.matches(item.title) }
+        }
+        let sections = makeSections(items: matchingItems, groups: groups, settings: request.settings)
         let sourceCount = Set(matchingItems.map(\.source)).count
         let statistics = ReportStatistics(
             newsCount: matchingItems.count,
             sourceCount: sourceCount,
             unreadCount: matchingItems.filter { !$0.isRead }.count,
             favoriteCount: matchingItems.filter(\.isFavorite).count,
-            keywordCount: (ruleSet.normal + ruleSet.required).filter { keyword in
-                matchingItems.contains { $0.title.localizedCaseInsensitiveContains(keyword) }
+            keywordCount: groups.filter { group in
+                matchingItems.contains { group.matches($0.title) }
             }.count
         )
         let title = "\(request.type.displayName) · \(request.generatedAt.formatted(date: .abbreviated, time: .shortened))"
@@ -42,18 +43,17 @@ struct ReportGenerationService: Sendable {
         )
     }
 
-    private func makeSections(items: [NewsItem], settings: AppSettings) -> [ReportSection] {
+    private func makeSections(items: [NewsItem], groups: [KeywordGroup], settings: AppSettings) -> [ReportSection] {
         let grouped: [(String, String, [NewsItem])]
         if settings.report.displayMode == "platform" {
             grouped = Dictionary(grouping: items, by: \.source).map { ($0.key, $0.key, $0.value) }
         } else if settings.keywords.isEmpty {
             grouped = [("all", "全部情报", items)]
         } else {
-            let ruleSet = KeywordRuleSet(keywords: settings.keywords, globalExcluded: [])
-            let sectionKeywords = ruleSet.normal.isEmpty ? ruleSet.required : ruleSet.normal
-            grouped = sectionKeywords.compactMap { keyword in
-                let matching = items.filter { $0.title.localizedCaseInsensitiveContains(keyword) }
-                return matching.isEmpty ? nil : (keyword, keyword, matching)
+            grouped = groups.compactMap { group in
+                let matching = items.filter { group.matches($0.title) }
+                let limited = group.maxCount > 0 ? Array(matching.prefix(group.maxCount)) : matching
+                return limited.isEmpty ? nil : (group.displayName, group.displayName, limited)
             }
         }
 
