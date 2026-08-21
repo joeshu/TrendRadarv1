@@ -570,6 +570,7 @@ struct ReportCenterView: View {
 
 private struct CompactFeedCard: View {
     let item: NewsItem
+    @EnvironmentObject private var store: NewsStore
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
@@ -592,7 +593,12 @@ private struct CompactFeedCard: View {
                     .multilineTextAlignment(.leading)
                 HStack(spacing: 6) {
                     Text(item.publishedAt?.relativeDescription ?? "刚刚")
-                    if item.summary != nil { Label("已摘要", systemImage: "sparkles") }
+                    Text("·")
+                    Text(item.isRead ? "已读" : "未读")
+                    if item.summary != nil {
+                        Text("·")
+                        Label("已摘要", systemImage: "sparkles")
+                    }
                 }
                 .font(AppTheme.captionFont)
                 .foregroundStyle(AppTheme.textTertiary)
@@ -602,6 +608,20 @@ private struct CompactFeedCard: View {
         .background(AppTheme.card)
         .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.white.opacity(0.06)))
         .clipShape(RoundedRectangle(cornerRadius: 16))
+        .contextMenu {
+            Button {
+                Task { await store.toggleFavorite(item) }
+            } label: {
+                Label(item.isFavorite ? "取消收藏" : "收藏", systemImage: item.isFavorite ? "star.slash" : "star")
+            }
+            if !item.isRead {
+                Button {
+                    Task { await store.markRead(item) }
+                } label: {
+                    Label("标记已读", systemImage: "checkmark.circle")
+                }
+            }
+        }
     }
 }
 
