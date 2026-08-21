@@ -24,7 +24,7 @@ struct ContentView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                Color.appBackground.ignoresSafeArea()
+                AppTheme.background.ignoresSafeArea()
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 18) {
                         overviewHeader
@@ -61,19 +61,19 @@ struct ContentView: View {
                 }
                 .refreshable { await store.refresh() }
             }
-            .toolbarBackground(Color.appBackground, for: .navigationBar)
+            .toolbarBackground(AppTheme.background, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)
             .searchable(text: $searchText, prompt: "搜索标题或来源")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button { showingFavorites.toggle() } label: {
                         Image(systemName: showingFavorites ? "star.fill" : "star")
-                            .foregroundStyle(showingFavorites ? Color.appYellow : .white)
+                            .foregroundStyle(showingFavorites ? AppTheme.yellow : .white)
                     }
                 }
                 ToolbarItem(placement: .principal) {
                     HStack(spacing: 6) {
-                        Circle().fill(Color.appCyan).frame(width: 8, height: 8)
+                        Circle().fill(AppTheme.cyan).frame(width: 8, height: 8)
                         Text("TREND RADAR")
                             .font(.system(size: 13, weight: .heavy, design: .rounded))
                             .tracking(1.5)
@@ -104,7 +104,7 @@ struct ContentView: View {
                 VStack(alignment: .leading, spacing: 5) {
                     Text("早上好，观察员")
                         .font(.system(size: 14, weight: .medium, design: .rounded))
-                        .foregroundStyle(Color.appCyan)
+                        .foregroundStyle(AppTheme.cyan)
                     Text("今天的世界\n正在发生什么")
                         .font(.system(size: 31, weight: .bold, design: .rounded))
                         .foregroundStyle(.white)
@@ -113,12 +113,12 @@ struct ContentView: View {
                 Spacer()
                 Image(systemName: "waveform.path.ecg")
                     .font(.system(size: 42, weight: .light))
-                    .foregroundStyle(Color.appCyan.opacity(0.8))
+                    .foregroundStyle(AppTheme.cyan.opacity(0.8))
             }
             HStack(spacing: 10) {
                 MetricPill(value: "\(store.items.count)", label: "条情报", tint: .appCyan)
                 MetricPill(value: "\(store.items.filter { !$0.isRead }.count)", label: "未读", tint: .appYellow)
-                MetricPill(value: "\(store.items.filter(\.isFavorite).count)", label: "收藏", tint: .appPink)
+                MetricPill(value: "\(store.items.filter(\.isFavorite).count)", label: "收藏", tint: AppTheme.pink)
             }
         }
         .padding(.horizontal, 20)
@@ -132,10 +132,10 @@ struct ContentView: View {
                     Button { selectedSource = source } label: {
                         Text(source)
                             .font(.system(size: 13, weight: .semibold, design: .rounded))
-                            .foregroundStyle(selectedSource == source ? Color.appBackground : .white.opacity(0.72))
+                            .foregroundStyle(selectedSource == source ? AppTheme.background : .white.opacity(0.72))
                             .padding(.horizontal, 15)
                             .padding(.vertical, 9)
-                            .background(selectedSource == source ? Color.appCyan : Color.appCard)
+                            .background(selectedSource == source ? AppTheme.cyan : AppTheme.card)
                             .clipShape(Capsule())
                     }
                 }
@@ -157,7 +157,7 @@ private struct MetricPill: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
-        .background(Color.appCard)
+        .background(AppTheme.card)
         .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 }
@@ -168,7 +168,7 @@ private struct NewsCard: View {
     var body: some View {
         HStack(alignment: .top, spacing: 13) {
             VStack(spacing: 4) {
-                Circle().fill(item.isRead ? Color.white.opacity(0.2) : Color.appCyan).frame(width: 8, height: 8)
+                Circle().fill(item.isRead ? Color.white.opacity(0.2) : AppTheme.cyan).frame(width: 8, height: 8)
                 Rectangle().fill(Color.white.opacity(0.08)).frame(width: 1, height: 48)
             }
             VStack(alignment: .leading, spacing: 10) {
@@ -176,9 +176,9 @@ private struct NewsCard: View {
                     Text(item.source.uppercased())
                         .font(.system(size: 10, weight: .heavy, design: .rounded))
                         .tracking(1)
-                        .foregroundStyle(Color.appCyan)
+                        .foregroundStyle(AppTheme.cyan)
                     Spacer()
-                    if item.isFavorite { Image(systemName: "star.fill").font(.caption).foregroundStyle(Color.appYellow) }
+                    if item.isFavorite { Image(systemName: "star.fill").font(.caption).foregroundStyle(AppTheme.yellow) }
                 }
                 Text(item.title)
                     .font(.system(size: 17, weight: item.isRead ? .medium : .bold, design: .rounded))
@@ -194,7 +194,7 @@ private struct NewsCard: View {
             }
         }
         .padding(16)
-        .background(Color.appCard)
+        .background(AppTheme.card)
         .overlay(RoundedRectangle(cornerRadius: 18).stroke(Color.white.opacity(0.06), lineWidth: 1))
         .clipShape(RoundedRectangle(cornerRadius: 18))
     }
@@ -207,7 +207,7 @@ private struct EmptyNewsView: View {
         VStack(spacing: 14) {
             Image(systemName: isFavoriteMode ? "star" : "dot.radiowaves.left.and.right")
                 .font(.system(size: 34, weight: .light))
-                .foregroundStyle(Color.appCyan)
+                .foregroundStyle(AppTheme.cyan)
             Text(isFavoriteMode ? "还没有收藏" : "等待第一批情报")
                 .font(.system(size: 18, weight: .bold, design: .rounded))
                 .foregroundStyle(.white)
@@ -226,13 +226,13 @@ private struct NewsDetailView: View {
 
     var body: some View {
         ZStack {
-            Color.appBackground.ignoresSafeArea()
+            AppTheme.background.ignoresSafeArea()
             ScrollView {
                 VStack(alignment: .leading, spacing: 22) {
                     Text(item.source.uppercased())
                         .font(.system(size: 11, weight: .heavy, design: .rounded))
                         .tracking(1.5)
-                        .foregroundStyle(Color.appCyan)
+                        .foregroundStyle(AppTheme.cyan)
                     Text(item.title)
                         .font(.system(size: 29, weight: .bold, design: .rounded))
                         .foregroundStyle(.white)
@@ -244,14 +244,14 @@ private struct NewsDetailView: View {
                         VStack(alignment: .leading, spacing: 11) {
                             Label("AI 摘要", systemImage: "sparkles")
                                 .font(.system(size: 12, weight: .bold, design: .rounded))
-                                .foregroundStyle(Color.appYellow)
+                                .foregroundStyle(AppTheme.yellow)
                             Text(summary)
                                 .font(.system(size: 17, weight: .medium, design: .rounded))
                                 .foregroundStyle(.white.opacity(0.84))
                                 .lineSpacing(5)
                         }
                         .padding(18)
-                        .background(Color.appCard)
+                        .background(AppTheme.card)
                         .clipShape(RoundedRectangle(cornerRadius: 18))
                     }
 
@@ -278,7 +278,7 @@ private struct NewsDetailView: View {
                 .padding(20)
             }
         }
-        .toolbarBackground(Color.appBackground, for: .navigationBar)
+        .toolbarBackground(AppTheme.background, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
         .navigationTitle("情报详情")
         .navigationBarTitleDisplayMode(.inline)
@@ -289,10 +289,10 @@ private struct AccentButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.system(size: 13, weight: .bold, design: .rounded))
-            .foregroundStyle(Color.appBackground)
+            .foregroundStyle(AppTheme.background)
             .padding(.horizontal, 15)
             .padding(.vertical, 11)
-            .background(Color.appCyan.opacity(configuration.isPressed ? 0.65 : 1))
+            .background(AppTheme.cyan.opacity(configuration.isPressed ? 0.65 : 1))
             .clipShape(Capsule())
     }
 }
@@ -312,12 +312,4 @@ private extension Date {
     var relativeDescription: String {
         RelativeDateTimeFormatter().localizedString(for: self, relativeTo: Date())
     }
-}
-
-private extension Color {
-    static let appBackground = Color(red: 0.035, green: 0.055, blue: 0.10)
-    static let appCard = Color(red: 0.075, green: 0.105, blue: 0.17)
-    static let appCyan = Color(red: 0.25, green: 0.90, blue: 0.82)
-    static let appYellow = Color(red: 1.0, green: 0.78, blue: 0.30)
-    static let appPink = Color(red: 1.0, green: 0.42, blue: 0.58)
 }
