@@ -3,7 +3,7 @@
 ## 1. 数据模型与持久化
 
 - [x] 1.1 新增报告类型、状态、触发来源、统计和快照应用模型
-- [ ] 1.2 新增 SwiftData `ReportRecord` 和 `ReportItemRecord`
+- [x] 1.2 新增 SwiftData `ReportRecord` 和 `ReportItemRecord`
 - [ ] 1.3 扩展 `LocalStore` 的 ModelContainer schema 和报告 CRUD
 - [ ] 1.4 增加报告模型编码、快照隔离和删除级联测试
 
