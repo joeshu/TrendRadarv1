@@ -94,7 +94,7 @@ struct SettingsView: View {
             Toggle("启用热榜平台", isOn: $settingsStore.settings.platformsEnabled)
             ForEach($settingsStore.settings.platformSources) { $source in
                 VStack(alignment: .leading, spacing: 6) {
-                    Toggle("启用 \(source.wrappedValue.name)", isOn: $source.isEnabled)
+                    Toggle("启用 \(source.name)", isOn: $source.isEnabled)
                     TextField("平台名称", text: $source.name)
                     TextField("安全校验域名", text: $source.expectedDomain)
                         .textInputAutocapitalization(.never).autocorrectionDisabled()
