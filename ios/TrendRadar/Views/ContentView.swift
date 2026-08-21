@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct ContentView: View {
+struct RadarView: View {
     @EnvironmentObject private var store: NewsStore
     @EnvironmentObject private var settingsStore: SettingsStore
     @State private var searchText = ""
@@ -145,6 +145,25 @@ struct ContentView: View {
     }
 }
 
+struct ContentView: View {
+    var body: some View {
+        TabView {
+            RadarView()
+                .tabItem { Label("发现", systemImage: "dot.radiowaves.left.and.right") }
+            FeedsView()
+                .tabItem { Label("订阅", systemImage: "newspaper") }
+            InsightView()
+                .tabItem { Label("洞察", systemImage: "sparkles") }
+            ArchiveView()
+                .tabItem { Label("归档", systemImage: "archivebox") }
+            SettingsView()
+                .tabItem { Label("设置", systemImage: "gearshape") }
+        }
+        .tint(AppTheme.cyan)
+        .preferredColorScheme(.dark)
+    }
+}
+
 private struct MetricPill: View {
     let value: String
     let label: String
@@ -218,7 +237,7 @@ private struct EmptyNewsView: View {
     }
 }
 
-private struct NewsDetailView: View {
+struct NewsDetailView: View {
     let item: NewsItem
     @EnvironmentObject private var store: NewsStore
     @State private var isSummarizing = false
