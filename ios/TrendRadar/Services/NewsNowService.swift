@@ -39,8 +39,9 @@ struct NewsNowService: Sendable {
 
     private func makeURL(sourceID: String, baseURL: String, latest: Bool) throws -> URL {
         let normalized = baseURL.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-        guard var components = URLComponents(string: "\(normalized)/s") else { throw URLError(.badURL) }
-        components.queryItems = [URLQueryItem(name: "source", value: sourceID)]
+        let endpoint = normalized.hasSuffix("/s") ? normalized : "\(normalized)/s"
+        guard var components = URLComponents(string: endpoint) else { throw URLError(.badURL) }
+        components.queryItems = [URLQueryItem(name: "id", value: sourceID)]
         if latest { components.queryItems?.append(URLQueryItem(name: "latest", value: "true")) }
         guard let url = components.url else { throw URLError(.badURL) }
         return url

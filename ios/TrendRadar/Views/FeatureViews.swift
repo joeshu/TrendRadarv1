@@ -162,6 +162,9 @@ struct SubscriptionSourceManager: View {
                     TextField("热榜 API 地址", text: $settingsStore.settings.platformAPIURL)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
+                    Text("填写基础地址，例如 https://newsnow.busiyi.world/api。应用会按平台 ID 请求 /s?id=平台ID；保持默认地址即可。")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
             }
             .navigationTitle("信息源")
