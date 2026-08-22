@@ -8,14 +8,18 @@ struct ReportGenerationRequest: Sendable {
     let generatedAt: Date
     let settings: AppSettings
     let windowStart: Date?
+    let newItemIDs: Set<String>
+    let diagnostics: ReportDiagnostics?
 
-    init(batchID: String, type: ReportType, trigger: ReportTrigger, generatedAt: Date, settings: AppSettings, windowStart: Date? = nil) {
+    init(batchID: String, type: ReportType, trigger: ReportTrigger, generatedAt: Date, settings: AppSettings, windowStart: Date? = nil, newItemIDs: Set<String> = [], diagnostics: ReportDiagnostics? = nil) {
         self.batchID = batchID
         self.type = type
         self.trigger = trigger
         self.generatedAt = generatedAt
         self.settings = settings
         self.windowStart = windowStart
+        self.newItemIDs = newItemIDs
+        self.diagnostics = diagnostics
     }
 }
 
@@ -70,7 +74,9 @@ struct ReportGenerationService: Sendable {
             aiAnalysis: nil,
             sections: sections,
             isFavorite: false,
-            failureMessage: nil
+            failureMessage: nil,
+            newItems: displayedItems.filter { request.newItemIDs.contains($0.id) },
+            diagnostics: request.diagnostics
         )
     }
 

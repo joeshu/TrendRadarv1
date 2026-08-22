@@ -37,6 +37,8 @@ final class ReportRecord {
     var aiSentimentNegative: Double?
     var aiWeakSignalsJSON: Data?
     var aiRecommendation: String?
+    var newItemsJSON: Data?
+    var diagnosticsJSON: Data?
 
     init(from report: ReportDetail, encoder: JSONEncoder = .trendRadar) throws {
         id = report.id.uuidString
@@ -73,6 +75,8 @@ final class ReportRecord {
         aiSentimentNegative = report.aiAnalysis?.sentimentNegative
         aiWeakSignalsJSON = try? encoder.encode(report.aiAnalysis?.weakSignals ?? [])
         aiRecommendation = report.aiAnalysis?.recommendation
+        newItemsJSON = try? encoder.encode(report.newItems)
+        diagnosticsJSON = try? encoder.encode(report.diagnostics)
     }
 
     func update(from report: ReportDetail, encoder: JSONEncoder = .trendRadar) throws {
@@ -109,6 +113,8 @@ final class ReportRecord {
         aiSentimentNegative = report.aiAnalysis?.sentimentNegative
         aiWeakSignalsJSON = try? encoder.encode(report.aiAnalysis?.weakSignals ?? [])
         aiRecommendation = report.aiAnalysis?.recommendation
+        newItemsJSON = try? encoder.encode(report.newItems)
+        diagnosticsJSON = try? encoder.encode(report.diagnostics)
     }
 
     func asSummary() -> ReportSummary? {
@@ -163,7 +169,9 @@ final class ReportRecord {
             aiAnalysis: analysis,
             sections: sections,
             isFavorite: isFavorite,
-            failureMessage: failureMessage
+            failureMessage: failureMessage,
+            newItems: newItemsJSON.flatMap { try? decoder.decode([ReportItemSnapshot].self, from: $0) } ?? [],
+            diagnostics: diagnosticsJSON.flatMap { try? decoder.decode(ReportDiagnostics.self, from: $0) }
         )
     }
 }

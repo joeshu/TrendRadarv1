@@ -421,7 +421,7 @@ struct InsightView: View {
                     Button {
                         isGenerating = true
                         Task {
-                            await reportStore.generate(type: reportType, settings: settingsStore.settings, items: windowItems, hotlistItems: windowHotlistItems)
+                            await reportStore.generate(type: reportType, settings: settingsStore.settings, items: windowItems, hotlistItems: windowHotlistItems, diagnostics: reportStore.diagnostics(news: store, hotNews: hotNewsStore))
                             await loadLatestAnalysis()
                             isGenerating = false
                         }
@@ -876,7 +876,7 @@ struct ReportCenterView: View {
                     Task {
                         await store.refresh(showError: false, autoReport: false)
                         await hotNewsStore.refresh(settings: settingsStore.settings, showError: false)
-                        await reportStore.generate(type: type, settings: settingsStore.settings, items: store.items, hotlistItems: hotNewsStore.items)
+                        await reportStore.generate(type: type, settings: settingsStore.settings, items: store.items, hotlistItems: hotNewsStore.items, diagnostics: reportStore.diagnostics(news: store, hotNews: hotNewsStore))
                     }
                 }
             }

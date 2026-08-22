@@ -371,6 +371,30 @@ struct ReportSummary: Codable, Equatable, Hashable, Identifiable, Sendable {
     var searchableText: String = ""
 }
 
+struct ReportSourceFailure: Codable, Equatable, Hashable, Identifiable, Sendable {
+    let id: String
+    var sourceType: ReportSourceType
+    var source: String
+    var message: String
+
+    init(id: String = UUID().uuidString, sourceType: ReportSourceType, source: String, message: String) {
+        self.id = id
+        self.sourceType = sourceType
+        self.source = source
+        self.message = message
+    }
+}
+
+struct ReportDiagnostics: Codable, Equatable, Hashable, Sendable {
+    var failures: [ReportSourceFailure] = []
+    var collectedAt: Date?
+
+    init(failures: [ReportSourceFailure] = [], collectedAt: Date? = nil) {
+        self.failures = failures
+        self.collectedAt = collectedAt
+    }
+}
+
 struct ReportDetail: Codable, Equatable, Hashable, Identifiable, Sendable {
     let id: UUID
     var title: String
@@ -384,6 +408,55 @@ struct ReportDetail: Codable, Equatable, Hashable, Identifiable, Sendable {
     var sections: [ReportSection]
     var isFavorite: Bool
     var failureMessage: String?
+    var newItems: [ReportItemSnapshot]
+    var diagnostics: ReportDiagnostics?
+
+    init(id: UUID, title: String, type: ReportType, trigger: ReportTrigger, generatedAt: Date, status: ReportStatus, statistics: ReportStatistics, settingsSnapshot: ReportSettingsSnapshot, aiAnalysis: ReportAIAnalysis?, sections: [ReportSection], isFavorite: Bool, failureMessage: String?, newItems: [ReportItemSnapshot] = [], diagnostics: ReportDiagnostics? = nil) {
+        self.id = id
+        self.title = title
+        self.type = type
+        self.trigger = trigger
+        self.generatedAt = generatedAt
+        self.status = status
+        self.statistics = statistics
+        self.settingsSnapshot = settingsSnapshot
+        self.aiAnalysis = aiAnalysis
+        self.sections = sections
+        self.isFavorite = isFavorite
+        self.failureMessage = failureMessage
+        self.newItems = newItems
+        self.diagnostics = diagnostics
+    }
+
+    private enum CodingKeys: String, CodingKey { case id, title, type, trigger, generatedAt, status, statistics, settingsSnapshot, aiAnalysis, sections, isFavorite, failureMessage, newItems, diagnostics }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        title = try c.decode(String.self, forKey: .title)
+        type = try c.decode(ReportType.self, forKey: .type)
+        trigger = try c.decode(ReportTrigger.self, forKey: .trigger)
+        generatedAt = try c.decode(Date.self, forKey: .generatedAt)
+        status = try c.decode(ReportStatus.self, forKey: .status)
+        statistics = try c.decode(ReportStatistics.self, forKey: .statistics)
+        settingsSnapshot = try c.decode(ReportSettingsSnapshot.self, forKey: .settingsSnapshot)
+        aiAnalysis = try c.decodeIfPresent(ReportAIAnalysis.self, forKey: .aiAnalysis)
+        sections = try c.decode([ReportSection].self, forKey: .sections)
+        isFavorite = try c.decodeIfPresent(Bool.self, forKey: .isFavorite) ?? false
+        failureMessage = try c.decodeIfPresent(String.self, forKey: .failureMessage)
+        newItems = try c.decodeIfPresent([ReportItemSnapshot].self, forKey: .newItems) ?? []
+        diagnostics = try c.decodeIfPresent(ReportDiagnostics.self, forKey: .diagnostics)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id); try c.encode(title, forKey: .title); try c.encode(type, forKey: .type)
+        try c.encode(trigger, forKey: .trigger); try c.encode(generatedAt, forKey: .generatedAt); try c.encode(status, forKey: .status)
+        try c.encode(statistics, forKey: .statistics); try c.encode(settingsSnapshot, forKey: .settingsSnapshot)
+        try c.encodeIfPresent(aiAnalysis, forKey: .aiAnalysis); try c.encode(sections, forKey: .sections)
+        try c.encode(isFavorite, forKey: .isFavorite); try c.encodeIfPresent(failureMessage, forKey: .failureMessage)
+        try c.encode(newItems, forKey: .newItems); try c.encodeIfPresent(diagnostics, forKey: .diagnostics)
+    }
 
     var summary: ReportSummary {
         let searchableText = sections.flatMap(\.items).map { item in

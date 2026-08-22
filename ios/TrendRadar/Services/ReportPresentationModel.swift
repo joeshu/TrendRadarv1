@@ -66,9 +66,7 @@ struct ReportMarkdownRenderer: Sendable {
             case "standalone":
                 appendStandalone(report.aiAnalysis, to: &lines)
             case "new_items":
-                // New-item history is not yet persisted by the iOS model. Do not
-                // invent a section; the next presentation-model phase will add it.
-                continue
+                appendNewItems(report.newItems, to: &lines)
             case "hotlist", "rss":
                 for section in model.sections where sectionRegion(section) == region {
                     appendSection(section, to: &lines)
@@ -82,11 +80,21 @@ struct ReportMarkdownRenderer: Sendable {
         for section in model.sections where !renderedSectionIDs.contains(section.id) {
             appendSection(section, to: &lines)
         }
+        appendDiagnostics(report.diagnostics, to: &lines)
 
         lines.append("")
         lines.append("---")
         lines.append("报告 ID：`\(report.id.uuidString)` · 共 \(report.sections.flatMap(\.items).count) 条")
         return lines.joined(separator: "\n")
+    }
+
+    private func appendDiagnostics(_ diagnostics: ReportDiagnostics?, to lines: inout [String]) {
+        guard let diagnostics, !diagnostics.failures.isEmpty else { return }
+        lines.append("")
+        lines.append("## ⚠️ 采集异常")
+        for failure in diagnostics.failures {
+            lines.append("- \(failure.source)（\(failure.sourceType == .hotlist ? "热榜" : "RSS")）：\(failure.message)")
+        }
     }
 
     private func sectionRegion(_ section: ReportSection) -> String {
@@ -115,6 +123,16 @@ struct ReportMarkdownRenderer: Sendable {
             if let summary = item.summary?.trimmingCharacters(in: .whitespacesAndNewlines), !summary.isEmpty {
                 lines.append("  > \(summary.replacingOccurrences(of: "\n", with: " "))")
             }
+        }
+    }
+
+    private func appendNewItems(_ items: [ReportItemSnapshot], to lines: inout [String]) {
+        guard !items.isEmpty else { return }
+        lines.append("")
+        lines.append("## 🆕 新增热点")
+        for item in items {
+            let title = item.url.map { "[\(item.title)](\($0.absoluteString))" } ?? item.title
+            lines.append("- \(title) · \(item.source)")
         }
     }
 

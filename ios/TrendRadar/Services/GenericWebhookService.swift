@@ -20,9 +20,27 @@ struct WebhookDeliveryRecord: Codable, Equatable, Sendable, Identifiable {
     }
 }
 
+enum WebhookChannel: String, Sendable {
+    case generic
+    case feishu
+    case dingtalk
+    case wework
+}
+
 struct WebhookPayloadRenderer: Sendable {
-    func render(report: ReportDetail, template: String, batchContent: String, batchIndex: Int, batchTotal: Int) throws -> Data {
+    func render(report: ReportDetail, template: String, batchContent: String, batchIndex: Int, batchTotal: Int, channel: WebhookChannel = .generic) throws -> Data {
         let reportJSON = try JSONEncoder.webhook.encode(report)
+        if template.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && channel != .generic {
+            switch channel {
+            case .feishu:
+                return try JSONSerialization.data(withJSONObject: ["msg_type": "text", "content": ["text": batchContent]], options: [.sortedKeys])
+            case .dingtalk:
+                return try JSONSerialization.data(withJSONObject: ["msgtype": "markdown", "markdown": ["title": report.title, "text": batchContent]], options: [.sortedKeys])
+            case .wework:
+                return try JSONSerialization.data(withJSONObject: ["msgtype": "markdown", "markdown": ["content": batchContent]], options: [.sortedKeys])
+            case .generic: break
+            }
+        }
         let values = [
             "title": report.title,
             "content": batchContent,
@@ -109,8 +127,30 @@ struct GenericWebhookService: Sendable {
         guard settings.notification.enabled else { return false }
         let urlValue = keychain.read("notify-generic").trimmingCharacters(in: .whitespacesAndNewlines)
         guard !urlValue.isEmpty else { return false }
-        return await deliver(report: report, urlValue: urlValue, template: settings.notification.channels.genericPayloadTemplate)
+        return await deliver(report: report, urlValue: urlValue, template: settings.notification.channels.genericPayloadTemplate, channel: .generic, maxBytes: settings.advanced.defaultBatchSize)
     }
+
+    @discardableResult
+    func sendConfiguredChannels(report: ReportDetail, settings: AppSettings) async -> Bool {
+        guard settings.notification.enabled else { return false }
+        var configured: [(WebhookChannel, String, String, Int)] = []
+        let channels = settings.notification.channels
+        let feishu = keychain.read("notify-feishu").trimmingCharacters(in: .whitespacesAndNewlines)
+        let dingtalk = keychain.read("notify-dingtalk").trimmingCharacters(in: .whitespacesAndNewlines)
+        let wework = keychain.read("notify-wework").trimmingCharacters(in: .whitespacesAndNewlines)
+        let generic = keychain.read("notify-generic").trimmingCharacters(in: .whitespacesAndNewlines)
+        if !feishu.isEmpty { configured.append((.feishu, feishu, "", settings.advanced.feishuBatchSize)) }
+        if !dingtalk.isEmpty { configured.append((.dingtalk, dingtalk, "", settings.advanced.dingtalkBatchSize)) }
+        if !wework.isEmpty { configured.append((.wework, wework, "", settings.advanced.defaultBatchSize)) }
+        if !generic.isEmpty { configured.append((.generic, generic, channels.genericPayloadTemplate, settings.advanced.defaultBatchSize)) }
+        guard !configured.isEmpty else { return true }
+        var allSucceeded = true
+        for (channel, url, template, limit) in configured {
+            if !(await deliver(report: report, urlValue: url, template: template, channel: channel, maxBytes: max(500, limit))) { allSucceeded = false }
+        }
+        return allSucceeded
+    }
+
 
     @discardableResult
     func sendTest(settings: AppSettings) async -> WebhookDeliveryRecord {
@@ -130,21 +170,22 @@ struct GenericWebhookService: Sendable {
             Self.record(result)
             return result
         }
-        _ = await deliver(report: detail, urlValue: urlValue, template: settings.notification.channels.genericPayloadTemplate)
+        _ = await deliver(report: detail, urlValue: urlValue, template: settings.notification.channels.genericPayloadTemplate, channel: .generic, maxBytes: settings.advanced.defaultBatchSize)
         return Self.records().first ?? WebhookDeliveryRecord(reportID: nil, status: nil, success: false, attempts: 0, message: GenericWebhookError.emptyResponse.localizedDescription)
     }
 
-    private func deliver(report: ReportDetail, urlValue: String, template: String) async -> Bool {
+    private func deliver(report: ReportDetail, urlValue: String, template: String, channel: WebhookChannel, maxBytes: Int) async -> Bool {
         guard let url = URL(string: urlValue), url.scheme?.lowercased() == "https" else {
             Self.record(WebhookDeliveryRecord(reportID: report.id.uuidString, status: nil, success: false, attempts: 0, message: GenericWebhookError.invalidURL.localizedDescription))
             return false
         }
         let content = ReportFormatter().render(report, format: .markdown)
-        let chunks = split(content, maxBytes: Self.batchSize)
+        let chunks = split(content, maxBytes: maxBytes)
         var allSucceeded = true
         for (offset, chunk) in chunks.enumerated() {
             do {
-                let payload = try renderer.render(report: report, template: template, batchContent: chunk, batchIndex: offset + 1, batchTotal: chunks.count)
+                let decorated = chunks.count > 1 ? "【TrendRadar \(offset + 1)/\(chunks.count)】\n\(chunk)\n\n— 报告结束：\(report.title) —" : chunk
+                let payload = try renderer.render(report: report, template: template, batchContent: decorated, batchIndex: offset + 1, batchTotal: chunks.count, channel: channel)
                 let result = try await post(payload, to: url)
                 Self.record(WebhookDeliveryRecord(reportID: report.id.uuidString, status: result.statusCode, success: true, attempts: result.attempts, message: "第 \(offset + 1)/\(chunks.count) 批已发送"))
             } catch {

@@ -569,6 +569,11 @@ struct SettingsView: View {
                 .textInputAutocapitalization(.never).autocorrectionDisabled()
             Text("留空默认发送 {title, content, report_type, generated_at}；模板支持 {title}、{content}、{markdown}、{html}、{report_json}、{report_type}、{generated_at}、{batch_index}、{batch_total}。占位符应位于 JSON 字符串值中。")
                 .font(.caption).foregroundStyle(.secondary)
+            NavigationLink {
+                ReportOutputPreviewView(settings: settingsStore.settings)
+            } label: {
+                Label("预览 Markdown / HTML / JSON", systemImage: "eye")
+            }
             Button {
                 isTestingWebhook = true
                 Task {

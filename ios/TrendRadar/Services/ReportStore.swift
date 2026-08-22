@@ -47,7 +47,7 @@ final class ReportStore: ObservableObject {
         }
     }
 
-    func generate(type: ReportType, settings: AppSettings, items: [NewsItem], hotlistItems: [HotNewsItem] = [], trigger: ReportTrigger = .manual, batchID: String? = nil, windowStart: Date? = nil) async {
+    func generate(type: ReportType, settings: AppSettings, items: [NewsItem], hotlistItems: [HotNewsItem] = [], trigger: ReportTrigger = .manual, batchID: String? = nil, windowStart: Date? = nil, diagnostics: ReportDiagnostics? = nil) async {
         guard !items.isEmpty || !hotlistItems.isEmpty else {
             errorMessage = "暂无可生成报告的数据，请先完成一次采集。"
             return
@@ -57,7 +57,7 @@ final class ReportStore: ObservableObject {
         guard !isGenerating else { return }
         isGenerating = true
         defer { isGenerating = false }
-        let request = ReportGenerationRequest(batchID: resolvedBatchID, type: type, trigger: trigger, generatedAt: Date(), settings: settings, windowStart: windowStart)
+        let request = ReportGenerationRequest(batchID: resolvedBatchID, type: type, trigger: trigger, generatedAt: Date(), settings: settings, windowStart: windowStart, newItemIDs: [], diagnostics: diagnostics)
         do {
             var report = generator.generate(request: request, items: items, hotlistItems: hotlistItems)
             if settings.aiAnalysis.enabled && settings.display.showAIAnalysis {
@@ -75,7 +75,7 @@ final class ReportStore: ObservableObject {
             }
             try await localStore.save(report)
             completedBatches.insert(resolvedBatchID)
-            let webhookDelivered = await GenericWebhookService().send(report: report, settings: settings)
+            let webhookDelivered = await GenericWebhookService().sendConfiguredChannels(report: report, settings: settings)
             if !webhookDelivered, let delivery = GenericWebhookService.records().first(where: { $0.reportID == report.id.uuidString }) {
                 errorMessage = "报告已保存，但 Webhook 投递失败：\(delivery.message)"
             }
@@ -87,6 +87,13 @@ final class ReportStore: ObservableObject {
 
     func detail(id: UUID) async -> ReportDetail? {
         await localStore.loadReport(id: id)
+    }
+
+    func diagnostics(news: NewsStore, hotNews: HotNewsStore) -> ReportDiagnostics? {
+        var failures: [ReportSourceFailure] = []
+        failures += news.sourceFailures.map { ReportSourceFailure(sourceType: .rss, source: $0, message: news.sourceFailureDetails[$0] ?? "刷新失败") }
+        failures += hotNews.sourceFailures.map { ReportSourceFailure(sourceType: .hotlist, source: $0, message: hotNews.sourceFailureDetails[$0] ?? "刷新失败") }
+        return failures.isEmpty ? nil : ReportDiagnostics(failures: failures, collectedAt: Date())
     }
 
     func toggleFavorite(id: UUID) async {
