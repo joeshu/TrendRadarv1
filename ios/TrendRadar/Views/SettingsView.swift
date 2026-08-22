@@ -147,13 +147,15 @@ struct SettingsView: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                SettingsOverviewSection(
-                    platformsEnabled: settingsStore.settings.platformsEnabled,
-                    rssEnabled: settingsStore.settings.rssEnabled,
-                    aiEnabled: settingsStore.settings.ai.enabled
-                )
-                SettingsCategoriesSection()
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 0) {
+                    SettingsOverviewSection(
+                        platformsEnabled: settingsStore.settings.platformsEnabled,
+                        rssEnabled: settingsStore.settings.rssEnabled,
+                        aiEnabled: settingsStore.settings.ai.enabled
+                    )
+                    SettingsCategoriesSection()
+                }
             }
             .navigationTitle("配置中心")
             .navigationBarTitleDisplayMode(.inline)
