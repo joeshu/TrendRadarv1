@@ -75,6 +75,10 @@ final class ReportStore: ObservableObject {
             }
             try await localStore.save(report)
             completedBatches.insert(resolvedBatchID)
+            let webhookDelivered = await GenericWebhookService().send(report: report, settings: settings)
+            if !webhookDelivered, let delivery = GenericWebhookService.records().first(where: { $0.reportID == report.id.uuidString }) {
+                errorMessage = "报告已保存，但 Webhook 投递失败：\(delivery.message)"
+            }
             await load()
         } catch {
             errorMessage = "报告保存失败：\(error.localizedDescription)"

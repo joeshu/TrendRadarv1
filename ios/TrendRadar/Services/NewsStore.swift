@@ -212,7 +212,15 @@ final class NewsStore: ObservableObject {
                 InsightCitation(itemID: item.id, title: item.title, source: item.source, url: item.url)
             }
         }
-        try? await localStore.save(report)
+        do {
+            try await localStore.save(report)
+            let webhookDelivered = await GenericWebhookService().send(report: report, settings: settings)
+            if !webhookDelivered, let delivery = GenericWebhookService.records().first(where: { $0.reportID == report.id.uuidString }) {
+                errorMessage = "自动报告已保存，但 Webhook 投递失败：\(delivery.message)"
+            }
+        } catch {
+            errorMessage = "自动报告保存失败：\(error.localizedDescription)"
+        }
     }
 
     private func matchesConfiguredFilters(_ item: NewsItem) -> Bool {

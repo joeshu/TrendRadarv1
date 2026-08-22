@@ -139,6 +139,7 @@ struct SettingsView: View {
     @State private var showingSettingsMessage = false
     @State private var isResettingData = false
     @State private var isUpdatingInterestTags = false
+    @State private var isTestingWebhook = false
     @State private var showingClearCacheConfirmation = false
     @State private var showingResetConfirmation = false
     @State private var originalSettings: AppSettings?
@@ -544,7 +545,7 @@ struct SettingsView: View {
             Toggle("启用通知总开关", isOn: $settingsStore.settings.notification.enabled)
             Toggle("允许本地提醒", isOn: $settingsStore.settings.notification.localAlerts)
             Toggle("提醒声音", isOn: $settingsStore.settings.notification.soundEnabled)
-            Text("服务端通知渠道")
+            Text("报告 Webhook（本机实际投递）")
                 .font(.subheadline).foregroundStyle(AppTheme.cyan)
             SecureField("飞书 Webhook", text: channelBinding("feishu"))
             SecureField("钉钉 Webhook", text: channelBinding("dingtalk"))
@@ -563,8 +564,36 @@ struct SettingsView: View {
             SecureField("Bark URL", text: channelBinding("bark"))
             SecureField("Slack Webhook", text: channelBinding("slack"))
             SecureField("通用 Webhook", text: channelBinding("generic"))
+                .textInputAutocapitalization(.never).autocorrectionDisabled()
             TextField("通用 JSON Payload 模板", text: $settingsStore.settings.notification.channels.genericPayloadTemplate, axis: .vertical)
-            Text("手机端使用系统本地通知。飞书、钉钉、Telegram 等服务端渠道保留在原项目配置中。")
+                .textInputAutocapitalization(.never).autocorrectionDisabled()
+            Text("留空默认发送 {title, content, report_type, generated_at}；模板支持 {title}、{content}、{markdown}、{html}、{report_json}、{report_type}、{generated_at}、{batch_index}、{batch_total}。占位符应位于 JSON 字符串值中。")
+                .font(.caption).foregroundStyle(.secondary)
+            Button {
+                isTestingWebhook = true
+                Task {
+                    let result = await GenericWebhookService().sendTest(settings: settingsStore.settings)
+                    await MainActor.run {
+                        isTestingWebhook = false
+                        settingsMessage = result.success ? "Webhook 测试发送成功（HTTP \(result.status ?? 0)，尝试 \(result.attempts) 次）" : "Webhook 测试失败：\(result.message)"
+                    }
+                }
+            } label: {
+                HStack {
+                    Label(isTestingWebhook ? "正在测试 Webhook…" : "测试通用 Webhook", systemImage: "paperplane")
+                    Spacer()
+                    if isTestingWebhook { ProgressView() }
+                }
+            }
+            .disabled(isTestingWebhook)
+            if let last = GenericWebhookService.records().first {
+                Text(last.success
+                     ? "最近一次 Webhook 投递成功：HTTP \(last.status ?? 0) · \(last.createdAt.formatted(date: .omitted, time: .shortened))"
+                     : "最近一次 Webhook 投递失败：\(last.message)")
+                    .font(.caption)
+                    .foregroundStyle(last.success ? AppTheme.green : AppTheme.red)
+            }
+            Text("纯 iOS 当前实际投递的是“通用 Webhook”；飞书、钉钉等可直接填其兼容 Webhook URL 和 JSON 模板。凭据只保存在本机 Keychain。")
                 .font(.caption).foregroundStyle(.secondary)
         }
     }

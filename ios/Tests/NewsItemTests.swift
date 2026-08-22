@@ -643,4 +643,41 @@ final class NewsItemTests: XCTestCase {
 
         XCTAssertNotEqual(first.id, second.id)
     }
+
+    func testWebhookPayloadDefaultFormatContainsReportMetadata() throws {
+        let settings = AppSettings()
+        let report = ReportGenerationService().generate(
+            request: ReportGenerationRequest(batchID: "webhook-default", type: .manual, trigger: .manual, generatedAt: Date(timeIntervalSince1970: 100), settings: settings),
+            items: [NewsItem(id: "item", title: "Webhook report", source: "Feed")]
+        )
+        let data = try WebhookPayloadRenderer().render(report: report, template: "", batchContent: "body", batchIndex: 1, batchTotal: 1)
+        let object = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+
+        XCTAssertEqual(object?["title"] as? String, report.title)
+        XCTAssertEqual(object?["content"] as? String, "body")
+        XCTAssertEqual(object?["report_type"] as? String, "manual")
+    }
+
+    func testWebhookPayloadTemplateEscapesQuotesAndNewlines() throws {
+        let settings = AppSettings()
+        let report = ReportGenerationService().generate(
+            request: ReportGenerationRequest(batchID: "webhook-template", type: .manual, trigger: .manual, generatedAt: Date(), settings: settings),
+            items: [NewsItem(id: "item", title: "Webhook report", source: "Feed")]
+        )
+        let data = try WebhookPayloadRenderer().render(report: report, template: "{\"content\":\"{content}\",\"title\":\"{title}\"}", batchContent: "quote: \"\nnext", batchIndex: 1, batchTotal: 1)
+        let object = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+
+        XCTAssertEqual(object?["content"] as? String, "quote: \"\nnext")
+        XCTAssertEqual(object?["title"] as? String, report.title)
+    }
+
+    func testWebhookPayloadRejectsInvalidJSONTemplate() {
+        let settings = AppSettings()
+        let report = ReportGenerationService().generate(
+            request: ReportGenerationRequest(batchID: "webhook-invalid", type: .manual, trigger: .manual, generatedAt: Date(), settings: settings),
+            items: [NewsItem(id: "item", title: "Webhook report", source: "Feed")]
+        )
+
+        XCTAssertThrowsError(try WebhookPayloadRenderer().render(report: report, template: "{not-json}", batchContent: "body", batchIndex: 1, batchTotal: 1))
+    }
 }

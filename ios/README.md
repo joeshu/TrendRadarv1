@@ -51,3 +51,4 @@ GitHub Actions 提供 `Build Unsigned TrendRadar IPA` 工作流，并在 `TrendR
 - 点击“报告”右上角 `+` 会先采集热榜与 RSS，再按当前设置生成本地报告。
 - 报告详情支持 Markdown 分享和完整 HTML 文件导出。
 - 开启定时调度后，App 会注册 iOS 后台刷新任务；系统唤醒时执行采集、筛选、可选 AI 分析、报告保存和本地通知。后台执行时机仍由 iOS 决定，不能保证精确到设置中的分钟。
+- 在“设置 → 通知”配置通用 Webhook 后，每份成功保存的报告会发送 JSON 请求；URL 仅保存到本机 Keychain。默认 Payload 含 `title`、`content`、`report_type`、`generated_at` 与分批信息；可用 JSON 模板自定义，并可在设置内测试发送。投递失败会重试 3 次并保留最近 50 条本机记录。Webhook 必须使用 HTTPS。
