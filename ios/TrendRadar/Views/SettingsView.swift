@@ -254,19 +254,21 @@ struct SettingsView: View {
             }
     }
 
-    private var settingsNavigation: some View {
-        NavigationStack {
-            settingsRootContent
-                .navigationTitle("配置中心")
-                .navigationBarTitleDisplayMode(.inline)
-                .scrollContentBackground(.hidden)
-                .background(AppTheme.background)
-                .preferredColorScheme(.dark)
-                .tint(AppTheme.cyan)
-                .navigationDestination(for: SettingsCategory.self) { category in
-                    categoryDestination(category)
-                }
-        }
+    private var settingsNavigation: AnyView {
+        AnyView(
+            NavigationStack {
+                settingsRootContent
+                    .navigationTitle("配置中心")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .scrollContentBackground(.hidden)
+                    .background(AppTheme.background)
+                    .preferredColorScheme(.dark)
+                    .tint(AppTheme.cyan)
+                    .navigationDestination(for: SettingsCategory.self) { category in
+                        categoryDestination(category)
+                    }
+            }
+        )
     }
 
     private func categoryDestination(_ category: SettingsCategory) -> AnyView {
