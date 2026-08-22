@@ -21,19 +21,20 @@ struct ReportGenerationService: Sendable {
             return groups.isEmpty || groups.contains { $0.matches(item.title) }
         }
         let sections = makeSections(items: matchingItems, hotlistItems: matchingHotlistItems, groups: groups, settings: request.settings)
-        let sourceCount = Set(matchingItems.map(\.source) + matchingHotlistItems.map(\.platformName)).count
+        let displayedItems = sections.flatMap(\.items)
+        let sourceCount = Set(displayedItems.map(\.source)).count
         let statistics = ReportStatistics(
-            newsCount: matchingItems.count + matchingHotlistItems.count,
+            newsCount: displayedItems.count,
             sourceCount: sourceCount,
-            unreadCount: matchingItems.filter { !$0.isRead }.count + matchingHotlistItems.filter { !$0.isRead }.count,
-            favoriteCount: matchingItems.filter(\.isFavorite).count + matchingHotlistItems.filter(\.isFavorite).count,
+            unreadCount: displayedItems.filter { !$0.isRead }.count,
+            favoriteCount: displayedItems.filter(\.isFavorite).count,
             keywordCount: groups.filter { group in
-                matchingItems.contains { group.matches($0.title) } || matchingHotlistItems.contains { group.matches($0.title) }
+                displayedItems.contains { group.matches($0.title) }
             }.count,
-            hotlistCount: matchingHotlistItems.count,
-            rssCount: matchingItems.count,
-            hotlistPlatformCount: Set(matchingHotlistItems.map(\.platformName)).count,
-            rssSourceCount: Set(matchingItems.map(\.source)).count
+            hotlistCount: displayedItems.filter { $0.sourceType == .hotlist }.count,
+            rssCount: displayedItems.filter { $0.sourceType == .rss }.count,
+            hotlistPlatformCount: Set(displayedItems.filter { $0.sourceType == .hotlist }.map(\.source)).count,
+            rssSourceCount: Set(displayedItems.filter { $0.sourceType == .rss }.map(\.source)).count
         )
         let title = "\(request.type.displayName) · \(request.generatedAt.formatted(date: .abbreviated, time: .shortened))"
         return ReportDetail(
@@ -53,11 +54,13 @@ struct ReportGenerationService: Sendable {
     }
 
     private func makeSections(items: [NewsItem], hotlistItems: [HotNewsItem], groups: [KeywordGroup], settings: AppSettings) -> [ReportSection] {
-        let hotlistSection = hotlistItems.isEmpty ? [] : [ReportSection(id: "hotlist", title: "热榜", items: hotlistItems.enumerated().map { index, item in
+        let hotlistSection = !settings.display.showHotlist || hotlistItems.isEmpty ? [] : [ReportSection(id: "hotlist", title: "热榜", items: hotlistItems.enumerated().map { index, item in
             ReportItemSnapshot(orderIndex: index, sectionID: "hotlist", sectionTitle: "热榜", item: item)
         })]
         let grouped: [(String, String, [NewsItem])]
-        if settings.report.displayMode == "platform" {
+        if !settings.display.showRSS {
+            grouped = []
+        } else if settings.report.displayMode == "platform" {
             grouped = Dictionary(grouping: items, by: \.source).map { ($0.key, $0.key, $0.value) }
         } else if settings.keywords.isEmpty {
             grouped = [("all", "全部情报", items)]
@@ -70,11 +73,13 @@ struct ReportGenerationService: Sendable {
         }
 
         var index = 0
+        var usedRSSIDs = Set<String>()
         let rssSections = grouped.map { sectionID, title, sectionItems in
             let limited = settings.report.maxNewsPerKeyword > 0
                 ? Array(sectionItems.prefix(settings.report.maxNewsPerKeyword))
                 : sectionItems
-            let snapshots = limited.map { item in
+            let snapshots = limited.compactMap { item -> ReportItemSnapshot? in
+                guard usedRSSIDs.insert(item.id).inserted else { return nil }
                 defer { index += 1 }
                 return ReportItemSnapshot(orderIndex: index, sectionID: sectionID, sectionTitle: title, keyword: settings.keywords.contains(sectionID) ? sectionID : nil, item: item)
             }

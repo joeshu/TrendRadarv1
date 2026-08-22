@@ -18,7 +18,10 @@ struct RadarView: View {
     private var filteredItems: [NewsItem] {
         store.items.filter { item in
             let matchesSearch = searchText.isEmpty || item.title.localizedCaseInsensitiveContains(searchText) || item.source.localizedCaseInsensitiveContains(searchText)
-            let matchesKeywords = settingsStore.settings.keywords.isEmpty || settingsStore.settings.keywords.contains { item.title.localizedCaseInsensitiveContains($0) }
+            let matchesKeywords = KeywordRuleSet(
+                keywords: settingsStore.settings.keywords,
+                globalExcluded: settingsStore.settings.globalFilterWords
+            ).matches(item.title)
             let matchesSource = selectedSource == "全部" || item.source == selectedSource
             return matchesSearch && matchesKeywords && matchesSource && (!showingFavorites || item.isFavorite)
         }
@@ -33,11 +36,20 @@ struct RadarView: View {
                         overviewHeader
                         refreshStatus
                         sourcePicker
+                        if settingsStore.settings.display.showHotlist {
+                            hotNewsSection
+                        }
+                        if !settingsStore.settings.display.showRSS {
+                            Text("RSS 区域已在设置中隐藏")
+                                .font(AppTheme.captionFont)
+                                .foregroundStyle(AppTheme.textTertiary)
+                                .padding(.horizontal, 20)
+                        }
                         if filteredItems.isEmpty {
                             EmptyNewsView(isFavoriteMode: showingFavorites)
                                 .frame(maxWidth: .infinity)
                                 .padding(.top, 44)
-                        } else {
+                        } else if settingsStore.settings.display.showRSS {
                             Text(showingFavorites ? "已收藏" : "最新情报")
                                 .font(.system(size: 22, weight: .bold, design: .rounded))
                                 .foregroundStyle(.white)
@@ -224,6 +236,8 @@ struct ContentView: View {
         TabView {
             RadarView()
                 .tabItem { Label("发现", systemImage: "dot.radiowaves.left.and.right") }
+            InsightView()
+                .tabItem { Label("洞察", systemImage: "waveform.path.ecg") }
             FeedsView()
                 .tabItem { Label("订阅", systemImage: "newspaper") }
             HotNewsView()

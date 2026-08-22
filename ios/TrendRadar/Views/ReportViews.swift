@@ -94,7 +94,7 @@ struct ReportDetailView: View {
                                             SentimentPill(label: "负面", value: negative, tint: AppTheme.red)
                                         }
                                     }
-                                    if !analysis.weakSignals.isEmpty {
+                                    if analysis.signals == nil && !analysis.weakSignals.isEmpty {
                                         Text("弱信号：" + analysis.weakSignals.joined(separator: "、"))
                                             .font(AppTheme.captionFont)
                                             .foregroundStyle(AppTheme.textSecondary)

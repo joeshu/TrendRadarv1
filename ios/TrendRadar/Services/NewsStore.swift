@@ -150,7 +150,7 @@ final class NewsStore: ObservableObject {
         let allIDs = (items.map(\.id) + hotlistItems.map(\.id)).sorted().joined(separator: ",")
         let request = ReportGenerationRequest(batchID: "\(trigger.rawValue):\(allIDs)", type: type, trigger: trigger, generatedAt: Date(), settings: settings)
         var report = ReportGenerationService().generate(request: request, items: items, hotlistItems: hotlistItems)
-        if settings.aiAnalysis.enabled {
+        if settings.aiAnalysis.enabled && settings.display.showAIAnalysis {
             report.aiAnalysis = await aiService.reportAnalysis(hotlistItems: hotlistItems, rssItems: items, settings: settings, reportType: type.displayName)
         }
         try? await localStore.save(report)

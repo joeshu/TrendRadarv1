@@ -20,7 +20,7 @@ struct ReportFormatter {
                let negative = analysis.sentimentNegative {
                 lines.append("情绪：正面 \(Int(positive * 100))% · 中性 \(Int(neutral * 100))% · 负面 \(Int(negative * 100))%")
             }
-            if !analysis.weakSignals.isEmpty {
+            if analysis.signals == nil && !analysis.weakSignals.isEmpty {
                 lines.append("弱信号：\(analysis.weakSignals.joined(separator: "、"))")
             }
             if let recommendation = analysis.recommendation, !recommendation.isEmpty {
