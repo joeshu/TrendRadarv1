@@ -116,7 +116,7 @@ struct AIAnalysisSettings: Codable, Equatable, Sendable {
     var promptFile = "ai_analysis_prompt.txt"
     var mode = "follow_report"
     var maxNewsForAnalysis = 150
-    var includeRSS = false
+    var includeRSS = true
     var includeStandalone = true
     var includeRankTimeline = true
 }

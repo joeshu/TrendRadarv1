@@ -14,10 +14,19 @@ final class ReportRecord {
     var unreadCount: Int
     var favoriteCount: Int
     var keywordCount: Int
+    var hotlistCount: Int = 0
+    var rssCount: Int = 0
+    var hotlistPlatformCount: Int = 0
+    var rssSourceCount: Int = 0
     var aiEnabled: Bool
     var aiModel: String?
     var aiLanguage: String?
     var aiSummary: String?
+    var aiCoreTrends: String?
+    var aiSignals: String?
+    var aiSentimentControversy: String?
+    var aiRSSInsights: String?
+    var aiStandaloneSummariesJSON: Data?
     var settingsSnapshotJSON: Data?
     var isFavorite: Bool
     var failureMessage: String?
@@ -40,10 +49,19 @@ final class ReportRecord {
         unreadCount = report.statistics.unreadCount
         favoriteCount = report.statistics.favoriteCount
         keywordCount = report.statistics.keywordCount
+        hotlistCount = report.statistics.hotlistCount
+        rssCount = report.statistics.rssCount
+        hotlistPlatformCount = report.statistics.hotlistPlatformCount
+        rssSourceCount = report.statistics.rssSourceCount
         aiEnabled = report.aiAnalysis?.enabled ?? false
         aiModel = report.aiAnalysis?.model
         aiLanguage = report.aiAnalysis?.language
         aiSummary = report.aiAnalysis?.content
+        aiCoreTrends = report.aiAnalysis?.coreTrends
+        aiSignals = report.aiAnalysis?.signals
+        aiSentimentControversy = report.aiAnalysis?.sentimentControversy
+        aiRSSInsights = report.aiAnalysis?.rssInsights
+        aiStandaloneSummariesJSON = try? encoder.encode(report.aiAnalysis?.standaloneSummaries ?? [:])
         settingsSnapshotJSON = try encoder.encode(report.settingsSnapshot)
         isFavorite = report.isFavorite
         failureMessage = report.failureMessage
@@ -66,10 +84,19 @@ final class ReportRecord {
         unreadCount = report.statistics.unreadCount
         favoriteCount = report.statistics.favoriteCount
         keywordCount = report.statistics.keywordCount
+        hotlistCount = report.statistics.hotlistCount
+        rssCount = report.statistics.rssCount
+        hotlistPlatformCount = report.statistics.hotlistPlatformCount
+        rssSourceCount = report.statistics.rssSourceCount
         aiEnabled = report.aiAnalysis?.enabled ?? false
         aiModel = report.aiAnalysis?.model
         aiLanguage = report.aiAnalysis?.language
         aiSummary = report.aiAnalysis?.content
+        aiCoreTrends = report.aiAnalysis?.coreTrends
+        aiSignals = report.aiAnalysis?.signals
+        aiSentimentControversy = report.aiAnalysis?.sentimentControversy
+        aiRSSInsights = report.aiAnalysis?.rssInsights
+        aiStandaloneSummariesJSON = try? encoder.encode(report.aiAnalysis?.standaloneSummaries ?? [:])
         settingsSnapshotJSON = try encoder.encode(report.settingsSnapshot)
         isFavorite = report.isFavorite
         failureMessage = report.failureMessage
@@ -119,7 +146,7 @@ final class ReportRecord {
         }
 
         let analysis = aiEnabled || aiSummary != nil
-            ? ReportAIAnalysis(enabled: aiEnabled, model: aiModel, language: aiLanguage ?? "Chinese", content: aiSummary, failureMessage: failureMessage, sentimentPositive: aiSentimentPositive, sentimentNeutral: aiSentimentNeutral, sentimentNegative: aiSentimentNegative, weakSignals: aiWeakSignalsJSON.flatMap { try? decoder.decode([String].self, from: $0) } ?? [], recommendation: aiRecommendation)
+            ? ReportAIAnalysis(enabled: aiEnabled, model: aiModel, language: aiLanguage ?? "Chinese", content: aiSummary, coreTrends: aiCoreTrends, signals: aiSignals, failureMessage: failureMessage, sentimentPositive: aiSentimentPositive, sentimentNeutral: aiSentimentNeutral, sentimentNegative: aiSentimentNegative, weakSignals: aiWeakSignalsJSON.flatMap { try? decoder.decode([String].self, from: $0) } ?? [], recommendation: aiRecommendation, sentimentControversy: aiSentimentControversy, rssInsights: aiRSSInsights, standaloneSummaries: aiStandaloneSummariesJSON.flatMap { try? decoder.decode([String: String].self, from: $0) } ?? [:])
             : nil
         return ReportDetail(
             id: uuid,
@@ -128,7 +155,7 @@ final class ReportRecord {
             trigger: reportTrigger,
             generatedAt: generatedAt,
             status: reportStatus,
-            statistics: ReportStatistics(newsCount: newsCount, sourceCount: sourceCount, unreadCount: unreadCount, favoriteCount: favoriteCount, keywordCount: keywordCount),
+            statistics: ReportStatistics(newsCount: newsCount, sourceCount: sourceCount, unreadCount: unreadCount, favoriteCount: favoriteCount, keywordCount: keywordCount, hotlistCount: hotlistCount, rssCount: rssCount, hotlistPlatformCount: hotlistPlatformCount, rssSourceCount: rssSourceCount),
             settingsSnapshot: settingsSnapshot,
             aiAnalysis: analysis,
             sections: sections,
@@ -153,6 +180,8 @@ final class ReportItemRecord {
     var summary: String?
     var isRead: Bool
     var isFavorite: Bool
+    var sourceType: String = ReportSourceType.rss.rawValue
+    var rank: Int?
 
     init(reportID: String, snapshot: ReportItemSnapshot) {
         id = "\(reportID):\(snapshot.id)"
@@ -168,6 +197,8 @@ final class ReportItemRecord {
         summary = snapshot.summary
         isRead = snapshot.isRead
         isFavorite = snapshot.isFavorite
+        sourceType = snapshot.sourceType.rawValue
+        rank = snapshot.rank
     }
 
     var asSnapshot: ReportItemSnapshot {
@@ -183,7 +214,9 @@ final class ReportItemRecord {
             publishedAt: publishedAt,
             summary: summary,
             isRead: isRead,
-            isFavorite: isFavorite
+            isFavorite: isFavorite,
+            sourceType: ReportSourceType(rawValue: sourceType) ?? .rss,
+            rank: rank
         )
     }
 
@@ -194,7 +227,7 @@ final class ReportItemRecord {
 }
 
 private extension ReportItemSnapshot {
-    init(id: String, orderIndex: Int, sectionID: String, sectionTitle: String, keyword: String?, title: String, source: String, url: URL?, publishedAt: Date?, summary: String?, isRead: Bool, isFavorite: Bool) {
+    init(id: String, orderIndex: Int, sectionID: String, sectionTitle: String, keyword: String?, title: String, source: String, url: URL?, publishedAt: Date?, summary: String?, isRead: Bool, isFavorite: Bool, sourceType: ReportSourceType = .rss, rank: Int? = nil) {
         self.id = id
         self.orderIndex = orderIndex
         self.sectionID = sectionID
@@ -207,6 +240,8 @@ private extension ReportItemSnapshot {
         self.summary = summary
         self.isRead = isRead
         self.isFavorite = isFavorite
+        self.sourceType = sourceType
+        self.rank = rank
     }
 }
 

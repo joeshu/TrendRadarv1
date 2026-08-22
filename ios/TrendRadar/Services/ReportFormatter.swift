@@ -8,11 +8,13 @@ enum ReportFormat: Equatable {
 struct ReportFormatter {
     func render(_ report: ReportDetail, format: ReportFormat) -> String {
         let heading = format == .markdown ? "# \(report.title)" : report.title
-        let stats = "情报 \(report.statistics.newsCount) 条 · 来源 \(report.statistics.sourceCount) · 未读 \(report.statistics.unreadCount) · 收藏 \(report.statistics.favoriteCount)"
-        var lines = [heading, "生成时间：\(report.generatedAt.formatted(date: .long, time: .shortened))", stats]
+        let stats = "总新闻：\(report.statistics.newsCount) 条（热榜 \(report.statistics.hotlistCount) + RSS \(report.statistics.rssCount)）"
+        var lines = [heading, stats, "热榜：\(report.statistics.hotlistCount)（平台 \(report.statistics.hotlistPlatformCount)）", "RSS：\(report.statistics.rssCount)（源 \(report.statistics.rssSourceCount)）", "类型：\(report.type.displayName)", "时间：\(report.generatedAt.formatted(date: .long, time: .shortened))"]
         if let analysis = report.aiAnalysis, analysis.hasContent {
             let content = analysis.content ?? ""
-            lines.append(format == .markdown ? "\n## AI 洞察\n\(content)" : "\nAI 洞察\n\(content)")
+            lines.append(format == .markdown ? "\n## AI 热点分析\n\(content)" : "\nAI 热点分析\n\(content)")
+            if let controversy = analysis.sentimentControversy, !controversy.isEmpty { lines.append("舆论风向争议：\(controversy)") }
+            if let rssInsights = analysis.rssInsights, !rssInsights.isEmpty { lines.append("RSS 深度洞察：\(rssInsights)") }
             if let positive = analysis.sentimentPositive,
                let neutral = analysis.sentimentNeutral,
                let negative = analysis.sentimentNegative {
@@ -24,6 +26,10 @@ struct ReportFormatter {
             if let recommendation = analysis.recommendation, !recommendation.isEmpty {
                 lines.append("策略建议：\(recommendation)")
             }
+            if let summaries = analysis.standaloneSummaries, !summaries.isEmpty {
+                lines.append("独立源点速览")
+                lines.append(contentsOf: summaries.sorted { $0.key < $1.key }.map { "[\($0.key)] \($0.value)" })
+            }
         } else if let message = report.aiAnalysis?.failureMessage {
             lines.append("\nAI 洞察\n分析失败：\(message)")
         }
@@ -31,7 +37,8 @@ struct ReportFormatter {
             lines.append(format == .markdown ? "\n## \(section.title)" : "\n[\(section.title)]")
             lines.append(contentsOf: section.items.map { item in
                 let prefix = format == .markdown ? "- " : "• "
-                return "\(prefix)\(item.title) · \(item.source)"
+                let rank = item.rank.map { " · 排名 \($0)" } ?? ""
+                return "\(prefix)\(item.title) · \(item.source)\(rank)"
             })
         }
         return lines.joined(separator: "\n")

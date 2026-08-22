@@ -586,6 +586,7 @@ struct FavoritesView: View {
 
 struct ReportCenterView: View {
     @EnvironmentObject private var store: NewsStore
+    @EnvironmentObject private var hotNewsStore: HotNewsStore
     @EnvironmentObject private var settingsStore: SettingsStore
     @EnvironmentObject private var reportStore: ReportStore
     @State private var showingReportGenerator = false
@@ -635,7 +636,7 @@ struct ReportCenterView: View {
             }
             .sheet(isPresented: $showingReportGenerator) {
                 ReportGeneratorSheet { type in
-                    Task { await reportStore.generate(type: type, settings: settingsStore.settings, items: store.items) }
+                    Task { await reportStore.generate(type: type, settings: settingsStore.settings, items: store.items, hotlistItems: hotNewsStore.items) }
                 }
             }
             .task { await reportStore.load() }

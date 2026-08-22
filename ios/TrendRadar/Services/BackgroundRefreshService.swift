@@ -61,6 +61,7 @@ enum BackgroundRefreshService {
             }
             let localStore = LocalStore()
             let oldItems = await localStore.load()
+            let hotlistItems = await localStore.loadHotNews()
             let oldByID = oldItems.reduce(into: [String: NewsItem]()) { $0[$1.id] = $1 }
             let oldIDs = Set(oldByID.keys)
             let refreshedItems = freshItems.reduce(into: [String: NewsItem]()) { result, item in
@@ -76,9 +77,9 @@ enum BackgroundRefreshService {
             if settings.scheduleEnabled, timelineAction.push, let reportType = ReportType(rawValue: timelineAction.reportMode.rawValue) {
                 let batchID = "backgroundRefresh:\(merged.map(\.id).sorted().joined(separator: ","))"
                 let request = ReportGenerationRequest(batchID: batchID, type: reportType, trigger: .backgroundRefresh, generatedAt: Date(), settings: settings)
-                var report = ReportGenerationService().generate(request: request, items: merged)
+                var report = ReportGenerationService().generate(request: request, items: merged, hotlistItems: hotlistItems)
                 if timelineAction.analyze {
-                    report.aiAnalysis = await AIService().reportAnalysis(for: merged, settings: settings)
+                    report.aiAnalysis = await AIService().reportAnalysis(hotlistItems: hotlistItems, rssItems: merged, settings: settings, reportType: reportType.displayName)
                 }
                 try Task.checkCancellation()
                 try? await localStore.save(report)

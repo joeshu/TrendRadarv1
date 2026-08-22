@@ -9,22 +9,30 @@ struct ReportGenerationRequest: Sendable {
 }
 
 struct ReportGenerationService: Sendable {
-    func generate(request: ReportGenerationRequest, items: [NewsItem]) -> ReportDetail {
+    func generate(request: ReportGenerationRequest, items: [NewsItem], hotlistItems: [HotNewsItem] = []) -> ReportDetail {
         let groups = KeywordGroup.parse(request.settings.keywords)
         let matchingItems = items.filter { item in
             guard !request.settings.globalFilterWords.contains(where: { item.title.localizedCaseInsensitiveContains($0) }) else { return false }
             return groups.isEmpty || groups.contains { $0.matches(item.title) }
         }
-        let sections = makeSections(items: matchingItems, groups: groups, settings: request.settings)
-        let sourceCount = Set(matchingItems.map(\.source)).count
+        let matchingHotlistItems = hotlistItems.filter { item in
+            guard !request.settings.globalFilterWords.contains(where: { item.title.localizedCaseInsensitiveContains($0) }) else { return false }
+            return groups.isEmpty || groups.contains { $0.matches(item.title) }
+        }
+        let sections = makeSections(items: matchingItems, hotlistItems: matchingHotlistItems, groups: groups, settings: request.settings)
+        let sourceCount = Set(matchingItems.map(\.source) + matchingHotlistItems.map(\.platformName)).count
         let statistics = ReportStatistics(
-            newsCount: matchingItems.count,
+            newsCount: matchingItems.count + matchingHotlistItems.count,
             sourceCount: sourceCount,
-            unreadCount: matchingItems.filter { !$0.isRead }.count,
-            favoriteCount: matchingItems.filter(\.isFavorite).count,
+            unreadCount: matchingItems.filter { !$0.isRead }.count + matchingHotlistItems.filter { !$0.isRead }.count,
+            favoriteCount: matchingItems.filter(\.isFavorite).count + matchingHotlistItems.filter(\.isFavorite).count,
             keywordCount: groups.filter { group in
-                matchingItems.contains { group.matches($0.title) }
-            }.count
+                matchingItems.contains { group.matches($0.title) } || matchingHotlistItems.contains { group.matches($0.title) }
+            }.count,
+            hotlistCount: matchingHotlistItems.count,
+            rssCount: matchingItems.count,
+            hotlistPlatformCount: Set(matchingHotlistItems.map(\.platformName)).count,
+            rssSourceCount: Set(matchingItems.map(\.source)).count
         )
         let title = "\(request.type.displayName) · \(request.generatedAt.formatted(date: .abbreviated, time: .shortened))"
         return ReportDetail(
@@ -43,7 +51,10 @@ struct ReportGenerationService: Sendable {
         )
     }
 
-    private func makeSections(items: [NewsItem], groups: [KeywordGroup], settings: AppSettings) -> [ReportSection] {
+    private func makeSections(items: [NewsItem], hotlistItems: [HotNewsItem], groups: [KeywordGroup], settings: AppSettings) -> [ReportSection] {
+        let hotlistSection = hotlistItems.isEmpty ? [] : [ReportSection(id: "hotlist", title: "热榜", items: hotlistItems.enumerated().map { index, item in
+            ReportItemSnapshot(orderIndex: index, sectionID: "hotlist", sectionTitle: "热榜", item: item)
+        })]
         let grouped: [(String, String, [NewsItem])]
         if settings.report.displayMode == "platform" {
             grouped = Dictionary(grouping: items, by: \.source).map { ($0.key, $0.key, $0.value) }
@@ -58,7 +69,7 @@ struct ReportGenerationService: Sendable {
         }
 
         var index = 0
-        return grouped.map { sectionID, title, sectionItems in
+        let rssSections = grouped.map { sectionID, title, sectionItems in
             let limited = settings.report.maxNewsPerKeyword > 0
                 ? Array(sectionItems.prefix(settings.report.maxNewsPerKeyword))
                 : sectionItems
@@ -68,5 +79,6 @@ struct ReportGenerationService: Sendable {
             }
             return ReportSection(id: sectionID, title: title, items: snapshots)
         }
+        return hotlistSection + rssSections
     }
 }

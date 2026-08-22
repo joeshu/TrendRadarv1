@@ -47,20 +47,26 @@ final class ReportStore: ObservableObject {
         }
     }
 
-    func generate(type: ReportType, settings: AppSettings, items: [NewsItem], trigger: ReportTrigger = .manual, batchID: String? = nil) async {
-        let resolvedBatchID = batchID ?? "\(type.rawValue):\(items.map(\.id).sorted().joined(separator: ","))"
+    func generate(type: ReportType, settings: AppSettings, items: [NewsItem], hotlistItems: [HotNewsItem] = [], trigger: ReportTrigger = .manual, batchID: String? = nil) async {
+        let resolvedBatchID = batchID ?? "\(type.rawValue):\((items.map(\.id) + hotlistItems.map(\.id)).sorted().joined(separator: ","))"
         guard !completedBatches.contains(resolvedBatchID) else { return }
         guard !isGenerating else { return }
         isGenerating = true
         defer { isGenerating = false }
         let request = ReportGenerationRequest(batchID: resolvedBatchID, type: type, trigger: trigger, generatedAt: Date(), settings: settings)
         do {
-            var report = generator.generate(request: request, items: items)
+            var report = generator.generate(request: request, items: items, hotlistItems: hotlistItems)
             let snapshotItems = report.sections.flatMap(\.items).map { snapshot in
                 NewsItem(id: snapshot.id, title: snapshot.title, source: snapshot.source, url: snapshot.url, publishedAt: snapshot.publishedAt, summary: snapshot.summary, isRead: snapshot.isRead, isFavorite: snapshot.isFavorite)
             }
             if settings.aiAnalysis.enabled {
-                report.aiAnalysis = await aiService.reportAnalysis(for: snapshotItems, settings: settings)
+                let snapshotHotlist = report.sections.flatMap(\.items).filter { $0.sourceType == .hotlist }.map { snapshot in
+                    HotNewsItem(id: snapshot.id, title: snapshot.title, url: snapshot.url, platformID: snapshot.source, platformName: snapshot.source, rank: snapshot.rank ?? 0, publishedAt: snapshot.publishedAt, extraInfo: snapshot.summary, topicKey: snapshot.title, previousRank: nil, isRead: snapshot.isRead, isFavorite: snapshot.isFavorite)
+                }
+                let snapshotRSS = report.sections.flatMap(\.items).filter { $0.sourceType == .rss }.map { snapshot in
+                    NewsItem(id: snapshot.id, title: snapshot.title, source: snapshot.source, url: snapshot.url, publishedAt: snapshot.publishedAt, summary: snapshot.summary, isRead: snapshot.isRead, isFavorite: snapshot.isFavorite)
+                }
+                report.aiAnalysis = await aiService.reportAnalysis(hotlistItems: snapshotHotlist, rssItems: snapshotRSS, settings: settings, reportType: type.displayName)
             }
             try await localStore.save(report)
             completedBatches.insert(resolvedBatchID)

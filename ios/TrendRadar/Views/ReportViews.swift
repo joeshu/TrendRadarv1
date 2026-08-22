@@ -81,9 +81,10 @@ struct ReportDetailView: View {
                         if let analysis = report.aiAnalysis, analysis.hasContent {
                             InsightPanel(title: "AI 洞察", icon: "sparkles", tint: AppTheme.cyan) {
                                 VStack(alignment: .leading, spacing: 12) {
-                                    Text(analysis.content ?? "")
-                                        .font(AppTheme.bodyFont)
-                                        .foregroundStyle(AppTheme.textSecondary)
+                                    analysisBlock(title: "核心热点态势", content: analysis.coreTrends ?? analysis.content)
+                                    analysisBlock(title: "舆论风向争议", content: analysis.sentimentControversy)
+                                    analysisBlock(title: "异动与弱信号", content: analysis.signals ?? analysis.weakSignals.joined(separator: "\n"))
+                                    analysisBlock(title: "RSS 深度洞察", content: analysis.rssInsights)
                                     if let positive = analysis.sentimentPositive,
                                        let neutral = analysis.sentimentNeutral,
                                        let negative = analysis.sentimentNegative {
@@ -99,9 +100,28 @@ struct ReportDetailView: View {
                                             .foregroundStyle(AppTheme.textSecondary)
                                     }
                                     if let recommendation = analysis.recommendation, !recommendation.isEmpty {
-                                        Label(recommendation, systemImage: "scope")
-                                            .font(AppTheme.captionFont)
-                                            .foregroundStyle(AppTheme.cyan)
+                                        VStack(alignment: .leading, spacing: 4) {
+                                            Text("研判策略建议")
+                                                .font(AppTheme.headlineFont)
+                                                .foregroundStyle(AppTheme.cyan)
+                                            Text(recommendation)
+                                                .font(AppTheme.captionFont)
+                                                .foregroundStyle(AppTheme.textSecondary)
+                                        }
+                                    }
+                                    if !analysis.standaloneSummaries.isEmpty {
+                                        VStack(alignment: .leading, spacing: 8) {
+                                            Text("独立源点速览")
+                                                .font(AppTheme.headlineFont)
+                                                .foregroundStyle(AppTheme.cyan)
+                                            ForEach(analysis.standaloneSummaries.keys.sorted(), id: \.self) { source in
+                                                if let summary = analysis.standaloneSummaries[source], !summary.isEmpty {
+                                                    Text("[\(source)] \(summary)")
+                                                        .font(AppTheme.captionFont)
+                                                        .foregroundStyle(AppTheme.textSecondary)
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -156,6 +176,20 @@ struct ReportDetailView: View {
 
     private func loadReport() async {
         report = await reportStore.detail(id: reportID)
+    }
+
+    @ViewBuilder
+    private func analysisBlock(title: String, content: String?) -> some View {
+        if let content, !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(AppTheme.headlineFont)
+                    .foregroundStyle(AppTheme.cyan)
+                Text(content)
+                    .font(AppTheme.bodyFont)
+                    .foregroundStyle(AppTheme.textSecondary)
+            }
+        }
     }
 
     private func detailHeader(_ report: ReportDetail) -> some View {

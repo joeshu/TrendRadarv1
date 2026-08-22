@@ -107,10 +107,12 @@ final class NewsStore: ObservableObject {
 
     private func generateReport(trigger: ReportTrigger, type: ReportType? = nil) async {
         guard let type = type ?? ReportType(rawValue: settings.report.mode) else { return }
-        let request = ReportGenerationRequest(batchID: "\(trigger.rawValue):\(items.map(\.id).sorted().joined(separator: ","))", type: type, trigger: trigger, generatedAt: Date(), settings: settings)
-        var report = ReportGenerationService().generate(request: request, items: items)
+        let hotlistItems = await localStore.loadHotNews()
+        let allIDs = (items.map(\.id) + hotlistItems.map(\.id)).sorted().joined(separator: ",")
+        let request = ReportGenerationRequest(batchID: "\(trigger.rawValue):\(allIDs)", type: type, trigger: trigger, generatedAt: Date(), settings: settings)
+        var report = ReportGenerationService().generate(request: request, items: items, hotlistItems: hotlistItems)
         if settings.aiAnalysis.enabled {
-            report.aiAnalysis = await aiService.reportAnalysis(for: items, settings: settings)
+            report.aiAnalysis = await aiService.reportAnalysis(hotlistItems: hotlistItems, rssItems: items, settings: settings, reportType: type.displayName)
         }
         try? await localStore.save(report)
     }

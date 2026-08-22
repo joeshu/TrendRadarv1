@@ -29,49 +29,61 @@ struct AIService: Sendable {
     }
 
     func analyze(_ items: [NewsItem], settings: AppSettings = AppSettings()) async throws -> StructuredAIAnalysis {
-        guard !items.isEmpty else { throw AIError.emptyInput }
+        try await analyze(hotlistItems: [], rssItems: items, settings: settings)
+    }
+
+    func analyze(hotlistItems: [HotNewsItem], rssItems: [NewsItem], settings: AppSettings = AppSettings(), reportType: String? = nil) async throws -> StructuredAIAnalysis {
+        let maxItems = settings.aiAnalysis.maxNewsForAnalysis
+        let limitedHotlistItems = maxItems > 0 ? Array(hotlistItems.prefix(maxItems)) : hotlistItems
+        let remaining = maxItems > 0 ? max(0, maxItems - limitedHotlistItems.count) : rssItems.count
+        let limitedRSSItems = maxItems > 0 ? Array(rssItems.prefix(remaining)) : rssItems
+        let hotlistInput = limitedHotlistItems.enumerated().map { index, item in
+            "\(index + 1). [\(item.platformName)] \(item.title) | 排名:\(item.rank)"
+        }.joined(separator: "\n")
+        let rssInput = limitedRSSItems.enumerated().map { index, item in
+            "\(index + 1). [\(item.source)] \(item.title)\(item.summary.map { "\n   \($0)" } ?? "")"
+        }.joined(separator: "\n")
+        let platforms = Array(Set(hotlistItems.map(\.platformName))).sorted().joined(separator: ", ")
+        return try await analyze(hotlistInput: hotlistInput, rssInput: rssInput, hotlistCount: hotlistItems.count, rssCount: rssItems.count, platforms: platforms.isEmpty ? "多平台" : platforms, reportType: reportType, settings: settings)
+    }
+
+    private func analyze(hotlistInput: String, rssInput: String, hotlistCount: Int, rssCount: Int, platforms: String, reportType: String?, settings: AppSettings) async throws -> StructuredAIAnalysis {
         let baseURL = keychain.read("api-base").trimmingCharacters(in: .whitespacesAndNewlines)
         let apiKey = keychain.read("api-key")
         let model = keychain.read("ai-model").trimmingCharacters(in: .whitespacesAndNewlines)
         guard !baseURL.isEmpty, !apiKey.isEmpty else { throw AIError.missingConfiguration }
         let endpoint = baseURL.hasSuffix("/chat/completions") ? baseURL : baseURL.trimmingCharacters(in: CharacterSet(charactersIn: "/")) + "/chat/completions"
         guard let url = URL(string: endpoint) else { throw AIError.invalidURL }
-        let analysisItems = settings.aiAnalysis.maxNewsForAnalysis > 0
-            ? Array(items.prefix(settings.aiAnalysis.maxNewsForAnalysis))
-            : items
-        let input = analysisItems.enumerated().map { index, item in
-            "\(index + 1). [\(item.source)] \(item.title)\(item.summary.map { "\n   \($0)" } ?? "")"
-        }.joined(separator: "\n")
+        let totalCount = hotlistCount + rssCount
+        guard totalCount > 0 else { throw AIError.emptyInput }
+        let limitedHotlist = hotlistInput
+        let limitedRSS = rssInput
         let prompt = AIPromptTemplate.load(fileName: settings.aiAnalysis.promptFile)
         let messages = prompt.messages(values: [
             "language": settings.aiAnalysis.language,
             "report_mode": settings.aiAnalysis.mode,
-            "report_type": settings.report.mode,
+            "report_type": reportType ?? settings.report.mode,
             "current_time": Date().formatted(date: .abbreviated, time: .shortened),
-            "news_count": String(analysisItems.count),
-            "rss_count": String(analysisItems.filter { $0.source.lowercased().contains("rss") }.count),
+            "news_count": String(hotlistCount),
+            "rss_count": String(rssCount),
             "keywords": settings.keywords.joined(separator: ", "),
-            "platforms": Array(Set(analysisItems.map(\.source))).sorted().joined(separator: ", "),
-            "news_content": input,
-            "rss_content": settings.aiAnalysis.includeRSS ? input : "暂无RSS数据",
-            "standalone_content": settings.aiAnalysis.includeStandalone ? input : "暂无独立展示区数据"
+            "platforms": platforms,
+            "news_content": limitedHotlist.isEmpty ? "暂无热榜数据" : limitedHotlist,
+            "rss_content": settings.aiAnalysis.includeRSS && !limitedRSS.isEmpty ? limitedRSS : "暂无RSS数据",
+            "standalone_content": "暂无独立展示区数据"
         ])
         let content = try await requestContent(
             url: url,
             apiKey: apiKey,
             models: modelCandidates(primary: model, settings: settings),
             messages: [
-                Message(role: "system", content: messages.system + "\n应用接口要求：只输出包含 overview、sentimentPositive、sentimentNeutral、sentimentNegative、weakSignals、recommendation 字段的 JSON。三个情绪数值之和应为 1。"),
+                Message(role: "system", content: messages.system + "\n应用接口要求：严格遵循提示词定义的 JSON 字段，只输出合法 JSON。字段使用 core_trends、sentiment_controversy、signals、rss_insights、outlook_strategy、standalone_summaries。不要输出 Markdown 代码块。"),
                 Message(role: "user", content: messages.user)
             ],
             settings: settings
         )
         let json = content.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: "```json", with: "").replacingOccurrences(of: "```", with: "").trimmingCharacters(in: .whitespacesAndNewlines)
         let analysis = try JSONDecoder().decode(StructuredAIAnalysis.self, from: Data(json.utf8))
-        let sentimentValues = [analysis.sentimentPositive, analysis.sentimentNeutral, analysis.sentimentNegative]
-        guard sentimentValues.allSatisfy({ $0 >= 0 && $0 <= 1 }), abs(sentimentValues.reduce(0, +) - 1) < 0.02 else {
-            throw AIError.invalidAnalysis
-        }
         return analysis
     }
 
@@ -205,12 +217,16 @@ struct AIService: Sendable {
     }
 
     func reportAnalysis(for items: [NewsItem], settings: AppSettings) async -> ReportAIAnalysis {
+        await reportAnalysis(hotlistItems: [], rssItems: items, settings: settings)
+    }
+
+    func reportAnalysis(hotlistItems: [HotNewsItem], rssItems: [NewsItem], settings: AppSettings, reportType: String? = nil) async -> ReportAIAnalysis {
         guard settings.ai.enabled, settings.aiAnalysis.enabled else {
             return ReportAIAnalysis(enabled: false, model: nil, language: settings.aiAnalysis.language, content: nil, failureMessage: nil)
         }
         do {
-            let result = try await analyze(items, settings: settings)
-            return ReportAIAnalysis(enabled: true, model: keychain.read("ai-model"), language: settings.aiAnalysis.language, content: result.overview, failureMessage: nil, sentimentPositive: result.sentimentPositive, sentimentNeutral: result.sentimentNeutral, sentimentNegative: result.sentimentNegative, weakSignals: result.weakSignals, recommendation: result.recommendation)
+            let result = try await analyze(hotlistItems: hotlistItems, rssItems: rssItems, settings: settings, reportType: reportType)
+            return ReportAIAnalysis(enabled: true, model: keychain.read("ai-model"), language: settings.aiAnalysis.language, content: result.overview.isEmpty ? result.coreTrends : result.overview, coreTrends: result.overview.isEmpty ? result.coreTrends : result.overview, signals: result.signals.isEmpty ? result.weakSignals.joined(separator: "\n") : result.signals, failureMessage: nil, sentimentPositive: result.sentimentPositive, sentimentNeutral: result.sentimentNeutral, sentimentNegative: result.sentimentNegative, weakSignals: result.weakSignals, recommendation: result.recommendation, sentimentControversy: result.sentimentControversy, rssInsights: result.rssInsights, standaloneSummaries: result.standaloneSummaries)
         } catch {
             return ReportAIAnalysis(enabled: true, model: keychain.read("ai-model"), language: settings.aiAnalysis.language, content: nil, failureMessage: error.localizedDescription)
         }
