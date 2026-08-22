@@ -5,9 +5,25 @@ import UserNotifications
 enum BackgroundRefreshService {
     static let identifier = "com.trendradar.mobile.refresh"
 
+    static var isSupportedHost: Bool {
+        isSupportedHost(
+            processName: ProcessInfo.processInfo.processName,
+            bundlePath: Bundle.main.bundleURL.path
+        )
+    }
+
+    static func isSupportedHost(processName: String, bundlePath: String) -> Bool {
+        let normalizedProcessName = processName.lowercased()
+        let normalizedBundlePath = bundlePath.lowercased()
+        let isLiveContainer = normalizedProcessName.hasPrefix("liveprocess")
+            || normalizedBundlePath.contains("/documents/applications/")
+        return !isLiveContainer && normalizedBundlePath.hasSuffix(".app")
+    }
+
     @discardableResult
     static func register() -> Bool {
-        BGTaskScheduler.shared.register(forTaskWithIdentifier: identifier, using: nil) { task in
+        guard isSupportedHost else { return false }
+        return BGTaskScheduler.shared.register(forTaskWithIdentifier: identifier, using: nil) { task in
             guard let refreshTask = task as? BGAppRefreshTask else {
                 task.setTaskCompleted(success: false)
                 return
@@ -17,6 +33,7 @@ enum BackgroundRefreshService {
     }
 
     static func schedule(after interval: TimeInterval = 3600, enabled: Bool = true) {
+        guard isSupportedHost else { return }
         guard enabled else {
             BGTaskScheduler.shared.cancel(taskRequestWithIdentifier: identifier)
             return

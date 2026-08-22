@@ -671,6 +671,24 @@ final class NewsItemTests: XCTestCase {
         XCTAssertEqual(object?["title"] as? String, report.title)
     }
 
+    func testBackgroundRefreshRejectsLiveContainerHosts() {
+        XCTAssertFalse(BackgroundRefreshService.isSupportedHost(
+            processName: "LiveProcess",
+            bundlePath: "/private/var/mobile/Containers/Data/Application/ABC/Documents/Applications/com.trendradar.mobile.app"
+        ))
+        XCTAssertFalse(BackgroundRefreshService.isSupportedHost(
+            processName: "TrendRadar",
+            bundlePath: "/private/var/mobile/Containers/Data/Application/ABC/Documents/Applications/com.trendradar.mobile.app"
+        ))
+    }
+
+    func testBackgroundRefreshAcceptsNormalInstalledApp() {
+        XCTAssertTrue(BackgroundRefreshService.isSupportedHost(
+            processName: "TrendRadar",
+            bundlePath: "/private/var/containers/Bundle/Application/ABC/TrendRadar.app"
+        ))
+    }
+
     func testWebhookPayloadRejectsInvalidJSONTemplate() {
         let settings = AppSettings()
         let report = ReportGenerationService().generate(

@@ -24,10 +24,12 @@ struct TrendRadarApp: App {
                     store.settings = settingsStore.settings
                     await loadSecondaryStores()
                     await compensateMissedForegroundRunIfNeeded()
-                    BackgroundRefreshService.schedule(
-                        after: settingsStore.settings.refreshInterval * 60,
-                        enabled: settingsStore.settings.scheduleEnabled
-                    )
+                    if BackgroundRefreshService.isSupportedHost {
+                        BackgroundRefreshService.schedule(
+                            after: settingsStore.settings.refreshInterval * 60,
+                            enabled: settingsStore.settings.scheduleEnabled
+                        )
+                    }
                 }
         }
     }
