@@ -691,7 +691,7 @@ private struct ConfigStatusPill: View {
     }
 }
 
-private struct FeedEditorView: View {
+struct FeedEditorView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var id: String
     @State private var name: String
