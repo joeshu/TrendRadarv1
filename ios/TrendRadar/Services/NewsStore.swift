@@ -9,6 +9,7 @@ final class NewsStore: ObservableObject {
     @Published private(set) var lastUpdated: Date?
     @Published var errorMessage: String?
     @Published private(set) var sourceFailures: [String] = []
+    @Published private(set) var sourceFailureDetails: [String: String] = [:]
 
     private let localStore = LocalStore()
     private let crawler = NewsCrawler()
@@ -30,11 +31,12 @@ final class NewsStore: ObservableObject {
         lastUpdated = nil
     }
 
-    func refresh() async {
+    func refresh(showError: Bool = true) async {
         guard !isRefreshing else { return }
         isRefreshing = true
         errorMessage = nil
         sourceFailures = []
+        sourceFailureDetails = [:]
         defer { isRefreshing = false }
 
         do {
@@ -53,24 +55,35 @@ final class NewsStore: ObservableObject {
                 return
             }
             let crawler = self.crawler
-            let results = await withTaskGroup(of: (String, [NewsItem]).self) { group in
+            let results = await withTaskGroup(of: (String, [NewsItem], String?).self) { group in
                 for feed in enabledFeeds {
                     group.addTask {
                         do {
-                            return (feed.name, try await crawler.fetch(feed: feed))
+                            return (feed.name, try await crawler.fetch(feed: feed), nil)
                         } catch {
-                            return (feed.name, [])
+                            return (feed.name, [], error.localizedDescription)
                         }
                     }
                 }
-                return await group.reduce(into: [(String, [NewsItem]) ]()) { result, value in
+                return await group.reduce(into: [(String, [NewsItem], String?) ]()) { result, value in
                     result.append(value)
                 }
             }
             sourceFailures = results.filter { $0.1.isEmpty }.map(\.0).sorted()
+            sourceFailureDetails = Dictionary(uniqueKeysWithValues: results.compactMap { result in
+                guard let detail = result.2 else { return nil }
+                return (result.0, detail)
+            })
             let successfulResults = results.filter { !$0.1.isEmpty }
             guard !successfulResults.isEmpty else {
-                throw URLError(.cannotLoadFromNetwork)
+                if !items.isEmpty {
+                    if showError {
+                        errorMessage = "刷新失败，已保留本地缓存：\(sourceFailures.joined(separator: "、"))"
+                    }
+                    return
+                }
+                let details = sourceFailureDetails.values.sorted().joined(separator: "；")
+                throw NSError(domain: "TrendRadar.Network", code: -1, userInfo: [NSLocalizedDescriptionKey: details.isEmpty ? "所有 RSS 源均未返回内容" : details])
             }
             let oldByID = items.reduce(into: [String: NewsItem]()) { $0[$1.id] = $1 }
             let fetchedItems = successfulResults.flatMap(\.1)
@@ -97,7 +110,12 @@ final class NewsStore: ObservableObject {
             await localStore.save(items)
             lastUpdated = Date()
             if !sourceFailures.isEmpty {
-                errorMessage = "部分 RSS 源刷新失败：\(sourceFailures.joined(separator: "、"))"
+                let details = sourceFailures.compactMap { name in
+                    sourceFailureDetails[name].map { "\(name)：\($0)" }
+                }.joined(separator: "；")
+                if showError {
+                    errorMessage = details.isEmpty ? "部分 RSS 源刷新失败：\(sourceFailures.joined(separator: "、"))" : "部分 RSS 源刷新失败：\(details)"
+                }
             }
             let preset = TimelineCatalog.preset(for: settings.schedulePreset)
             let calendar = Calendar.trendRadar(timeZoneIdentifier: settings.timezone)
@@ -107,9 +125,12 @@ final class NewsStore: ObservableObject {
                 await generateReport(trigger: .foregroundRefresh, type: timelineAction.reportMode)
             }
         } catch {
-            errorMessage = sourceFailures.isEmpty
-                ? "刷新失败：\(error.localizedDescription)"
-                : "RSS 刷新失败：\(sourceFailures.joined(separator: "、"))"
+            let details = sourceFailures.compactMap { name in
+                sourceFailureDetails[name].map { "\(name)：\($0)" }
+            }.joined(separator: "；")
+            if showError {
+                errorMessage = details.isEmpty ? "刷新失败：\(error.localizedDescription)" : "RSS 刷新失败：\(details)"
+            }
         }
     }
 

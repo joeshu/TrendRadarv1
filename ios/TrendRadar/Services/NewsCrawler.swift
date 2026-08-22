@@ -2,10 +2,20 @@ import Foundation
 
 struct NewsCrawler: Sendable {
     func fetch(feed: RSSFeed) async throws -> [NewsItem] {
-        let (data, response) = try await URLSession.shared.data(from: feed.url)
+        var request = URLRequest(url: feed.url)
+        request.timeoutInterval = 20
+        request.setValue("TrendRadar/1.0", forHTTPHeaderField: "User-Agent")
+        request.setValue("application/rss+xml, application/atom+xml, application/xml, text/xml;q=0.9, */*;q=0.1", forHTTPHeaderField: "Accept")
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await URLSession.shared.data(for: request)
+        } catch {
+            throw NetworkFetchError.transport(error)
+        }
         guard let httpResponse = response as? HTTPURLResponse,
               200..<300 ~= httpResponse.statusCode else {
-            throw URLError(.badServerResponse)
+            throw NetworkFetchError.httpStatus((response as? HTTPURLResponse)?.statusCode ?? 0)
         }
 
         return try parse(data: data, feed: feed)
@@ -16,6 +26,30 @@ struct NewsCrawler: Sendable {
         parser.parse(data)
         if let error = parser.error { throw error }
         return parser.items
+    }
+}
+
+enum NetworkFetchError: LocalizedError {
+    case httpStatus(Int)
+    case transport(Error)
+
+    var errorDescription: String? {
+        switch self {
+        case .httpStatus(let statusCode):
+            return statusCode > 0 ? "服务器返回 HTTP \(statusCode)" : "服务器响应无效"
+        case .transport(let error):
+            if let urlError = error as? URLError {
+                switch urlError.code {
+                case .notConnectedToInternet: return "设备当前没有互联网连接"
+                case .timedOut: return "请求超时"
+                case .cannotFindHost, .dnsLookupFailed: return "无法解析服务器地址"
+                case .secureConnectionFailed: return "安全连接失败"
+                case .cancelled: return "请求已取消"
+                default: return "网络请求失败（\(urlError.code.rawValue)）"
+                }
+            }
+            return "网络请求失败：\(error.localizedDescription)"
+        }
     }
 }
 

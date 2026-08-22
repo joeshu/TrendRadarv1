@@ -111,7 +111,7 @@ struct RadarView: View {
             .task {
                 await store.requestNotifications()
                 if store.items.isEmpty {
-                    await store.refresh()
+                    await store.refresh(showError: false)
                 }
             }
             .sheet(isPresented: $showingSettings) { SettingsView() }

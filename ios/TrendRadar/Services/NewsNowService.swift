@@ -6,9 +6,15 @@ struct NewsNowService: Sendable {
         var request = URLRequest(url: endpoint)
         request.timeoutInterval = 20
         request.setValue("TrendRadar/1.0", forHTTPHeaderField: "User-Agent")
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await URLSession.shared.data(for: request)
+        } catch {
+            throw NetworkFetchError.transport(error)
+        }
         guard let httpResponse = response as? HTTPURLResponse, 200..<300 ~= httpResponse.statusCode else {
-            throw URLError(.badServerResponse)
+            throw NetworkFetchError.httpStatus((response as? HTTPURLResponse)?.statusCode ?? 0)
         }
         let payload = try JSONDecoder().decode(NewsNowResponse.self, from: data)
         let filteredItems: [NewsNowItem] = payload.items.filter { item in

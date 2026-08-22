@@ -109,7 +109,8 @@ final class HotNewsStore: ObservableObject {
             lastUpdated = Date()
         } catch {
             let suffix = sourceFailures.isEmpty ? "" : "失败平台：\(sourceFailures.joined(separator: "、"))。"
-            errorMessage = "热榜刷新失败：\(error.localizedDescription)\(suffix)"
+            let reason = error.localizedDescription
+            errorMessage = "热榜刷新失败：\(reason)\(suffix)"
             if items.isEmpty { await load() }
         }
     }
