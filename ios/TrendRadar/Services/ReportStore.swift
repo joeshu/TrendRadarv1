@@ -33,6 +33,11 @@ final class ReportStore: ObservableObject {
         reports = await localStore.loadReportSummaries()
     }
 
+    func clearCache() async throws {
+        try await localStore.clearAll()
+        reports = []
+    }
+
     func applyRetentionPolicy(days: Int) async {
         do {
             try await localStore.applyReportRetention(days: days)
@@ -51,8 +56,11 @@ final class ReportStore: ObservableObject {
         let request = ReportGenerationRequest(batchID: resolvedBatchID, type: type, trigger: trigger, generatedAt: Date(), settings: settings)
         do {
             var report = generator.generate(request: request, items: items)
+            let snapshotItems = report.sections.flatMap(\.items).map { snapshot in
+                NewsItem(id: snapshot.id, title: snapshot.title, source: snapshot.source, url: snapshot.url, publishedAt: snapshot.publishedAt, summary: snapshot.summary, isRead: snapshot.isRead, isFavorite: snapshot.isFavorite)
+            }
             if settings.aiAnalysis.enabled {
-                report.aiAnalysis = await aiService.reportAnalysis(for: items, settings: settings)
+                report.aiAnalysis = await aiService.reportAnalysis(for: snapshotItems, settings: settings)
             }
             try await localStore.save(report)
             completedBatches.insert(resolvedBatchID)

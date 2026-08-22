@@ -42,6 +42,20 @@ actor LocalStore {
         try? context.save()
     }
 
+    func clearAll() throws {
+        guard let container else {
+            try? FileManager.default.removeItem(at: legacyFileURL)
+            return
+        }
+        let context = ModelContext(container)
+        for record in try context.fetch(FetchDescriptor<NewsRecord>()) { context.delete(record) }
+        for record in try context.fetch(FetchDescriptor<ReportItemRecord>()) { context.delete(record) }
+        for record in try context.fetch(FetchDescriptor<ReportRecord>()) { context.delete(record) }
+        for record in try context.fetch(FetchDescriptor<HotNewsTrendRecord>()) { context.delete(record) }
+        for record in try context.fetch(FetchDescriptor<HotNewsRecord>()) { context.delete(record) }
+        try context.save()
+    }
+
     func loadReportSummaries() -> [ReportSummary] {
         guard let container else { return [] }
         let context = ModelContext(container)

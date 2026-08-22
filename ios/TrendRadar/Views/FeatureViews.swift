@@ -358,10 +358,21 @@ struct HotNewsView: View {
                             .font(AppTheme.captionFont)
                             .foregroundStyle(AppTheme.textSecondary)
                         hotNewsFilters
+                        if !hotNewsStore.sourceFailures.isEmpty {
+                            Label("部分平台暂时无法获取：\(hotNewsStore.sourceFailures.joined(separator: "、"))", systemImage: "exclamationmark.triangle")
+                                .font(AppTheme.captionFont)
+                                .foregroundStyle(AppTheme.yellow)
+                        }
                         if hotNewsStore.items.isEmpty {
-                            FeatureEmptyState(icon: "flame", title: "暂无热榜数据", message: "刷新后显示平台热榜和排名变化。")
-                                .frame(maxWidth: .infinity)
-                                .padding(.top, 32)
+                            VStack(spacing: 12) {
+                                FeatureEmptyState(icon: "flame", title: "暂无热榜数据", message: "检查平台开关和 API 地址后重试。")
+                                Button("立即刷新") {
+                                    Task { await hotNewsStore.refresh(settings: settingsStore.settings, latest: true) }
+                                }
+                                .buttonStyle(AccentButtonStyle())
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.top, 32)
                         } else {
                             ForEach(hotNewsStore.topics) { topic in
                                 NavigationLink {
@@ -382,6 +393,11 @@ struct HotNewsView: View {
             .toolbarColorScheme(.dark, for: .navigationBar)
             .refreshable { await hotNewsStore.refresh(settings: settingsStore.settings) }
             .task { await hotNewsStore.refresh(settings: settingsStore.settings) }
+            .alert("热榜刷新", isPresented: Binding(get: { hotNewsStore.errorMessage != nil }, set: { if !$0 { hotNewsStore.errorMessage = nil } })) {
+                Button("确定", role: .cancel) { hotNewsStore.errorMessage = nil }
+            } message: {
+                Text(hotNewsStore.errorMessage ?? "")
+            }
         }
     }
 

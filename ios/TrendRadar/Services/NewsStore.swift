@@ -23,6 +23,12 @@ final class NewsStore: ObservableObject {
         lastUpdated = items.compactMap(\.publishedAt).max()
     }
 
+    func clearCache() async throws {
+        try await localStore.clearAll()
+        items = []
+        lastUpdated = nil
+    }
+
     func refresh() async {
         guard !isRefreshing else { return }
         isRefreshing = true

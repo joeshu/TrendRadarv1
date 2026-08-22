@@ -7,6 +7,7 @@ final class HotNewsStore: ObservableObject {
     @Published private(set) var isRefreshing = false
     @Published private(set) var lastUpdated: Date?
     @Published var errorMessage: String?
+    @Published private(set) var sourceFailures: [String] = []
     @Published var selectedPlatformID: String?
 
     struct TrendPoint: Identifiable, Sendable {
@@ -51,10 +52,17 @@ final class HotNewsStore: ObservableObject {
         lastUpdated = await localStore.loadHotNewsLastUpdated()
     }
 
+    func clearCache() async throws {
+        try await localStore.clearAll()
+        items = []
+        lastUpdated = nil
+    }
+
     func refresh(settings: AppSettings, latest: Bool = false) async {
         guard !isRefreshing else { return }
         isRefreshing = true
         errorMessage = nil
+        sourceFailures = []
         defer { isRefreshing = false }
         let baseURL = settings.platformAPIURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "https://newsnow.busiyi.world/api" : settings.platformAPIURL
         do {
@@ -68,18 +76,20 @@ final class HotNewsStore: ObservableObject {
                 return
             }
             let service = self.service
-            let fetched = await withTaskGroup(of: [HotNewsItem].self) { group in
+            let results = await withTaskGroup(of: (String, [HotNewsItem]).self) { group in
                 for source in enabledSources {
                     group.addTask {
                         do {
-                            return try await service.fetch(sourceID: source.id, sourceName: source.name, expectedDomain: source.expectedDomain, baseURL: baseURL, latest: latest)
+                            return (source.name, try await service.fetch(sourceID: source.id, sourceName: source.name, expectedDomain: source.expectedDomain, baseURL: baseURL, latest: latest))
                         } catch {
-                            return []
+                            return (source.name, [])
                         }
                     }
                 }
-                return await group.reduce(into: []) { $0.append(contentsOf: $1) }
+                return await group.reduce(into: [(String, [HotNewsItem])]()) { $0.append($1) }
             }
+            let fetched = results.flatMap(\.1)
+            sourceFailures = results.filter { $0.1.isEmpty }.map(\.0).sorted()
             guard !fetched.isEmpty else { throw URLError(.badServerResponse) }
             let oldByID = items.reduce(into: [String: HotNewsItem]()) { $0[$1.id] = $1 }
             items = fetched.map { item in
@@ -92,7 +102,8 @@ final class HotNewsStore: ObservableObject {
             try await localStore.saveHotNews(items)
             lastUpdated = Date()
         } catch {
-            errorMessage = "热榜刷新失败：\(error.localizedDescription)"
+            let suffix = sourceFailures.isEmpty ? "" : "失败平台：\(sourceFailures.joined(separator: "、"))。"
+            errorMessage = "热榜刷新失败：\(error.localizedDescription)\(suffix)"
             if items.isEmpty { await load() }
         }
     }

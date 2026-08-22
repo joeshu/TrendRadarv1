@@ -78,6 +78,8 @@ private struct SettingsCategoryRow: View {
 struct SettingsView: View {
     @EnvironmentObject private var settingsStore: SettingsStore
     @EnvironmentObject private var newsStore: NewsStore
+    @EnvironmentObject private var hotNewsStore: HotNewsStore
+    @EnvironmentObject private var reportStore: ReportStore
     @Environment(\.dismiss) private var dismiss
     @State private var keywordText = ""
     @State private var filterText = ""
@@ -91,6 +93,7 @@ struct SettingsView: View {
     @State private var showingSettingsImporter = false
     @State private var settingsMessage: String?
     @State private var isUpdatingInterestTags = false
+    @State private var showingClearCacheConfirmation = false
     @State private var originalSettings: AppSettings?
     @State private var originalKeychainValues: [String: String] = [:]
     private let keychain = KeychainStore()
@@ -182,6 +185,21 @@ struct SettingsView: View {
                 Button("确定", role: .cancel) { settingsMessage = nil }
             } message: {
                 Text(settingsMessage ?? "")
+            }
+            .confirmationDialog("清理本地缓存？", isPresented: $showingClearCacheConfirmation, titleVisibility: .visible) {
+                Button("清理缓存", role: .destructive) {
+                    Task {
+                        do {
+                            try await newsStore.clearCache()
+                            try await hotNewsStore.clearCache()
+                            try await reportStore.clearCache()
+                            settingsMessage = "本地新闻、热榜和报告缓存已清理"
+                        } catch {
+                            settingsMessage = "清理缓存失败：\(error.localizedDescription)"
+                        }
+                    }
+                }
+                Button("取消", role: .cancel) {}
             }
         }
     }
@@ -481,6 +499,11 @@ struct SettingsView: View {
             TextField("S3 Region", text: $settingsStore.settings.storage.remoteRegion)
             Toggle("启动时拉取远程数据", isOn: $settingsStore.settings.storage.pullEnabled)
             Stepper("拉取最近：\(settingsStore.settings.storage.pullDays) 天", value: $settingsStore.settings.storage.pullDays, in: 1...365)
+            Button("清理本地缓存", role: .destructive) {
+                showingClearCacheConfirmation = true
+            }
+            Text("清理新闻、热榜排名历史和本地报告，不会修改设置或 Keychain 密钥。")
+                .font(.caption).foregroundStyle(.secondary)
             Text("S3/R2、账号同步和服务端推送属于可选远程能力。纯本地模式保持独立运行。")
                 .font(.caption).foregroundStyle(.secondary)
         }
