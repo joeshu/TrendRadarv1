@@ -76,6 +76,48 @@ private struct SettingsCategoryRow: View {
     }
 }
 
+private struct SettingsCategoriesSection: View {
+    var body: some View {
+        Section("设置") {
+            ForEach(SettingsCategory.allCases) { category in
+                NavigationLink(value: category) {
+                    SettingsCategoryRow(category: category)
+                }
+            }
+        }
+    }
+}
+
+private struct SettingsOverviewSection: View {
+    let platformsEnabled: Bool
+    let rssEnabled: Bool
+    let aiEnabled: Bool
+
+    var body: some View {
+        Section {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("本地配置中心")
+                    .font(AppTheme.headlineFont)
+                    .foregroundStyle(.white)
+                Text("常用配置按功能分组，高级请求参数单独收纳。所有数据默认保存在本机。")
+                    .font(AppTheme.captionFont)
+                    .foregroundStyle(AppTheme.textSecondary)
+                HStack(spacing: 8) {
+                    ConfigStatusPill(title: platformsEnabled ? "热榜已启用" : "热榜已关闭", tint: platformsEnabled ? AppTheme.green : AppTheme.textTertiary)
+                    ConfigStatusPill(title: rssEnabled ? "RSS 已启用" : "RSS 已关闭", tint: rssEnabled ? AppTheme.cyan : AppTheme.textTertiary)
+                    ConfigStatusPill(title: aiEnabled ? "AI 已启用" : "AI 已关闭", tint: aiEnabled ? AppTheme.pink : AppTheme.textTertiary)
+                }
+            }
+            .padding(16)
+            .background(AppTheme.heroGradient)
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(AppTheme.cardBorder, lineWidth: 1))
+        } header: {
+            Text("配置总览")
+        }
+    }
+}
+
 struct SettingsView: View {
     @EnvironmentObject private var settingsStore: SettingsStore
     @EnvironmentObject private var newsStore: NewsStore
@@ -106,8 +148,12 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             List {
-                configurationOverview
-                settingsCategories
+                SettingsOverviewSection(
+                    platformsEnabled: settingsStore.settings.platformsEnabled,
+                    rssEnabled: settingsStore.settings.rssEnabled,
+                    aiEnabled: settingsStore.settings.ai.enabled
+                )
+                SettingsCategoriesSection()
             }
             .navigationTitle("配置中心")
             .navigationBarTitleDisplayMode(.inline)
@@ -230,16 +276,6 @@ struct SettingsView: View {
         }
     }
 
-    private var settingsCategories: some View {
-        Section("设置") {
-            ForEach(SettingsCategory.allCases) { category in
-                NavigationLink(value: category) {
-                    SettingsCategoryRow(category: category)
-                }
-            }
-        }
-    }
-
     @ViewBuilder
     private func categoryContent(_ category: SettingsCategory) -> some View {
         switch category {
@@ -262,30 +298,6 @@ struct SettingsView: View {
             advancedSection
         case .backup:
             backupSection
-        }
-    }
-
-    private var configurationOverview: some View {
-        Section {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("本地配置中心")
-                    .font(AppTheme.headlineFont)
-                    .foregroundStyle(.white)
-            Text("常用配置按功能分组，高级请求参数单独收纳。所有数据默认保存在本机。")
-                    .font(AppTheme.captionFont)
-                    .foregroundStyle(AppTheme.textSecondary)
-                HStack(spacing: 8) {
-                    ConfigStatusPill(title: settingsStore.settings.platformsEnabled ? "热榜已启用" : "热榜已关闭", tint: settingsStore.settings.platformsEnabled ? AppTheme.green : AppTheme.textTertiary)
-                    ConfigStatusPill(title: settingsStore.settings.rssEnabled ? "RSS 已启用" : "RSS 已关闭", tint: settingsStore.settings.rssEnabled ? AppTheme.cyan : AppTheme.textTertiary)
-                    ConfigStatusPill(title: settingsStore.settings.ai.enabled ? "AI 已启用" : "AI 已关闭", tint: settingsStore.settings.ai.enabled ? AppTheme.pink : AppTheme.textTertiary)
-                }
-            }
-            .padding(16)
-            .background(AppTheme.heroGradient)
-            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(AppTheme.cardBorder, lineWidth: 1))
-        } header: {
-            Text("配置总览")
         }
     }
 
