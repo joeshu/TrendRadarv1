@@ -406,7 +406,7 @@ struct NewsDetailView: View {
     }
 }
 
-private struct AccentButtonStyle: ButtonStyle {
+struct AccentButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.system(size: 13, weight: .bold, design: .rounded))
@@ -418,7 +418,7 @@ private struct AccentButtonStyle: ButtonStyle {
     }
 }
 
-private struct OutlineButtonStyle: ButtonStyle {
+struct OutlineButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.system(size: 13, weight: .bold, design: .rounded))
