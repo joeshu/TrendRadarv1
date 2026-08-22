@@ -142,7 +142,18 @@ struct RadarView: View {
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 18)
-        .background(AppTheme.heroGradient)
+        .background {
+            ZStack {
+                AppTheme.heroGradient
+                Image("TrendRadar-ReportHero")
+                    .resizable()
+                    .scaledToFill()
+                    .opacity(0.42)
+                    .blendMode(.screen)
+                    .clipped()
+                LinearGradient(colors: [.clear, AppTheme.background.opacity(0.72)], startPoint: .topLeading, endPoint: .bottomTrailing)
+            }
+        }
         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         .overlay(alignment: .topTrailing) {
             Circle()

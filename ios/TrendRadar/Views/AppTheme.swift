@@ -10,6 +10,10 @@ enum AppTheme {
         startPoint: .topLeading,
         endPoint: .bottomTrailing
     )
+
+    static let brandCyan = Color(red: 0.18, green: 0.82, blue: 1.0)
+    static let brandIndigo = Color(red: 0.27, green: 0.20, blue: 0.70)
+    static let brandMagenta = Color(red: 0.95, green: 0.18, blue: 0.66)
     static let cardBorder = Color.white.opacity(0.08)
     static let cyan = Color(red: 0.25, green: 0.90, blue: 0.82)
     static let yellow = Color(red: 1.0, green: 0.78, blue: 0.30)

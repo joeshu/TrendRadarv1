@@ -545,8 +545,16 @@ struct SettingsView: View {
             Toggle("启用通知总开关", isOn: $settingsStore.settings.notification.enabled)
             Toggle("允许本地提醒", isOn: $settingsStore.settings.notification.localAlerts)
             Toggle("提醒声音", isOn: $settingsStore.settings.notification.soundEnabled)
-            Text("报告 Webhook（本机实际投递）")
-                .font(.subheadline).foregroundStyle(AppTheme.cyan)
+            VStack(alignment: .leading, spacing: 10) {
+                Image("TrendRadar-Webhook")
+                    .resizable()
+                    .scaledToFill()
+                    .frame(height: 130)
+                    .clipped()
+                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                Text("报告 Webhook（本机实际投递）")
+                    .font(.subheadline).foregroundStyle(AppTheme.cyan)
+            }
             SecureField("飞书 Webhook", text: channelBinding("feishu"))
             SecureField("钉钉 Webhook", text: channelBinding("dingtalk"))
             SecureField("企业微信 Webhook", text: channelBinding("wework"))

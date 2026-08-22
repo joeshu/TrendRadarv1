@@ -1106,9 +1106,18 @@ struct FeatureEmptyState: View {
 
     var body: some View {
         VStack(spacing: 12) {
+            Image("TrendRadar-EmptyState")
+                .resizable()
+                .scaledToFit()
+                .frame(maxWidth: 220, maxHeight: 170)
+                .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                .overlay {
+                    LinearGradient(colors: [.clear, AppTheme.background.opacity(0.22)], startPoint: .top, endPoint: .bottom)
+                        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                }
             Image(systemName: icon)
-                .font(.system(size: 34, weight: .light))
-                .foregroundStyle(AppTheme.cyan)
+                .font(.system(size: 22, weight: .light))
+                .foregroundStyle(AppTheme.brandCyan)
             Text(title)
                 .font(AppTheme.headlineFont)
                 .foregroundStyle(.white)
@@ -1128,8 +1137,14 @@ private struct FeedInfoSheet: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 16) {
+                Image("TrendRadar-Webhook")
+                    .resizable()
+                    .scaledToFill()
+                    .frame(height: 150)
+                    .clipped()
+                    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                 Image(systemName: "antenna.radiowaves.left.and.right")
-                    .font(.system(size: 42, weight: .light))
+                    .font(.system(size: 34, weight: .light))
                     .foregroundStyle(AppTheme.cyan)
                 Text("已启用 \(feedCount) 个订阅源")
                     .font(AppTheme.titleFont)
