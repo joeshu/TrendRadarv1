@@ -437,14 +437,14 @@ struct SettingsView: View {
     private var aiTranslationSection: some View {
         Section("翻译") {
             Toggle("启用标题翻译", isOn: $settingsStore.settings.aiTranslation.enabled)
+                .disabled(true)
             TextField("目标语言", text: $settingsStore.settings.aiTranslation.language)
+                .disabled(true)
             TextField("提示词文件", text: $settingsStore.settings.aiTranslation.promptFile)
                 .textInputAutocapitalization(.never).autocorrectionDisabled()
-            Stepper("每批翻译：\(settingsStore.settings.aiTranslation.batchSize) 条", value: $settingsStore.settings.aiTranslation.batchSize, in: 1...1000, step: 10)
-            Stepper("批次间隔：\(settingsStore.settings.aiTranslation.batchInterval) 秒", value: $settingsStore.settings.aiTranslation.batchInterval, in: 0...60)
-            Toggle("翻译热榜标题", isOn: $settingsStore.settings.aiTranslation.translateHotlist)
-            Toggle("翻译 RSS 标题", isOn: $settingsStore.settings.aiTranslation.translateRSS)
-            Toggle("翻译独立展示标题", isOn: $settingsStore.settings.aiTranslation.translateStandalone)
+                .disabled(true)
+            Text("标题翻译尚未接入本地阅读链路，当前版本保留配置结构。")
+                .font(.caption).foregroundStyle(.secondary)
         }
     }
 
@@ -483,22 +483,14 @@ struct SettingsView: View {
             Picker("存储后端", selection: $settingsStore.settings.storage.backend) {
                 Text("自动选择").tag("auto")
                 Text("本地").tag("local")
-                Text("远程 S3").tag("remote")
             }
             Toggle("SQLite 主存储", isOn: $settingsStore.settings.storage.sqliteEnabled)
             Toggle("生成 TXT 快照", isOn: $settingsStore.settings.storage.txtEnabled)
             Toggle("生成 HTML 报告", isOn: $settingsStore.settings.storage.htmlEnabled)
             TextField("本地数据目录", text: $settingsStore.settings.storage.localDataDirectory)
             Stepper("本地保留天数：\(settingsStore.settings.storage.localRetentionDays == 0 ? "永久" : "\(settingsStore.settings.storage.localRetentionDays)")", value: $settingsStore.settings.storage.localRetentionDays, in: 0...3650)
-            Stepper("远程保留天数：\(settingsStore.settings.storage.remoteRetentionDays == 0 ? "永久" : "\(settingsStore.settings.storage.remoteRetentionDays)")", value: $settingsStore.settings.storage.remoteRetentionDays, in: 0...3650)
-            TextField("S3 Endpoint URL", text: $settingsStore.settings.storage.remoteEndpointURL)
-                .textInputAutocapitalization(.never).autocorrectionDisabled()
-            TextField("S3 Bucket", text: $settingsStore.settings.storage.remoteBucketName)
-            SecureField("S3 Access Key ID", text: channelBinding("s3-access"))
-            SecureField("S3 Secret Access Key", text: channelBinding("s3-secret"))
-            TextField("S3 Region", text: $settingsStore.settings.storage.remoteRegion)
-            Toggle("启动时拉取远程数据", isOn: $settingsStore.settings.storage.pullEnabled)
-            Stepper("拉取最近：\(settingsStore.settings.storage.pullDays) 天", value: $settingsStore.settings.storage.pullDays, in: 1...365)
+            Text("远程 S3、账号同步和服务端推送未接入纯本地 iPhone 数据链路。")
+                .font(.caption).foregroundStyle(.secondary)
             Button("清理本地缓存", role: .destructive) {
                 showingClearCacheConfirmation = true
             }

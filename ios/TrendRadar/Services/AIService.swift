@@ -89,7 +89,7 @@ struct AIService: Sendable {
         let prompt = AIPromptTemplate.load(fileName: settings.aiAnalysis.promptFile)
         let messages = prompt.messages(values: [
             "language": settings.aiAnalysis.language,
-            "report_mode": settings.aiAnalysis.mode,
+            "report_mode": resolvedReportMode(settings.aiAnalysis.mode, reportType: reportType, fallback: settings.report.mode),
             "report_type": reportType ?? settings.report.mode,
             "current_time": Date().formatted(date: .abbreviated, time: .shortened),
             "news_count": String(hotlistCount),
@@ -242,6 +242,16 @@ struct AIService: Sendable {
             .replacingOccurrences(of: "```json", with: "")
             .replacingOccurrences(of: "```", with: "")
             .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func resolvedReportMode(_ mode: String, reportType: String?, fallback: String) -> String {
+        if mode != "follow_report" { return mode }
+        switch reportType {
+        case "当前榜单": return "current"
+        case "当日汇总": return "daily"
+        case "增量报告", "增量监控": return "incremental"
+        default: return fallback
+        }
     }
 
     func reportAnalysis(for items: [NewsItem], settings: AppSettings) async -> ReportAIAnalysis {

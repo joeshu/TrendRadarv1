@@ -75,6 +75,7 @@ struct ReportSettingsSnapshot: Codable, Equatable, Hashable, Sendable {
     var filterMethod: String
     var regionOrder: [String]
     var keywords: [String]
+    var rankThreshold: Int
     var generatedAt: Date
 
     init(settings: AppSettings, reportType: ReportType, generatedAt: Date) {
@@ -84,7 +85,24 @@ struct ReportSettingsSnapshot: Codable, Equatable, Hashable, Sendable {
         filterMethod = settings.ai.filterMethod
         regionOrder = settings.display.regionOrder
         keywords = settings.keywords
+        rankThreshold = settings.report.rankThreshold
         self.generatedAt = generatedAt
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case reportType, reportMode, displayMode, filterMethod, regionOrder, keywords, rankThreshold, generatedAt
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        reportType = try container.decode(ReportType.self, forKey: .reportType)
+        reportMode = try container.decodeIfPresent(String.self, forKey: .reportMode) ?? "current"
+        displayMode = try container.decodeIfPresent(String.self, forKey: .displayMode) ?? "keyword"
+        filterMethod = try container.decodeIfPresent(String.self, forKey: .filterMethod) ?? "keyword"
+        regionOrder = try container.decodeIfPresent([String].self, forKey: .regionOrder) ?? []
+        keywords = try container.decodeIfPresent([String].self, forKey: .keywords) ?? []
+        rankThreshold = try container.decodeIfPresent(Int.self, forKey: .rankThreshold) ?? 5
+        generatedAt = try container.decode(Date.self, forKey: .generatedAt)
     }
 }
 

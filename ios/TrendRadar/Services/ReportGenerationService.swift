@@ -54,19 +54,26 @@ struct ReportGenerationService: Sendable {
     }
 
     private func makeSections(items: [NewsItem], hotlistItems: [HotNewsItem], groups: [KeywordGroup], settings: AppSettings) -> [ReportSection] {
-        let hotlistSection = !settings.display.showHotlist || hotlistItems.isEmpty ? [] : [ReportSection(id: "hotlist", title: "热榜", items: hotlistItems.enumerated().map { index, item in
+        let sortedHotlist = hotlistItems.sorted { left, right in
+            if left.rank != right.rank { return left.rank < right.rank }
+            return left.title.localizedCompare(right.title) == .orderedAscending
+        }
+        let hotlistSection = !settings.display.showHotlist || sortedHotlist.isEmpty ? [] : [ReportSection(id: "hotlist", title: "热榜", items: sortedHotlist.enumerated().map { index, item in
             ReportItemSnapshot(orderIndex: index, sectionID: "hotlist", sectionTitle: "热榜", item: item)
         })]
         let grouped: [(String, String, [NewsItem])]
         if !settings.display.showRSS {
             grouped = []
         } else if settings.report.displayMode == "platform" {
-            grouped = Dictionary(grouping: items, by: \.source).map { ($0.key, $0.key, $0.value) }
+            grouped = Dictionary(grouping: items, by: \.source).map { ($0.key, $0.key, sort($0.value)) }
         } else if settings.keywords.isEmpty {
-            grouped = [("all", "全部情报", items)]
+            grouped = [("all", "全部情报", sort(items))]
         } else {
-            grouped = groups.compactMap { group in
-                let matching = items.filter { group.matches($0.title) }
+            let orderedGroups = settings.report.sortByPositionFirst
+                ? groups
+                : groups.sorted { $0.displayName.localizedCompare($1.displayName) == .orderedAscending }
+            grouped = orderedGroups.compactMap { group in
+                let matching = sort(items.filter { group.matches($0.title) })
                 let limited = group.maxCount > 0 ? Array(matching.prefix(group.maxCount)) : matching
                 return limited.isEmpty ? nil : (group.displayName, group.displayName, limited)
             }
@@ -85,7 +92,22 @@ struct ReportGenerationService: Sendable {
             }
             return ReportSection(id: sectionID, title: title, items: snapshots)
         }
-        return hotlistSection + rssSections
+        let orderedRSSSections: [ReportSection]
+        if settings.report.sortByPositionFirst {
+            let order = Dictionary(uniqueKeysWithValues: groups.enumerated().map { ($0.element.displayName, $0.offset) })
+            orderedRSSSections = rssSections.sorted { (order[$0.id] ?? Int.max) < (order[$1.id] ?? Int.max) }
+        } else {
+            orderedRSSSections = rssSections.sorted { $0.title.localizedCompare($1.title) == .orderedAscending }
+        }
+        return hotlistSection + orderedRSSSections
+    }
+
+    private func sort(_ items: [NewsItem]) -> [NewsItem] {
+        items.sorted { left, right in
+            let leftDate = left.publishedAt ?? .distantPast
+            let rightDate = right.publishedAt ?? .distantPast
+            return leftDate > rightDate
+        }
     }
 
     private func stableReportID(for batchID: String) -> UUID {

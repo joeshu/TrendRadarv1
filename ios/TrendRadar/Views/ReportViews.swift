@@ -230,6 +230,11 @@ struct ReportDetailView: View {
                         Text("\(item.source) · \(item.publishedAt?.relativeDescription ?? "刚刚")")
                             .font(AppTheme.captionFont)
                             .foregroundStyle(AppTheme.textTertiary)
+                        if let rank = item.rank {
+                            Text(rank <= reportRankThreshold ? "高热度排名：第\(rank)" : "排名：第\(rank)")
+                                .font(AppTheme.captionFont)
+                                .foregroundStyle(rank <= reportRankThreshold ? AppTheme.pink : AppTheme.textTertiary)
+                        }
                         if let summary = item.summary, !summary.isEmpty {
                             Text(summary)
                                 .font(AppTheme.captionFont)
@@ -248,6 +253,10 @@ struct ReportDetailView: View {
                 }
             }
         }
+    }
+
+    private var reportRankThreshold: Int {
+        report?.settingsSnapshot.rankThreshold ?? 5
     }
 }
 
