@@ -42,8 +42,23 @@ enum BackgroundRefreshService {
 
     private static func refresh(task: BGAppRefreshTask) async {
         let settings = loadSettings()
+        let startedAt = Date()
+        var reportID: String?
+        var executionStatus: RefreshBatchStatus = .running
+        var executionErrors: [String: String] = [:]
+        defer {
+            RefreshExecutionLog.record(RefreshExecutionRecord(
+                trigger: .background,
+                startedAt: startedAt,
+                finishedAt: Date(),
+                status: executionStatus,
+                reportID: reportID,
+                errorMessages: executionErrors
+            ))
+        }
         do {
             guard settings.scheduleEnabled else {
+                executionStatus = .completed
                 task.setTaskCompleted(success: true)
                 return
             }
@@ -52,17 +67,35 @@ enum BackgroundRefreshService {
             let match = preset.match(at: Date(), calendar: calendar)
             let timelineAction = TimelineExecutionStore().claim(presetID: preset.id, periodID: match.periodID, action: match.action, calendar: calendar)
             guard timelineAction.collect else {
+                executionStatus = .completed
                 schedule(after: settings.refreshInterval * 60, enabled: settings.scheduleEnabled)
                 task.setTaskCompleted(success: true)
                 return
             }
-            let feeds = settings.customFeeds.compactMap(\.rssFeed)
-            let crawler = NewsCrawler()
-            var freshItems: [NewsItem] = []
-            for feed in feeds where settings.rssEnabled && settings.customFeeds.first(where: { $0.id == feed.id })?.isEnabled == true {
-                try Task.checkCancellation()
-                freshItems.append(contentsOf: try await crawler.fetch(feed: feed))
+            let feeds = settings.customFeeds.compactMap(\.rssFeed).filter { feed in
+                settings.rssEnabled && settings.customFeeds.first(where: { $0.id == feed.id })?.isEnabled == true
             }
+            let crawler = NewsCrawler()
+            let feedResults = await withTaskGroup(of: (String, [NewsItem], String?).self) { group in
+                for feed in feeds {
+                    group.addTask {
+                        do { return (feed.name, try await crawler.fetch(feed: feed), nil) }
+                        catch { return (feed.name, [], error.localizedDescription) }
+                    }
+                }
+                return await group.reduce(into: [(String, [NewsItem], String?)]()) { $0.append($1) }
+            }
+            let failedFeeds = feedResults.filter { $0.1.isEmpty }
+            executionErrors.merge(
+                failedFeeds.reduce(into: [String: String]()) { $0[$1.0] = $1.2 ?? "RSS 源未返回内容" },
+                uniquingKeysWith: { current, _ in current }
+            )
+            let successfulFeedResults = feedResults.filter { !$0.1.isEmpty }
+            guard !successfulFeedResults.isEmpty else {
+                throw NSError(domain: "TrendRadar.Network", code: -1, userInfo: [NSLocalizedDescriptionKey: executionErrors.values.sorted().joined(separator: "；")])
+            }
+            var freshItems = successfulFeedResults.flatMap(\.1)
+            if !failedFeeds.isEmpty { executionStatus = .partial }
             try Task.checkCancellation()
             let filterEngine = FilterEngine(settings: settings)
             freshItems = freshItems.filter { filterEngine.includes($0) }
@@ -116,15 +149,25 @@ enum BackgroundRefreshService {
                     }
                 }
                 try Task.checkCancellation()
-                try? await localStore.save(report)
+                try await localStore.save(report)
+                reportID = report.id.uuidString
+            }
+            if executionStatus != .partial {
+                executionStatus = timelineAction.push ? .completed : .partial
             }
             let newCount = freshItems.filter { !oldIDs.contains($0.id) }.count
-            if newCount > 0 && timelineAction.push && settings.notification.enabled && settings.notification.localAlerts {
-                await notify(newCount: newCount, soundEnabled: settings.notification.soundEnabled)
+            if settings.notification.enabled && settings.notification.localAlerts {
+                if reportID != nil && timelineAction.push {
+                    await notifyReport(soundEnabled: settings.notification.soundEnabled)
+                } else if newCount > 0 && timelineAction.push {
+                    await notify(newCount: newCount, soundEnabled: settings.notification.soundEnabled)
+                }
             }
             schedule(after: settings.refreshInterval * 60, enabled: settings.scheduleEnabled)
             task.setTaskCompleted(success: true)
         } catch {
+            executionStatus = error is CancellationError ? .cancelled : .failed
+            executionErrors["background"] = error.localizedDescription
             schedule(after: 3600, enabled: settings.scheduleEnabled)
             task.setTaskCompleted(success: false)
         }
@@ -173,6 +216,15 @@ enum BackgroundRefreshService {
         let merged = (fetched + failedCached).sorted { $0.rank < $1.rank }
         try? await localStore.saveHotNews(merged, replacingPlatformIDs: successfulIDs)
         return merged
+    }
+
+    private static func notifyReport(soundEnabled: Bool) async {
+        let content = UNMutableNotificationContent()
+        content.title = "TrendRadar"
+        content.body = "新的情报报告已生成，可在报告中心查看"
+        content.sound = soundEnabled ? .default : nil
+        let request = UNNotificationRequest(identifier: "report-generated", content: content, trigger: nil)
+        try? await UNUserNotificationCenter.current().add(request)
     }
 
     private static func notify(newCount: Int, soundEnabled: Bool) async {

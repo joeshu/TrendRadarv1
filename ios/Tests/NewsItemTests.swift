@@ -602,4 +602,45 @@ final class NewsItemTests: XCTestCase {
         XCTAssertEqual(items.first?.url?.absoluteString, "https://example.com/atom")
         XCTAssertEqual(items.first?.id, "https://example.com/atom")
     }
+
+    func testReportGenerationCombinesHotlistAndRSSAndCountsSources() {
+        var settings = AppSettings()
+        settings.keywords = []
+        let generatedAt = Date(timeIntervalSince1970: 10_000)
+        let rss = NewsItem(id: "rss-1", title: "RSS item", source: "Feed", publishedAt: generatedAt)
+        let hot = HotNewsItem(id: "hot-1", title: "Hot item", url: nil, platformID: "weibo", platformName: "微博", rank: 2, publishedAt: generatedAt, extraInfo: nil, topicKey: "hot", isRead: false, isFavorite: false)
+        let request = ReportGenerationRequest(batchID: "sources", type: .current, trigger: .manual, generatedAt: generatedAt, settings: settings)
+
+        let report = ReportGenerationService().generate(request: request, items: [rss], hotlistItems: [hot])
+
+        XCTAssertEqual(report.statistics.hotlistCount, 1)
+        XCTAssertEqual(report.statistics.rssCount, 1)
+        XCTAssertEqual(report.statistics.hotlistPlatformCount, 1)
+        XCTAssertEqual(report.statistics.rssSourceCount, 1)
+        XCTAssertEqual(report.statistics.sourceCount, 2)
+    }
+
+    func testDailyAndIncrementalReportsUseStrictWindows() {
+        var settings = AppSettings()
+        settings.timezone = "UTC"
+        settings.refreshInterval = 60
+        let now = Date(timeIntervalSince1970: 86_400 + 3_600)
+        let old = NewsItem(id: "old", title: "Old", source: "Feed", publishedAt: now.addingTimeInterval(-90_000))
+        let today = NewsItem(id: "today", title: "Today", source: "Feed", publishedAt: now.addingTimeInterval(-1_800))
+        let daily = ReportGenerationService().generate(request: ReportGenerationRequest(batchID: "daily-window", type: .daily, trigger: .manual, generatedAt: now, settings: settings), items: [old, today])
+        let incremental = ReportGenerationService().generate(request: ReportGenerationRequest(batchID: "incremental-window", type: .incremental, trigger: .manual, generatedAt: now, settings: settings), items: [old, today])
+
+        XCTAssertEqual(daily.statistics.newsCount, 1)
+        XCTAssertEqual(incremental.statistics.newsCount, 1)
+        XCTAssertEqual(daily.sections.flatMap(\.items).first?.id, "today")
+        XCTAssertEqual(incremental.sections.flatMap(\.items).first?.id, "today")
+    }
+
+    func testManualReportBatchIDsAllowRepeatedGeneration() {
+        let settings = AppSettings()
+        let first = ReportGenerationService().generate(request: ReportGenerationRequest(batchID: "manual-1", type: .manual, trigger: .manual, generatedAt: Date(), settings: settings), items: [NewsItem(id: "one", title: "One", source: "Feed")])
+        let second = ReportGenerationService().generate(request: ReportGenerationRequest(batchID: "manual-2", type: .manual, trigger: .manual, generatedAt: Date(), settings: settings), items: [NewsItem(id: "one", title: "One", source: "Feed")])
+
+        XCTAssertNotEqual(first.id, second.id)
+    }
 }

@@ -7,17 +7,37 @@ struct ReportGenerationRequest: Sendable {
     let trigger: ReportTrigger
     let generatedAt: Date
     let settings: AppSettings
+    let windowStart: Date?
+
+    init(batchID: String, type: ReportType, trigger: ReportTrigger, generatedAt: Date, settings: AppSettings, windowStart: Date? = nil) {
+        self.batchID = batchID
+        self.type = type
+        self.trigger = trigger
+        self.generatedAt = generatedAt
+        self.settings = settings
+        self.windowStart = windowStart
+    }
 }
 
 struct ReportGenerationService: Sendable {
     func generate(request: ReportGenerationRequest, items: [NewsItem], hotlistItems: [HotNewsItem] = []) -> ReportDetail {
+        let window = request.windowStart ?? defaultWindowStart(for: request.type, generatedAt: request.generatedAt, settings: request.settings)
+        let windowedItems = items.filter { item in
+            guard let window else { return true }
+            return item.publishedAt.map { $0 >= window } ?? true
+        }
+        let windowedHotlistItems = hotlistItems.filter { item in
+            guard let window else { return true }
+            let date = item.publishedAt ?? item.firstSeenAt
+            return date.map { $0 >= window } ?? true
+        }
         let groups = KeywordGroup.parse(request.settings.keywords)
         let filterEngine = FilterEngine(settings: request.settings)
-        let matchingItems = items.filter { item in
+        let matchingItems = windowedItems.filter { item in
             let preview = filterEngine.preview(item)
             return preview.matches && (preview.isStandalone || groups.isEmpty || groups.contains { $0.matches(item.title) })
         }
-        let matchingHotlistItems = hotlistItems.filter { item in
+        let matchingHotlistItems = windowedHotlistItems.filter { item in
             let preview = filterEngine.preview(item)
             return preview.matches && (preview.isStandalone || groups.isEmpty || groups.contains { $0.matches(item.title) })
         }
@@ -52,6 +72,17 @@ struct ReportGenerationService: Sendable {
             isFavorite: false,
             failureMessage: nil
         )
+    }
+
+    private func defaultWindowStart(for type: ReportType, generatedAt: Date, settings: AppSettings) -> Date? {
+        switch type {
+        case .current, .manual: return nil
+        case .daily:
+            let calendar = Calendar.trendRadar(timeZoneIdentifier: settings.timezone)
+            return calendar.startOfDay(for: generatedAt)
+        case .incremental:
+            return generatedAt.addingTimeInterval(-settings.refreshInterval * 60)
+        }
     }
 
     private func makeSections(items: [NewsItem], hotlistItems: [HotNewsItem], groups: [KeywordGroup], settings: AppSettings) -> [ReportSection] {

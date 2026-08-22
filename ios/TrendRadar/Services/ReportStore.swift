@@ -47,7 +47,7 @@ final class ReportStore: ObservableObject {
         }
     }
 
-    func generate(type: ReportType, settings: AppSettings, items: [NewsItem], hotlistItems: [HotNewsItem] = [], trigger: ReportTrigger = .manual, batchID: String? = nil) async {
+    func generate(type: ReportType, settings: AppSettings, items: [NewsItem], hotlistItems: [HotNewsItem] = [], trigger: ReportTrigger = .manual, batchID: String? = nil, windowStart: Date? = nil) async {
         guard !items.isEmpty || !hotlistItems.isEmpty else {
             errorMessage = "暂无可生成报告的数据，请先完成一次采集。"
             return
@@ -57,7 +57,7 @@ final class ReportStore: ObservableObject {
         guard !isGenerating else { return }
         isGenerating = true
         defer { isGenerating = false }
-        let request = ReportGenerationRequest(batchID: resolvedBatchID, type: type, trigger: trigger, generatedAt: Date(), settings: settings)
+        let request = ReportGenerationRequest(batchID: resolvedBatchID, type: type, trigger: trigger, generatedAt: Date(), settings: settings, windowStart: windowStart)
         do {
             var report = generator.generate(request: request, items: items, hotlistItems: hotlistItems)
             if settings.aiAnalysis.enabled && settings.display.showAIAnalysis {

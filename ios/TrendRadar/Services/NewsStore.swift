@@ -35,16 +35,29 @@ final class NewsStore: ObservableObject {
         UserDefaults.standard.removeObject(forKey: "trendradar.feedHealth")
     }
 
-    func refresh(showError: Bool = true) async {
+    func refresh(showError: Bool = true, autoReport: Bool = true) async {
         guard !isRefreshing else { return }
         isRefreshing = true
+        let startedAt = Date()
+        var executionStatus: RefreshBatchStatus = .running
+        var executionErrors: [String: String] = [:]
+        defer {
+            RefreshExecutionLog.record(RefreshExecutionRecord(
+                trigger: .foreground,
+                startedAt: startedAt,
+                finishedAt: Date(),
+                status: executionStatus,
+                errorMessages: executionErrors
+            ))
+            isRefreshing = false
+        }
         errorMessage = nil
         sourceFailures = []
         sourceFailureDetails = [:]
-        defer { isRefreshing = false }
 
         do {
             guard settings.rssEnabled else {
+                executionStatus = .completed
                 items = []
                 lastUpdated = nil
                 return
@@ -79,10 +92,13 @@ final class NewsStore: ObservableObject {
                     details[result.0] = detail
                 }
             }
+            executionErrors = sourceFailureDetails
+            executionStatus = sourceFailures.isEmpty ? .completed : .partial
             updateFeedHealth(enabledFeeds: enabledFeeds, failedNames: sourceFailures, details: sourceFailureDetails)
             let successfulResults = results.filter { !$0.1.isEmpty }
             guard !successfulResults.isEmpty else {
                 if !items.isEmpty {
+                    executionStatus = .failed
                     if showError {
                         errorMessage = "刷新失败，已保留本地缓存：\(sourceFailures.joined(separator: "、"))"
                     }
@@ -127,8 +143,10 @@ final class NewsStore: ObservableObject {
             let preset = TimelineCatalog.preset(for: settings.schedulePreset)
             let calendar = Calendar.trendRadar(timeZoneIdentifier: settings.timezone)
             let match = preset.match(at: Date(), calendar: calendar)
-            let timelineAction = TimelineExecutionStore().claim(presetID: preset.id, periodID: match.periodID, action: match.action, calendar: calendar)
-            if settings.scheduleEnabled, timelineAction.push {
+            let timelineAction = autoReport
+                ? TimelineExecutionStore().claim(presetID: preset.id, periodID: match.periodID, action: match.action, calendar: calendar)
+                : TimelineAction.passive
+            if autoReport, settings.scheduleEnabled, timelineAction.push {
                 await generateReport(trigger: .foregroundRefresh, type: timelineAction.reportMode)
             }
         } catch {

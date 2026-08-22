@@ -41,7 +41,32 @@ jobs:
         run: |
           test -f project.yml
           test -f TrendRadar/Resources/Info.plist
+          test -f TrendRadar/Resources/TrendRadar.entitlements
           test -d TrendRadar
+          /usr/libexec/PlistBuddy -c 'Print :BGTaskSchedulerPermittedIdentifiers:0' TrendRadar/Resources/Info.plist
+          /usr/libexec/PlistBuddy -c 'Print :UIBackgroundModes:0' TrendRadar/Resources/Info.plist
+
+      - name: Run Swift unit tests
+        working-directory: ios
+        run: |
+          mkdir -p build
+          set -o pipefail
+          xcodebuild test \
+            -project TrendRadar.xcodeproj \
+            -scheme TrendRadar \
+            -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
+            -derivedDataPath build/TestDerivedData \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" 2>&1 | tee build/test.log
+
+      - name: Upload test log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: TrendRadar-iOS-test-log
+          path: ios/build/test.log
+          if-no-files-found: warn
 
       - name: Build unsigned app
         working-directory: ios
@@ -116,6 +141,7 @@ jobs:
             ios/build/TrendRadar-unsigned.ipa
             ios/build/TrendRadar-adhoc.ipa
             ios/build/SHA256SUMS.txt
+            ios/INSTALL.md
           if-no-files-found: error
           retention-days: 14
 

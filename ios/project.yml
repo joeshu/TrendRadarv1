@@ -22,6 +22,7 @@ targets:
         CURRENT_PROJECT_VERSION: 1
         MARKETING_VERSION: 0.1.0
         SWIFT_EMIT_LOC_STRINGS: YES
+        CODE_SIGN_ENTITLEMENTS: TrendRadar/Resources/TrendRadar.entitlements
     resources:
       - path: ../config/ai_analysis_prompt.txt
       - path: ../config/ai_filter/prompt.txt

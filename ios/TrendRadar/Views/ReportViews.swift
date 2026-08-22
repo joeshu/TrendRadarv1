@@ -243,11 +243,19 @@ struct ReportDetailView: View {
     }
 
     private func statistics(_ report: ReportDetail) -> some View {
-        HStack(spacing: 12) {
-            InsightMetric(value: "\(report.statistics.newsCount)", label: "情报", tint: AppTheme.cyan)
-            InsightMetric(value: "\(report.statistics.sourceCount)", label: "来源", tint: AppTheme.yellow)
-            InsightMetric(value: "\(report.statistics.unreadCount)", label: "未读", tint: AppTheme.pink)
-            InsightMetric(value: "\(report.statistics.keywordCount)", label: "关键词", tint: AppTheme.green)
+        VStack(spacing: 12) {
+            HStack(spacing: 12) {
+                InsightMetric(value: "\(report.statistics.newsCount)", label: "情报", tint: AppTheme.cyan)
+                InsightMetric(value: "\(report.statistics.sourceCount)", label: "来源", tint: AppTheme.yellow)
+                InsightMetric(value: "\(report.statistics.unreadCount)", label: "未读", tint: AppTheme.pink)
+                InsightMetric(value: "\(report.statistics.keywordCount)", label: "关键词", tint: AppTheme.green)
+            }
+            HStack(spacing: 12) {
+                InsightMetric(value: "\(report.statistics.hotlistCount)", label: "热榜", tint: AppTheme.yellow)
+                InsightMetric(value: "\(report.statistics.rssCount)", label: "RSS", tint: AppTheme.cyan)
+                InsightMetric(value: "\(report.statistics.hotlistPlatformCount)", label: "热榜平台", tint: AppTheme.pink)
+                InsightMetric(value: "\(report.statistics.rssSourceCount)", label: "RSS 来源", tint: AppTheme.green)
+            }
         }
         .padding(16)
         .background(AppTheme.card)
