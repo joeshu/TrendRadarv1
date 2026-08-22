@@ -26,7 +26,8 @@ actor LocalStore {
                 TopicRecord.self,
                 TopicItemLinkRecord.self,
                 HotlistSnapshotRecord.self,
-                RefreshRunRecord.self
+                RefreshRunRecord.self,
+                ArchiveRecord.self
             ])
             let storeURL = directory.appendingPathComponent("TrendRadar-v2.store")
             let configuration = ModelConfiguration(schema: schema, url: storeURL, allowsSave: true)
@@ -82,6 +83,7 @@ actor LocalStore {
         for record in try context.fetch(FetchDescriptor<TopicRecord>()) { context.delete(record) }
         for record in try context.fetch(FetchDescriptor<IntelligenceRecord>()) { context.delete(record) }
         for record in try context.fetch(FetchDescriptor<RefreshRunRecord>()) { context.delete(record) }
+        for record in try context.fetch(FetchDescriptor<ArchiveRecord>()) { context.delete(record) }
         try context.save()
         try? FileManager.default.removeItem(at: legacyFileURL)
     }
@@ -173,6 +175,39 @@ actor LocalStore {
         for report in reports {
             context.delete(report)
         }
+        try context.save()
+    }
+
+    func saveArchive(_ resource: ArchiveResource) throws {
+        guard let container else { throw LocalStoreError.unavailable }
+        let context = ModelContext(container)
+        let archiveID = resource.id
+        let descriptor = FetchDescriptor<ArchiveRecord>(predicate: #Predicate { $0.id == archiveID })
+        if let record = try context.fetch(descriptor).first {
+            record.update(with: resource)
+        } else {
+            context.insert(ArchiveRecord(resource: resource))
+        }
+        try context.save()
+    }
+
+    func loadArchive(kind: ArchiveResourceKind? = nil) -> [ArchiveResource] {
+        guard let container else { return [] }
+        let context = ModelContext(container)
+        let descriptor = FetchDescriptor<ArchiveRecord>(sortBy: [SortDescriptor(\ArchiveRecord.capturedAt, order: .reverse)])
+        let records = (try? context.fetch(descriptor)) ?? []
+        return records.compactMap { record in
+            guard kind == nil || record.kind == kind?.rawValue else { return nil }
+            return record.asResource
+        }
+    }
+
+    func deleteArchive(resourceID: String, kind: ArchiveResourceKind) throws {
+        guard let container else { throw LocalStoreError.unavailable }
+        let context = ModelContext(container)
+        let archiveID = "\(kind.rawValue):\(resourceID)"
+        let descriptor = FetchDescriptor<ArchiveRecord>(predicate: #Predicate { $0.id == archiveID })
+        for record in try context.fetch(descriptor) { context.delete(record) }
         try context.save()
     }
 

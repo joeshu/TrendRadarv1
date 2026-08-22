@@ -226,6 +226,23 @@ final class NewsItemTests: XCTestCase {
         XCTAssertTrue(source.hasUsableData)
     }
 
+    func testArchiveResourceUsesStableNamespacedIdentifier() throws {
+        let resource = ArchiveResource(resourceID: "item-1", kind: .rss, title: "文章", source: "RSS")
+        let restored = try JSONDecoder().decode(ArchiveResource.self, from: JSONEncoder().encode(resource))
+
+        XCTAssertEqual(resource.id, "rss:item-1")
+        XCTAssertEqual(restored, resource)
+        XCTAssertTrue(restored.isFavorite)
+    }
+
+    func testArchiveRecordPreservesResourceMetadata() {
+        let resource = ArchiveResource(resourceID: "report-1", kind: .report, title: "日报", source: "Insight", summary: "摘要", isFavorite: true)
+        let record = ArchiveRecord(resource: resource)
+
+        XCTAssertEqual(record.id, "report:report-1")
+        XCTAssertEqual(record.asResource, resource)
+    }
+
     func testHotNewsAnomalyUsesThreeRankChangeThreshold() {
         let rising = HotNewsItem(id: "p:1", title: "Topic", url: nil, platformID: "p", platformName: "Platform", rank: 2, publishedAt: nil, extraInfo: nil, topicKey: "topic", previousRank: 8, isRead: false, isFavorite: false)
         let stable = HotNewsItem(id: "p:2", title: "Stable", url: nil, platformID: "p", platformName: "Platform", rank: 5, publishedAt: nil, extraInfo: nil, topicKey: "stable", previousRank: 6, isRead: false, isFavorite: false)
