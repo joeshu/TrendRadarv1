@@ -95,6 +95,7 @@ struct SettingsView: View {
     @State private var settingsMessage: String?
     @State private var isUpdatingInterestTags = false
     @State private var showingClearCacheConfirmation = false
+    @State private var showingResetConfirmation = false
     @State private var originalSettings: AppSettings?
     @State private var originalKeychainValues: [String: String] = [:]
     private let keychain = KeychainStore()
@@ -197,6 +198,24 @@ struct SettingsView: View {
                             settingsMessage = "本地新闻、热榜和报告缓存已清理"
                         } catch {
                             settingsMessage = "清理缓存失败：\(error.localizedDescription)"
+                        }
+                    }
+                }
+                Button("取消", role: .cancel) {}
+            }
+            .confirmationDialog("重置本机数据？", isPresented: $showingResetConfirmation, titleVisibility: .visible) {
+                Button("重置数据", role: .destructive) {
+                    Task {
+                        do {
+                            try await newsStore.clearCache()
+                            try await hotNewsStore.clearCache()
+                            try await reportStore.clearCache()
+                            settingsStore.settings = AppSettings()
+                            newsStore.settings = settingsStore.settings
+                            ["api-base", "api-key", "ai-model", "notify-ntfy-token", "ntfy-token", "bark", "slack", "generic"].forEach { keychain.delete($0) }
+                            settingsMessage = "本机数据和配置已重置"
+                        } catch {
+                            settingsMessage = "重置失败：\(error.localizedDescription)"
                         }
                     }
                 }
@@ -499,6 +518,11 @@ struct SettingsView: View {
                 showingClearCacheConfirmation = true
             }
             Text("清理新闻、热榜排名历史和本地报告，不会修改设置或 Keychain 密钥。")
+                .font(.caption).foregroundStyle(.secondary)
+            Button("重置本机数据", role: .destructive) {
+                showingResetConfirmation = true
+            }
+            Text("LiveContainer 可能保留同一 Bundle ID 的容器和 Keychain。重装后仍看到旧数据时，使用此按钮清除新闻、报告、设置和 AI 密钥。")
                 .font(.caption).foregroundStyle(.secondary)
             Text("S3/R2、账号同步和服务端推送属于可选远程能力。纯本地模式保持独立运行。")
                 .font(.caption).foregroundStyle(.secondary)

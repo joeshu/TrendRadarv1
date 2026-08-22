@@ -8,6 +8,7 @@ final class HotNewsStore: ObservableObject {
     @Published private(set) var lastUpdated: Date?
     @Published var errorMessage: String?
     @Published private(set) var sourceFailures: [String] = []
+    @Published private(set) var sourceFailureDetails: [String: String] = [:]
     @Published var selectedPlatformID: String?
 
     struct TrendPoint: Identifiable, Sendable {
@@ -58,11 +59,12 @@ final class HotNewsStore: ObservableObject {
         lastUpdated = nil
     }
 
-    func refresh(settings: AppSettings, latest: Bool = false) async {
+    func refresh(settings: AppSettings, latest: Bool = false, showError: Bool = true) async {
         guard !isRefreshing else { return }
         isRefreshing = true
         errorMessage = nil
         sourceFailures = []
+        sourceFailureDetails = [:]
         defer { isRefreshing = false }
         let baseURL = settings.platformAPIURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "https://newsnow.busiyi.world/api" : settings.platformAPIURL
         do {
@@ -76,21 +78,33 @@ final class HotNewsStore: ObservableObject {
                 return
             }
             let service = self.service
-            let results = await withTaskGroup(of: (String, [HotNewsItem]).self) { group in
-                for source in enabledSources {
-                    group.addTask {
-                        do {
-                            return (source.name, try await service.fetch(sourceID: source.id, sourceName: source.name, expectedDomain: source.expectedDomain, baseURL: baseURL, latest: latest))
-                        } catch {
-                            return (source.name, [])
+            var results: [(String, [HotNewsItem], String?)] = []
+            for batch in enabledSources.chunked(into: 3) {
+                let batchResults = await withTaskGroup(of: (String, [HotNewsItem], String?).self) { group in
+                    for source in batch {
+                        group.addTask {
+                            do {
+                                let items = try await service.fetch(sourceID: source.id, sourceName: source.name, expectedDomain: source.expectedDomain, baseURL: baseURL, latest: latest)
+                                return (source.name, items, nil)
+                            } catch {
+                                return (source.name, [], error.localizedDescription)
+                            }
                         }
                     }
+                    return await group.reduce(into: [(String, [HotNewsItem], String?)]()) { $0.append($1) }
                 }
-                return await group.reduce(into: [(String, [HotNewsItem])]()) { $0.append($1) }
+                results.append(contentsOf: batchResults)
             }
             let fetched = results.flatMap(\.1)
             sourceFailures = results.filter { $0.1.isEmpty }.map(\.0).sorted()
-            guard !fetched.isEmpty else { throw URLError(.badServerResponse) }
+            sourceFailureDetails = Dictionary(uniqueKeysWithValues: results.compactMap { result in
+                guard let detail = result.2 else { return nil }
+                return (result.0, detail)
+            })
+            guard !fetched.isEmpty else {
+                let details = sourceFailureDetails.values.sorted().joined(separator: "；")
+                throw NSError(domain: "TrendRadar.HotNews", code: -1, userInfo: [NSLocalizedDescriptionKey: details.isEmpty ? "所有热榜平台均未返回内容" : details])
+            }
             let oldByID = items.reduce(into: [String: HotNewsItem]()) { $0[$1.id] = $1 }
             let refreshed = fetched.map { item in
                 var updated = item
@@ -109,9 +123,24 @@ final class HotNewsStore: ObservableObject {
             lastUpdated = Date()
         } catch {
             let suffix = sourceFailures.isEmpty ? "" : "失败平台：\(sourceFailures.joined(separator: "、"))。"
-            let reason = error.localizedDescription
-            errorMessage = "热榜刷新失败：\(reason)\(suffix)"
+            let details = sourceFailures.compactMap { name in
+                sourceFailureDetails[name].map { "\(name)：\($0)" }
+            }.joined(separator: "；")
+            let reason = details.isEmpty ? error.localizedDescription : details
+            if showError {
+                errorMessage = "热榜刷新失败：\(reason)\(suffix)"
+            }
             if items.isEmpty { await load() }
+        }
+    }
+}
+
+
+private extension Array {
+    func chunked(into size: Int) -> [[Element]] {
+        guard size > 0 else { return [self] }
+        return stride(from: 0, to: count, by: size).map { start in
+            Array(self[start..<Swift.min(start + size, count)])
         }
     }
 }

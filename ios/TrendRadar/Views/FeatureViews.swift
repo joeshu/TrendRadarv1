@@ -399,7 +399,7 @@ struct HotNewsView: View {
             .toolbarBackground(AppTheme.background, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)
             .refreshable { await hotNewsStore.refresh(settings: settingsStore.settings) }
-            .task { await hotNewsStore.refresh(settings: settingsStore.settings) }
+            .task { await hotNewsStore.refresh(settings: settingsStore.settings, showError: false) }
             .alert("热榜刷新", isPresented: Binding(get: { hotNewsStore.errorMessage != nil }, set: { if !$0 { hotNewsStore.errorMessage = nil } })) {
                 Button("确定", role: .cancel) { hotNewsStore.errorMessage = nil }
             } message: {
