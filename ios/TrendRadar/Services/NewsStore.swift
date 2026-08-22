@@ -72,18 +72,14 @@ final class NewsStore: ObservableObject {
                 return
             }
             let crawler = self.crawler
-            let results = await withTaskGroup(of: (String, [NewsItem], String?).self) { group in
-                for feed in enabledFeeds {
-                    group.addTask {
-                        do {
-                            return (feed.name, try await crawler.fetch(feed: feed), nil)
-                        } catch {
-                            return (feed.name, [], error.localizedDescription)
-                        }
-                    }
-                }
-                return await group.reduce(into: [(String, [NewsItem], String?) ]()) { result, value in
-                    result.append(value)
+            var results: [(String, [NewsItem], String?)] = []
+            // Keep foreground collection serial. Some sideload hosts have unstable
+            // Swift concurrency task-group completion behavior.
+            for feed in enabledFeeds {
+                do {
+                    results.append((feed.name, try await crawler.fetch(feed: feed), nil))
+                } catch {
+                    results.append((feed.name, [], error.localizedDescription))
                 }
             }
             sourceFailures = results.filter { $0.1.isEmpty }.map(\.0).sorted()

@@ -38,29 +38,23 @@ struct HotlistCollector: Sendable {
         let startedAt = Date()
         var results: [(PlatformSource, [HotNewsItem], String?)] = []
         for batch in sources.chunked(into: configuration.batchSize) {
-            let batchResults = await withTaskGroup(of: (PlatformSource, [HotNewsItem], String?).self) { group in
-                for source in batch {
-                    group.addTask {
-                        do {
-                            let items = try await service.fetch(
-                                sourceID: source.id,
-                                sourceName: source.name,
-                                expectedDomain: source.expectedDomain,
-                                baseURL: configuration.baseURL,
-                                latest: configuration.latest,
-                                timeout: configuration.timeout
-                            )
-                            return (source, items, nil)
-                        } catch {
-                            return (source, [], error.localizedDescription)
-                        }
-                    }
-                }
-                return await group.reduce(into: [(PlatformSource, [HotNewsItem], String?)]()) { result, value in
-                    result.append(value)
+            // Keep collection serial for compatibility with sideload hosts whose
+            // Swift concurrency task-group completion can abort the process.
+            for source in batch {
+                do {
+                    let items = try await service.fetch(
+                        sourceID: source.id,
+                        sourceName: source.name,
+                        expectedDomain: source.expectedDomain,
+                        baseURL: configuration.baseURL,
+                        latest: configuration.latest,
+                        timeout: configuration.timeout
+                    )
+                    results.append((source, items, nil))
+                } catch {
+                    results.append((source, [], error.localizedDescription))
                 }
             }
-            results.append(contentsOf: batchResults)
         }
 
         let successful = results.filter { !$0.1.isEmpty }

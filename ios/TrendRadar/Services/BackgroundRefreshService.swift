@@ -93,14 +93,13 @@ enum BackgroundRefreshService {
                 settings.rssEnabled && settings.customFeeds.first(where: { $0.id == feed.id })?.isEnabled == true
             }
             let crawler = NewsCrawler()
-            let feedResults = await withTaskGroup(of: (String, [NewsItem], String?).self) { group in
-                for feed in feeds {
-                    group.addTask {
-                        do { return (feed.name, try await crawler.fetch(feed: feed), nil) }
-                        catch { return (feed.name, [], error.localizedDescription) }
-                    }
+            var feedResults: [(String, [NewsItem], String?)] = []
+            for feed in feeds {
+                do {
+                    feedResults.append((feed.name, try await crawler.fetch(feed: feed), nil))
+                } catch {
+                    feedResults.append((feed.name, [], error.localizedDescription))
                 }
-                return await group.reduce(into: [(String, [NewsItem], String?)]()) { $0.append($1) }
             }
             let failedFeeds = feedResults.filter { $0.1.isEmpty }
             executionErrors.merge(
@@ -211,17 +210,13 @@ enum BackgroundRefreshService {
             ? "https://newsnow.busiyi.world/api"
             : settings.platformAPIURL
         let service = NewsNowService()
-        let results = await withTaskGroup(of: (PlatformSource, [HotNewsItem]).self) { group in
-            for source in enabledSources {
-                group.addTask {
-                    do {
-                        return (source, try await service.fetch(sourceID: source.id, sourceName: source.name, expectedDomain: source.expectedDomain, baseURL: baseURL))
-                    } catch {
-                        return (source, [])
-                    }
-                }
+        var results: [(PlatformSource, [HotNewsItem])] = []
+        for source in enabledSources {
+            do {
+                results.append((source, try await service.fetch(sourceID: source.id, sourceName: source.name, expectedDomain: source.expectedDomain, baseURL: baseURL)))
+            } catch {
+                results.append((source, []))
             }
-            return await group.reduce(into: [(PlatformSource, [HotNewsItem])]()) { $0.append($1) }
         }
         let successful = results.filter { !$0.1.isEmpty }
         guard !successful.isEmpty else { return previous }
