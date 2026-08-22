@@ -147,16 +147,7 @@ struct SettingsView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 0) {
-                    SettingsOverviewSection(
-                        platformsEnabled: settingsStore.settings.platformsEnabled,
-                        rssEnabled: settingsStore.settings.rssEnabled,
-                        aiEnabled: settingsStore.settings.ai.enabled
-                    )
-                    SettingsCategoriesSection()
-                }
-            }
+            settingsRootContent
             .navigationTitle("配置中心")
             .navigationBarTitleDisplayMode(.inline)
             .scrollContentBackground(.hidden)
@@ -274,6 +265,19 @@ struct SettingsView: View {
                     }
                 }
                 Button("取消", role: .cancel) {}
+            }
+        }
+    }
+
+    private var settingsRootContent: some View {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 0) {
+                SettingsOverviewSection(
+                    platformsEnabled: settingsStore.settings.platformsEnabled,
+                    rssEnabled: settingsStore.settings.rssEnabled,
+                    aiEnabled: settingsStore.settings.ai.enabled
+                )
+                SettingsCategoriesSection()
             }
         }
     }
