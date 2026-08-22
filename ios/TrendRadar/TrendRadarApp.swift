@@ -1,5 +1,4 @@
 import SwiftUI
-import BackgroundTasks
 
 @main
 struct TrendRadarApp: App {
@@ -9,7 +8,7 @@ struct TrendRadarApp: App {
     @StateObject private var hotNewsStore = HotNewsStore()
 
     init() {
-        registerBackgroundTask()
+        // BackgroundTasks registration is optional and can terminate unsupported hosts.
     }
 
     var body: some Scene {
@@ -24,19 +23,6 @@ struct TrendRadarApp: App {
                     store.settings = settingsStore.settings
                     await loadSecondaryStores()
                 }
-                .onAppear {
-                    BackgroundRefreshService.schedule(after: settingsStore.settings.refreshInterval * 60, enabled: settingsStore.settings.scheduleEnabled)
-                }
-        }
-    }
-
-    private func registerBackgroundTask() {
-        BGTaskScheduler.shared.register(forTaskWithIdentifier: BackgroundRefreshService.identifier, using: nil) { task in
-            guard let refreshTask = task as? BGAppRefreshTask else {
-                task.setTaskCompleted(success: false)
-                return
-            }
-            Task { await BackgroundRefreshService.run(task: refreshTask) }
         }
     }
 

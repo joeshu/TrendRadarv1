@@ -6,15 +6,24 @@ actor LocalStore {
     private let legacyFileURL: URL
 
     init() {
-        container = Self.makeContainer()
         let directory = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        legacyFileURL = directory.appendingPathComponent("news.json")
+        container = Self.makeContainer(in: directory)
+        legacyFileURL = directory.appendingPathComponent("news-v2.json")
     }
 
-    private static func makeContainer() -> ModelContainer? {
+    private static func makeContainer(in directory: URL) -> ModelContainer? {
         do {
-            return try ModelContainer(for: NewsRecord.self, ReportRecord.self, ReportItemRecord.self, HotNewsRecord.self, HotNewsTrendRecord.self)
+            let schema = Schema([
+                NewsRecord.self,
+                ReportRecord.self,
+                ReportItemRecord.self,
+                HotNewsRecord.self,
+                HotNewsTrendRecord.self
+            ])
+            let storeURL = directory.appendingPathComponent("TrendRadar-v2.store")
+            let configuration = ModelConfiguration(schema: schema, url: storeURL, allowsSave: true)
+            return try ModelContainer(for: schema, configurations: configuration)
         } catch {
             return nil
         }
