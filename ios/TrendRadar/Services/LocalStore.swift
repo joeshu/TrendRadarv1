@@ -2,6 +2,8 @@ import Foundation
 import SwiftData
 
 actor LocalStore {
+    static let shared = LocalStore()
+
     private let container: ModelContainer?
     private let legacyFileURL: URL
 

@@ -17,7 +17,7 @@ final class HotNewsStore: ObservableObject {
         var id: Date { date }
     }
 
-    private let localStore = LocalStore()
+    private let localStore = LocalStore.shared
     private let service = NewsNowService()
 
     var filteredItems: [HotNewsItem] {
@@ -97,10 +97,11 @@ final class HotNewsStore: ObservableObject {
             }
             let fetched = results.flatMap(\.1)
             sourceFailures = results.filter { $0.1.isEmpty }.map(\.0).sorted()
-            sourceFailureDetails = Dictionary(uniqueKeysWithValues: results.compactMap { result in
-                guard let detail = result.2 else { return nil }
-                return (result.0, detail)
-            })
+            sourceFailureDetails = results.reduce(into: [:]) { details, result in
+                if let detail = result.2 {
+                    details[result.0] = detail
+                }
+            }
             guard !fetched.isEmpty else {
                 let details = sourceFailureDetails.values.sorted().joined(separator: "；")
                 throw NSError(domain: "TrendRadar.HotNews", code: -1, userInfo: [NSLocalizedDescriptionKey: details.isEmpty ? "所有热榜平台均未返回内容" : details])

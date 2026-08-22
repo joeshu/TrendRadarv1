@@ -11,7 +11,7 @@ final class NewsStore: ObservableObject {
     @Published private(set) var sourceFailures: [String] = []
     @Published private(set) var sourceFailureDetails: [String: String] = [:]
 
-    private let localStore = LocalStore()
+    private let localStore = LocalStore.shared
     private let crawler = NewsCrawler()
     private let aiService = AIService()
     var settings: AppSettings = AppSettings()
@@ -70,10 +70,11 @@ final class NewsStore: ObservableObject {
                 }
             }
             sourceFailures = results.filter { $0.1.isEmpty }.map(\.0).sorted()
-            sourceFailureDetails = Dictionary(uniqueKeysWithValues: results.compactMap { result in
-                guard let detail = result.2 else { return nil }
-                return (result.0, detail)
-            })
+            sourceFailureDetails = results.reduce(into: [:]) { details, result in
+                if let detail = result.2 {
+                    details[result.0] = detail
+                }
+            }
             let successfulResults = results.filter { !$0.1.isEmpty }
             guard !successfulResults.isEmpty else {
                 if !items.isEmpty {

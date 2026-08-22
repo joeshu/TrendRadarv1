@@ -11,7 +11,7 @@ final class ReportStore: ObservableObject {
     @Published private(set) var isGenerating = false
     @Published var errorMessage: String?
 
-    private let localStore = LocalStore()
+    private let localStore = LocalStore.shared
     private let generator = ReportGenerationService()
     private let aiService = AIService()
     private var completedBatches = Set<String>()

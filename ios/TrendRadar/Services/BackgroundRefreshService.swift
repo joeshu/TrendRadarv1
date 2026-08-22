@@ -77,7 +77,7 @@ enum BackgroundRefreshService {
                     // Keep keyword-filtered items when AI is unavailable.
                 }
             }
-            let localStore = LocalStore()
+            let localStore = LocalStore.shared
             let oldItems = await localStore.load()
             let oldHotlistItems = await localStore.loadHotNews()
             let hotlistItems = await refreshHotlist(settings: settings, previous: oldHotlistItems, localStore: localStore)

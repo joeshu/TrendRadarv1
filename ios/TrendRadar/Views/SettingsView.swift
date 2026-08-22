@@ -93,6 +93,8 @@ struct SettingsView: View {
     @State private var editingFeed: ConfigFeed?
     @State private var showingSettingsImporter = false
     @State private var settingsMessage: String?
+    @State private var showingSettingsMessage = false
+    @State private var isResettingData = false
     @State private var isUpdatingInterestTags = false
     @State private var showingClearCacheConfirmation = false
     @State private var showingResetConfirmation = false
@@ -154,6 +156,11 @@ struct SettingsView: View {
             .onChange(of: channelSecrets) { _, values in
                 persistChannelSecrets(values)
             }
+            .onChange(of: settingsMessage) { _, value in
+                if value != nil {
+                    showingSettingsMessage = true
+                }
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("取消") {
@@ -183,7 +190,7 @@ struct SettingsView: View {
             .fileImporter(isPresented: $showingSettingsImporter, allowedContentTypes: [.json]) { result in
                 importSettings(result)
             }
-            .alert("配置备份", isPresented: Binding(get: { settingsMessage != nil }, set: { if !$0 { settingsMessage = nil } })) {
+            .alert("操作结果", isPresented: $showingSettingsMessage) {
                 Button("确定", role: .cancel) { settingsMessage = nil }
             } message: {
                 Text(settingsMessage ?? "")
@@ -205,7 +212,9 @@ struct SettingsView: View {
             }
             .confirmationDialog("重置本机数据？", isPresented: $showingResetConfirmation, titleVisibility: .visible) {
                 Button("重置数据", role: .destructive) {
+                    isResettingData = true
                     Task {
+                        defer { isResettingData = false }
                         do {
                             try await newsStore.clearCache()
                             try await hotNewsStore.clearCache()
@@ -214,8 +223,10 @@ struct SettingsView: View {
                             newsStore.settings = settingsStore.settings
                             ["api-base", "api-key", "ai-model", "notify-ntfy-token", "ntfy-token", "bark", "slack", "generic"].forEach { keychain.delete($0) }
                             settingsMessage = "本机数据和配置已重置"
+                            showingSettingsMessage = true
                         } catch {
                             settingsMessage = "重置失败：\(error.localizedDescription)"
+                            showingSettingsMessage = true
                         }
                     }
                 }
@@ -519,9 +530,18 @@ struct SettingsView: View {
             }
             Text("清理新闻、热榜排名历史和本地报告，不会修改设置或 Keychain 密钥。")
                 .font(.caption).foregroundStyle(.secondary)
-            Button("重置本机数据", role: .destructive) {
+            Button {
                 showingResetConfirmation = true
+            } label: {
+                HStack {
+                    Text(isResettingData ? "正在重置本机数据…" : "重置本机数据")
+                    if isResettingData {
+                        Spacer()
+                        ProgressView()
+                    }
+                }
             }
+            .disabled(isResettingData)
             Text("LiveContainer 可能保留同一 Bundle ID 的容器和 Keychain。重装后仍看到旧数据时，使用此按钮清除新闻、报告、设置和 AI 密钥。")
                 .font(.caption).foregroundStyle(.secondary)
             Text("S3/R2、账号同步和服务端推送属于可选远程能力。纯本地模式保持独立运行。")

@@ -94,7 +94,9 @@ struct ReportGenerationService: Sendable {
         }
         let orderedRSSSections: [ReportSection]
         if settings.report.sortByPositionFirst {
-            let order = Dictionary(uniqueKeysWithValues: groups.enumerated().map { ($0.element.displayName, $0.offset) })
+            let order = groups.enumerated().reduce(into: [String: Int]()) { result, entry in
+                result[entry.element.displayName] = entry.offset
+            }
             orderedRSSSections = rssSections.sorted { (order[$0.id] ?? Int.max) < (order[$1.id] ?? Int.max) }
         } else {
             orderedRSSSections = rssSections.sorted { $0.title.localizedCompare($1.title) == .orderedAscending }
