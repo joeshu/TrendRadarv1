@@ -99,7 +99,9 @@ enum BackgroundRefreshService {
                 let request = ReportGenerationRequest(batchID: batchID, type: reportType, trigger: .backgroundRefresh, generatedAt: Date(), settings: settings)
                 var report = ReportGenerationService().generate(request: request, items: merged, hotlistItems: hotlistItems)
                 if timelineAction.analyze {
-                    report.aiAnalysis = await AIService().reportAnalysis(hotlistItems: hotlistItems, rssItems: merged, settings: settings, reportType: reportType.displayName)
+                    let aiService = AIService()
+                    let standaloneContent = aiService.standaloneContent(hotlistItems: hotlistItems, rssItems: merged, settings: settings)
+                    report.aiAnalysis = await aiService.reportAnalysis(hotlistItems: hotlistItems, rssItems: merged, settings: settings, reportType: reportType.displayName, standaloneContent: standaloneContent)
                 }
                 try Task.checkCancellation()
                 try? await localStore.save(report)

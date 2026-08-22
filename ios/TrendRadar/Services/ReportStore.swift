@@ -63,7 +63,8 @@ final class ReportStore: ObservableObject {
                 let snapshotRSS = report.sections.flatMap(\.items).filter { $0.sourceType == .rss }.map { snapshot in
                     NewsItem(id: snapshot.id, title: snapshot.title, source: snapshot.source, url: snapshot.url, publishedAt: snapshot.publishedAt, summary: snapshot.summary, isRead: snapshot.isRead, isFavorite: snapshot.isFavorite)
                 }
-                report.aiAnalysis = await aiService.reportAnalysis(hotlistItems: snapshotHotlist, rssItems: snapshotRSS, settings: settings, reportType: type.displayName)
+                let standaloneContent = aiService.standaloneContent(hotlistItems: hotlistItems, rssItems: items, settings: settings)
+                report.aiAnalysis = await aiService.reportAnalysis(hotlistItems: snapshotHotlist, rssItems: snapshotRSS, settings: settings, reportType: type.displayName, standaloneContent: standaloneContent)
             }
             try await localStore.save(report)
             completedBatches.insert(resolvedBatchID)
