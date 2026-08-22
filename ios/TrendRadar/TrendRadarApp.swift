@@ -33,7 +33,7 @@ struct TrendRadarApp: App {
                     await reportStore.applyRetentionPolicy(days: settingsStore.settings.storage.localRetentionDays)
                 }
                 .onAppear {
-                    BackgroundRefreshService.schedule(after: settingsStore.settings.refreshInterval * 60)
+                    BackgroundRefreshService.schedule(after: settingsStore.settings.refreshInterval * 60, enabled: settingsStore.settings.scheduleEnabled)
                 }
         }
     }

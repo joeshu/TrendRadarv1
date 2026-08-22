@@ -48,6 +48,14 @@ struct TimelinePreset: Identifiable, Equatable, Sendable {
     }
 }
 
+extension Calendar {
+    static func trendRadar(timeZoneIdentifier: String) -> Calendar {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: timeZoneIdentifier) ?? .current
+        return calendar
+    }
+}
+
 struct TimelineExecutionStore: @unchecked Sendable {
     private let defaults = UserDefaults.standard
     private let key = "trendradar.timeline.executions"

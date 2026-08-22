@@ -146,18 +146,26 @@ actor LocalStore {
         try context.save()
     }
 
-    func saveHotNews(_ items: [HotNewsItem], seenAt: Date = Date()) throws {
+    func saveHotNews(_ items: [HotNewsItem], replacingPlatformIDs: Set<String> = [], seenAt: Date = Date()) throws {
         guard let container else { throw LocalStoreError.unavailable }
         let context = ModelContext(container)
         let existing = try context.fetch(FetchDescriptor<HotNewsRecord>())
         let recordsByID = existing.reduce(into: [String: HotNewsRecord]()) { $0[$1.id] = $1 }
+        for record in existing where replacingPlatformIDs.contains(record.platformID) {
+            context.delete(record)
+        }
         for item in items {
-            if let record = recordsByID[item.id] {
+            if let record = recordsByID[item.id], !replacingPlatformIDs.contains(record.platformID) {
                 record.update(with: item, seenAt: seenAt)
             } else {
                 context.insert(HotNewsRecord(item: item, seenAt: seenAt))
             }
             context.insert(HotNewsTrendRecord(item: item, capturedAt: seenAt))
+        }
+        let trendCutoff = seenAt.addingTimeInterval(-30 * 86_400)
+        let trendDescriptor = FetchDescriptor<HotNewsTrendRecord>(predicate: #Predicate { $0.capturedAt < trendCutoff })
+        for record in try context.fetch(trendDescriptor) {
+            context.delete(record)
         }
         try context.save()
     }

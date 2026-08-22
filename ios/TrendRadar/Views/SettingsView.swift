@@ -129,7 +129,7 @@ struct SettingsView: View {
             }
             .onChange(of: settingsStore.settings) { _, newSettings in
                 newsStore.settings = newSettings
-                BackgroundRefreshService.schedule(after: newSettings.refreshInterval * 60)
+                BackgroundRefreshService.schedule(after: newSettings.refreshInterval * 60, enabled: newSettings.scheduleEnabled)
             }
             .onChange(of: keywordText) { _, value in
                 settingsStore.settings.keywords = split(value)
@@ -617,13 +617,13 @@ struct SettingsView: View {
         let secretKeys = [
             "feishu": "notify-feishu", "dingtalk": "notify-dingtalk", "wework": "notify-wework",
             "telegram-token": "notify-telegram-token", "telegram-chat": "notify-telegram-chat", "email-password": "notify-email-password",
-            "ntfy-token": "notify-ntfy", "bark": "notify-bark", "slack": "notify-slack",
+            "ntfy-token": "notify-ntfy-token", "bark": "notify-bark", "slack": "notify-slack",
             "generic": "notify-generic", "s3-access": "storage-s3-access", "s3-secret": "storage-s3-secret"
         ]
         for (field, key) in secretKeys { keychain.write(channelSecrets[field] ?? "", for: key) }
         newsStore.settings = settingsStore.settings
         originalSettings = settingsStore.settings
-        BackgroundRefreshService.schedule(after: settingsStore.settings.refreshInterval * 60)
+        BackgroundRefreshService.schedule(after: settingsStore.settings.refreshInterval * 60, enabled: settingsStore.settings.scheduleEnabled)
         dismiss()
     }
 

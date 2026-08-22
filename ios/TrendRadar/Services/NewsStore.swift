@@ -64,8 +64,9 @@ final class NewsStore: ObservableObject {
             await localStore.save(items)
             lastUpdated = Date()
             let preset = TimelineCatalog.preset(for: settings.schedulePreset)
-            let match = preset.match(at: Date())
-            let timelineAction = TimelineExecutionStore().claim(presetID: preset.id, periodID: match.periodID, action: match.action)
+            let calendar = Calendar.trendRadar(timeZoneIdentifier: settings.timezone)
+            let match = preset.match(at: Date(), calendar: calendar)
+            let timelineAction = TimelineExecutionStore().claim(presetID: preset.id, periodID: match.periodID, action: match.action, calendar: calendar)
             if settings.scheduleEnabled, timelineAction.push {
                 await generateReport(trigger: .foregroundRefresh, type: timelineAction.reportMode)
             }
@@ -119,7 +120,10 @@ final class NewsStore: ObservableObject {
 
     private func matchesConfiguredFilters(_ item: NewsItem) -> Bool {
         guard KeywordRuleSet(keywords: settings.keywords, globalExcluded: settings.globalFilterWords).matches(item.title) else { return false }
-        guard settings.rssFreshnessEnabled, settings.rssMaxAgeDays > 0, let publishedAt = item.publishedAt else { return true }
-        return publishedAt >= Date(timeIntervalSinceNow: -Double(settings.rssMaxAgeDays) * 86_400)
+        guard settings.rssFreshnessEnabled, let publishedAt = item.publishedAt else { return true }
+        let feedAge = settings.customFeeds.first { $0.name == item.source }?.maxAgeDays ?? 0
+        let maxAgeDays = feedAge > 0 ? feedAge : settings.rssMaxAgeDays
+        guard maxAgeDays > 0 else { return true }
+        return publishedAt >= Date(timeIntervalSinceNow: -Double(maxAgeDays) * 86_400)
     }
 }

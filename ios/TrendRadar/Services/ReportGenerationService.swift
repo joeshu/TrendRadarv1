@@ -1,4 +1,5 @@
 import Foundation
+import CryptoKit
 
 struct ReportGenerationRequest: Sendable {
     let batchID: String
@@ -36,7 +37,7 @@ struct ReportGenerationService: Sendable {
         )
         let title = "\(request.type.displayName) · \(request.generatedAt.formatted(date: .abbreviated, time: .shortened))"
         return ReportDetail(
-            id: UUID(uuidString: request.batchID) ?? UUID(),
+            id: stableReportID(for: request.batchID),
             title: title,
             type: request.type,
             trigger: request.trigger,
@@ -80,5 +81,19 @@ struct ReportGenerationService: Sendable {
             return ReportSection(id: sectionID, title: title, items: snapshots)
         }
         return hotlistSection + rssSections
+    }
+
+    private func stableReportID(for batchID: String) -> UUID {
+        let digest = SHA256.hash(data: Data(batchID.utf8))
+        let bytes = Array(digest.prefix(16))
+        var uuidBytes = bytes
+        uuidBytes[6] = (uuidBytes[6] & 0x0F) | 0x50
+        uuidBytes[8] = (uuidBytes[8] & 0x3F) | 0x80
+        return UUID(uuid: (
+            uuidBytes[0], uuidBytes[1], uuidBytes[2], uuidBytes[3],
+            uuidBytes[4], uuidBytes[5], uuidBytes[6], uuidBytes[7],
+            uuidBytes[8], uuidBytes[9], uuidBytes[10], uuidBytes[11],
+            uuidBytes[12], uuidBytes[13], uuidBytes[14], uuidBytes[15]
+        ))
     }
 }

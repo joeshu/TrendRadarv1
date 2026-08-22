@@ -92,14 +92,20 @@ final class HotNewsStore: ObservableObject {
             sourceFailures = results.filter { $0.1.isEmpty }.map(\.0).sorted()
             guard !fetched.isEmpty else { throw URLError(.badServerResponse) }
             let oldByID = items.reduce(into: [String: HotNewsItem]()) { $0[$1.id] = $1 }
-            items = fetched.map { item in
+            let refreshed = fetched.map { item in
                 var updated = item
                 updated.previousRank = oldByID[item.id]?.rank
                 updated.isRead = oldByID[item.id]?.isRead ?? false
                 updated.isFavorite = oldByID[item.id]?.isFavorite ?? false
                 return updated
-            }.sorted { $0.rank < $1.rank }
-            try await localStore.saveHotNews(items)
+            }
+            let successfulSourceNames = Set(results.filter { !$0.1.isEmpty }.map(\.0))
+            let successfulPlatformIDs = Set(enabledSources.filter { successfulSourceNames.contains($0.name) }.map(\.id))
+            let staleItems = items.filter { item in
+                !successfulPlatformIDs.contains(item.platformID) && sourceFailures.contains(item.platformName)
+            }
+            items = (refreshed + staleItems).sorted { $0.rank < $1.rank }
+            try await localStore.saveHotNews(items, replacingPlatformIDs: successfulPlatformIDs)
             lastUpdated = Date()
         } catch {
             let suffix = sourceFailures.isEmpty ? "" : "失败平台：\(sourceFailures.joined(separator: "、"))。"
