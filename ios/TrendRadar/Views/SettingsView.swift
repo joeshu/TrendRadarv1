@@ -1,6 +1,84 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
+private enum SettingsCategory: String, CaseIterable, Identifiable, Hashable {
+    case runtime
+    case sources
+    case filtering
+    case ai
+    case display
+    case notifications
+    case storage
+    case advanced
+    case backup
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .runtime: return "运行与调度"
+        case .sources: return "信息源"
+        case .filtering: return "筛选与报告"
+        case .ai: return "AI"
+        case .display: return "展示"
+        case .notifications: return "通知"
+        case .storage: return "存储"
+        case .advanced: return "高级"
+        case .backup: return "配置备份"
+        }
+    }
+
+    var subtitle: String {
+        switch self {
+        case .runtime: return "时区、刷新和时间线"
+        case .sources: return "RSS 与平台热榜"
+        case .filtering: return "关键词、AI 筛选和报告"
+        case .ai: return "模型、兴趣和翻译"
+        case .display: return "首页区域与独立展示"
+        case .notifications: return "本地提醒和通知渠道"
+        case .storage: return "本地保留和远程存储"
+        case .advanced: return "请求、代理和排序参数"
+        case .backup: return "导入或分享配置"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .runtime: return "clock"
+        case .sources: return "antenna.radiowaves.left.and.right"
+        case .filtering: return "line.3.horizontal.decrease.circle"
+        case .ai: return "sparkles"
+        case .display: return "rectangle.3.group"
+        case .notifications: return "bell"
+        case .storage: return "internaldrive"
+        case .advanced: return "slider.horizontal.3"
+        case .backup: return "arrow.triangle.2.circlepath"
+        }
+    }
+}
+
+private struct SettingsCategoryRow: View {
+    let category: SettingsCategory
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: category.icon)
+                .font(.headline)
+                .foregroundStyle(AppTheme.cyan)
+                .frame(width: 28)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(category.title)
+                    .font(AppTheme.headlineFont)
+                    .foregroundStyle(.white)
+                Text(category.subtitle)
+                    .font(AppTheme.captionFont)
+                    .foregroundStyle(AppTheme.textTertiary)
+            }
+        }
+        .padding(.vertical, 5)
+    }
+}
+
 struct SettingsView: View {
     @EnvironmentObject private var settingsStore: SettingsStore
     @EnvironmentObject private var newsStore: NewsStore
@@ -23,20 +101,15 @@ struct SettingsView: View {
 
     var body: some View {
         NavigationStack {
-            Form {
+            List {
                 configurationOverview
-                generalSection
-                scheduleSection
-                sourceSection
-                filterSection
-                aiSection
-                aiAnalysisSection
-                aiTranslationSection
-                displaySection
-                notificationSection
-                storageSection
-                advancedSection
-                backupSection
+                Section("设置") {
+                    ForEach(SettingsCategory.allCases) { category in
+                        NavigationLink(value: category) {
+                            SettingsCategoryRow(category: category)
+                        }
+                    }
+                }
             }
             .navigationTitle("配置中心")
             .navigationBarTitleDisplayMode(.inline)
@@ -44,6 +117,17 @@ struct SettingsView: View {
             .background(AppTheme.background)
             .preferredColorScheme(.dark)
             .tint(AppTheme.cyan)
+            .navigationDestination(for: SettingsCategory.self) { category in
+                Form {
+                    categoryContent(category)
+                }
+                .navigationTitle(category.title)
+                .navigationBarTitleDisplayMode(.inline)
+                .scrollContentBackground(.hidden)
+                .background(AppTheme.background)
+                .preferredColorScheme(.dark)
+                .tint(AppTheme.cyan)
+            }
             .onChange(of: settingsStore.settings) { _, newSettings in
                 newsStore.settings = newSettings
                 BackgroundRefreshService.schedule(after: newSettings.refreshInterval * 60)
@@ -106,13 +190,40 @@ struct SettingsView: View {
         }
     }
 
+    @ViewBuilder
+    private func categoryContent(_ category: SettingsCategory) -> some View {
+        switch category {
+        case .runtime:
+            generalSection
+            scheduleSection
+        case .sources:
+            sourceSection
+        case .filtering:
+            filterSection
+        case .ai:
+            aiSection
+            aiAnalysisSection
+            aiTranslationSection
+        case .display:
+            displaySection
+        case .notifications:
+            notificationSection
+        case .storage:
+            storageSection
+        case .advanced:
+            advancedSection
+        case .backup:
+            backupSection
+        }
+    }
+
     private var configurationOverview: some View {
         Section {
             VStack(alignment: .leading, spacing: 8) {
                 Text("本地配置中心")
                     .font(AppTheme.headlineFont)
                     .foregroundStyle(.white)
-                Text("配置按运行、数据源、筛选、AI、展示、通知、存储和高级参数分级管理。带有“高级”标记的参数主要影响调度与请求行为。")
+            Text("常用配置按功能分组，高级请求参数单独收纳。所有数据默认保存在本机。")
                     .font(AppTheme.captionFont)
                     .foregroundStyle(AppTheme.textSecondary)
                 HStack(spacing: 8) {
@@ -128,7 +239,7 @@ struct SettingsView: View {
     }
 
     private var generalSection: some View {
-        Section("一级 · 运行与调度") {
+        Section("运行") {
             Picker("时区", selection: $settingsStore.settings.timezone) {
                 Text("北京时间").tag("Asia/Shanghai")
                 Text("纽约时间").tag("America/New_York")
@@ -148,7 +259,7 @@ struct SettingsView: View {
     }
 
     private var scheduleSection: some View {
-        Section("二级 · 时间线预设") {
+        Section("时间线") {
             Toggle("启用调度系统", isOn: $settingsStore.settings.scheduleEnabled)
             Picker("运行模式", selection: $settingsStore.settings.schedulePreset) {
                 Text("全天监控").tag("always_on")
@@ -165,7 +276,7 @@ struct SettingsView: View {
     }
 
     private var sourceSection: some View {
-        Section("一级 · 数据源") {
+        Section("数据源") {
             Toggle("启用热榜平台", isOn: $settingsStore.settings.platformsEnabled)
             ForEach($settingsStore.settings.platformSources) { $source in
                 VStack(alignment: .leading, spacing: 6) {
@@ -202,7 +313,7 @@ struct SettingsView: View {
     }
 
     private var filterSection: some View {
-        Section("一级 · 筛选与报告") {
+        Section("筛选与报告") {
             TextField("关键词：普通词、+必须词、!过滤词", text: $keywordText, axis: .vertical)
             TextField("全局过滤词，使用逗号分隔", text: $filterText, axis: .vertical)
             Text("示例：AI, +发布, !广告。必须词全部命中，普通词命中任意一个，过滤词命中后排除。")
@@ -228,7 +339,7 @@ struct SettingsView: View {
     }
 
     private var aiSection: some View {
-        Section("一级 · AI 模型与筛选") {
+        Section("模型与智能筛选") {
             Toggle("启用 AI 分析", isOn: $settingsStore.settings.ai.enabled)
             TextField("API Base URL", text: $apiBase).textInputAutocapitalization(.never).autocorrectionDisabled()
             SecureField("API Key", text: $apiKey)
@@ -254,9 +365,11 @@ struct SettingsView: View {
                 get: { settingsStore.settings.ai.fallbackModels.joined(separator: ", ") },
                 set: { settingsStore.settings.ai.fallbackModels = split($0) }
             ))
-            TextField("AI 筛选提示词文件", text: $settingsStore.settings.ai.filterPromptFile)
-            TextField("AI 标签提取提示词文件", text: $settingsStore.settings.ai.extractPromptFile)
-            TextField("AI 标签更新提示词文件", text: $settingsStore.settings.ai.updateTagsPromptFile)
+            DisclosureGroup("高级 Prompt 文件") {
+                TextField("AI 筛选提示词文件", text: $settingsStore.settings.ai.filterPromptFile)
+                TextField("AI 标签提取提示词文件", text: $settingsStore.settings.ai.extractPromptFile)
+                TextField("AI 标签更新提示词文件", text: $settingsStore.settings.ai.updateTagsPromptFile)
+            }
             Stepper("请求超时：\(settingsStore.settings.ai.timeout) 秒", value: $settingsStore.settings.ai.timeout, in: 10...600, step: 10)
             Stepper("最大生成 Token：\(settingsStore.settings.ai.maxTokens == 0 ? "不限" : "\(settingsStore.settings.ai.maxTokens)")", value: $settingsStore.settings.ai.maxTokens, in: 0...20000, step: 500)
             Stepper("失败重试：\(settingsStore.settings.ai.retries) 次", value: $settingsStore.settings.ai.retries, in: 0...5)
@@ -266,30 +379,32 @@ struct SettingsView: View {
     }
 
     private var displaySection: some View {
-        Section("一级 · 展示与区域") {
+        Section("展示区域") {
             Toggle("热榜区域", isOn: $settingsStore.settings.display.showHotlist)
             Toggle("新增热点区域", isOn: $settingsStore.settings.display.showNewItems)
             Toggle("RSS 区域", isOn: $settingsStore.settings.display.showRSS)
             Toggle("独立展示区", isOn: $settingsStore.settings.display.showStandalone)
             Toggle("AI 分析区域", isOn: $settingsStore.settings.display.showAIAnalysis)
-            TextField("区域顺序，使用逗号分隔", text: Binding(
-                get: { settingsStore.settings.display.regionOrder.joined(separator: ", ") },
-                set: { settingsStore.settings.display.regionOrder = split($0) }
-            ))
-            TextField("独立展示平台 ID，使用逗号分隔", text: Binding(
-                get: { settingsStore.settings.display.standalonePlatforms.joined(separator: ", ") },
-                set: { settingsStore.settings.display.standalonePlatforms = split($0) }
-            ))
-            TextField("独立展示 RSS ID，使用逗号分隔", text: Binding(
-                get: { settingsStore.settings.display.standaloneRSSFeeds.joined(separator: ", ") },
-                set: { settingsStore.settings.display.standaloneRSSFeeds = split($0) }
-            ))
-            Stepper("独立展示最多：\(settingsStore.settings.display.standaloneMaxItems) 条", value: $settingsStore.settings.display.standaloneMaxItems, in: 0...100)
+            DisclosureGroup("独立展示区高级设置") {
+                TextField("区域顺序，使用逗号分隔", text: Binding(
+                    get: { settingsStore.settings.display.regionOrder.joined(separator: ", ") },
+                    set: { settingsStore.settings.display.regionOrder = split($0) }
+                ))
+                TextField("独立展示平台 ID，使用逗号分隔", text: Binding(
+                    get: { settingsStore.settings.display.standalonePlatforms.joined(separator: ", ") },
+                    set: { settingsStore.settings.display.standalonePlatforms = split($0) }
+                ))
+                TextField("独立展示 RSS ID，使用逗号分隔", text: Binding(
+                    get: { settingsStore.settings.display.standaloneRSSFeeds.joined(separator: ", ") },
+                    set: { settingsStore.settings.display.standaloneRSSFeeds = split($0) }
+                ))
+                Stepper("独立展示最多：\(settingsStore.settings.display.standaloneMaxItems) 条", value: $settingsStore.settings.display.standaloneMaxItems, in: 0...100)
+            }
         }
     }
 
     private var aiAnalysisSection: some View {
-        Section("二级 · AI 结构化分析") {
+        Section("结构化分析") {
             Toggle("启用 AI 分析", isOn: $settingsStore.settings.aiAnalysis.enabled)
             TextField("分析语言", text: $settingsStore.settings.aiAnalysis.language)
             Picker("分析模式", selection: $settingsStore.settings.aiAnalysis.mode) {
@@ -308,7 +423,7 @@ struct SettingsView: View {
     }
 
     private var aiTranslationSection: some View {
-        Section("二级 · AI 翻译") {
+        Section("翻译") {
             Toggle("启用标题翻译", isOn: $settingsStore.settings.aiTranslation.enabled)
             TextField("目标语言", text: $settingsStore.settings.aiTranslation.language)
             TextField("提示词文件", text: $settingsStore.settings.aiTranslation.promptFile)
@@ -322,7 +437,7 @@ struct SettingsView: View {
     }
 
     private var notificationSection: some View {
-        Section("一级 · 通知与本地提醒") {
+        Section("本地提醒") {
             Toggle("启用通知总开关", isOn: $settingsStore.settings.notification.enabled)
             Toggle("允许本地提醒", isOn: $settingsStore.settings.notification.localAlerts)
             Toggle("提醒声音", isOn: $settingsStore.settings.notification.soundEnabled)
@@ -352,7 +467,7 @@ struct SettingsView: View {
     }
 
     private var storageSection: some View {
-        Section("一级 · 存储与同步") {
+        Section("本地与远程存储") {
             Picker("存储后端", selection: $settingsStore.settings.storage.backend) {
                 Text("自动选择").tag("auto")
                 Text("本地").tag("local")
@@ -378,7 +493,7 @@ struct SettingsView: View {
     }
 
     private var advancedSection: some View {
-        Section("一级 · 高级参数") {
+        Section("高级参数") {
             Toggle("调试模式", isOn: $settingsStore.settings.advanced.debug)
             TextField("版本检查地址", text: $settingsStore.settings.advanced.versionCheckURL)
             TextField("MCP 版本检查地址", text: $settingsStore.settings.advanced.mcpVersionCheckURL)
@@ -408,7 +523,7 @@ struct SettingsView: View {
     }
 
     private var backupSection: some View {
-        Section("一级 · 配置备份") {
+        Section("配置文件") {
             ShareLink(item: settingsJSON) {
                 Label("分享配置 JSON", systemImage: "square.and.arrow.up")
             }
