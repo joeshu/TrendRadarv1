@@ -60,7 +60,9 @@ struct WebhookPayloadRenderer: Sendable {
     private func jsonStringBody(_ value: String) throws -> String {
         let data = try JSONSerialization.data(withJSONObject: [value])
         let string = String(decoding: data, as: UTF8.self)
-        return String(string.dropFirst().dropLast())
+        // JSONSerialization wraps a scalar in an array. Strip both the array
+        // brackets and the scalar's surrounding JSON quotes, preserving escapes.
+        return String(string.dropFirst(2).dropLast(2))
     }
 }
 
@@ -124,17 +126,17 @@ struct GenericWebhookService: Sendable {
         )
         let urlValue = keychain.read("notify-generic").trimmingCharacters(in: .whitespacesAndNewlines)
         guard !urlValue.isEmpty else {
-            let result = WebhookDeliveryRecord(reportID: nil, status: nil, success: false, attempts: 0, message: GenericWebhookError.missingURL.localizedDescription ?? "未配置通用 Webhook URL")
+            let result = WebhookDeliveryRecord(reportID: nil, status: nil, success: false, attempts: 0, message: GenericWebhookError.missingURL.localizedDescription)
             Self.record(result)
             return result
         }
         _ = await deliver(report: detail, urlValue: urlValue, template: settings.notification.channels.genericPayloadTemplate)
-        return Self.records().first ?? WebhookDeliveryRecord(reportID: nil, status: nil, success: false, attempts: 0, message: GenericWebhookError.emptyResponse.localizedDescription ?? "Webhook 未返回有效响应")
+        return Self.records().first ?? WebhookDeliveryRecord(reportID: nil, status: nil, success: false, attempts: 0, message: GenericWebhookError.emptyResponse.localizedDescription)
     }
 
     private func deliver(report: ReportDetail, urlValue: String, template: String) async -> Bool {
         guard let url = URL(string: urlValue), url.scheme?.lowercased() == "https" else {
-            Self.record(WebhookDeliveryRecord(reportID: report.id.uuidString, status: nil, success: false, attempts: 0, message: GenericWebhookError.invalidURL.localizedDescription ?? "Webhook URL 无效"))
+            Self.record(WebhookDeliveryRecord(reportID: report.id.uuidString, status: nil, success: false, attempts: 0, message: GenericWebhookError.invalidURL.localizedDescription))
             return false
         }
         let content = ReportFormatter().render(report, format: .markdown)

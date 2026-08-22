@@ -303,8 +303,8 @@ struct ReportItemSnapshot: Codable, Equatable, Hashable, Identifiable, Sendable 
     var sourceType: ReportSourceType
     var rank: Int?
 
-    init(id: String = UUID().uuidString, orderIndex: Int, sectionID: String, sectionTitle: String, keyword: String? = nil, item: NewsItem, sourceType: ReportSourceType = .rss, rank: Int? = nil) {
-        self.id = id
+    init(id: String? = nil, orderIndex: Int, sectionID: String, sectionTitle: String, keyword: String? = nil, item: NewsItem, sourceType: ReportSourceType = .rss, rank: Int? = nil) {
+        self.id = id ?? item.id
         self.orderIndex = orderIndex
         self.sectionID = sectionID
         self.sectionTitle = sectionTitle

@@ -8,7 +8,7 @@ enum ReportFormat: Equatable {
 struct ReportFormatter {
     func render(_ report: ReportDetail, format: ReportFormat) -> String {
         let heading = format == .markdown ? "# \(report.title)" : report.title
-        let stats = "总新闻：\(report.statistics.newsCount) 条（热榜 \(report.statistics.hotlistCount) + RSS \(report.statistics.rssCount)）"
+        let stats = "情报 \(report.statistics.newsCount) 条（热榜 \(report.statistics.hotlistCount) + RSS \(report.statistics.rssCount)）"
         var lines = [heading, stats, "热榜：\(report.statistics.hotlistCount)（平台 \(report.statistics.hotlistPlatformCount)）", "RSS：\(report.statistics.rssCount)（源 \(report.statistics.rssSourceCount)）", "类型：\(report.type.displayName)", "时间：\(report.generatedAt.formatted(date: .long, time: .shortened))"]
         if let analysis = report.aiAnalysis, analysis.hasContent {
             let content = analysis.content ?? ""
