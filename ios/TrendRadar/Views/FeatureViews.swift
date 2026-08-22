@@ -28,6 +28,7 @@ struct FeedsView: View {
                 AppTheme.background.ignoresSafeArea()
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 16) {
+                        PremiumSectionHeader(eyebrow: "DISCOVER", title: "订阅与发现", subtitle: "管理信息源，阅读最新内容", icon: "newspaper.fill", tint: AppTheme.brandCyan)
                         feedIntro
                         sourceSummary
                         feedPicker
@@ -568,7 +569,8 @@ struct HotNewsView: View {
                 AppTheme.background.ignoresSafeArea()
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 16) {
-                        hotNewsIntro
+                        PremiumSectionHeader(eyebrow: "LIVE RADAR", title: "热榜雷达", subtitle: "跨平台排名与真实变化趋势", icon: "dot.radiowaves.left.and.right", tint: AppTheme.brandCyan)
+                        hotNewsOverview
                         hotNewsFilters
                         if !hotNewsStore.sourceFailures.isEmpty {
                             Label("部分平台暂时无法获取：\(hotNewsStore.sourceFailures.joined(separator: "、"))", systemImage: "exclamationmark.triangle")
@@ -610,6 +612,14 @@ struct HotNewsView: View {
             } message: {
                 Text(hotNewsStore.errorMessage ?? "")
             }
+        }
+    }
+
+    private var hotNewsOverview: some View {
+        HStack(spacing: 10) {
+            PremiumMetricCard(label: "热点", value: "\(hotNewsStore.items.count)", icon: "flame.fill", tint: AppTheme.yellow)
+            PremiumMetricCard(label: "平台", value: "\(Set(hotNewsStore.items.map(\.platformID)).count)", icon: "square.grid.2x2", tint: AppTheme.brandCyan)
+            PremiumMetricCard(label: "异常", value: "\(hotNewsStore.sourceFailures.count)", icon: "exclamationmark.triangle", tint: hotNewsStore.sourceFailures.isEmpty ? AppTheme.green : AppTheme.yellow)
         }
     }
 

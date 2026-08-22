@@ -325,20 +325,20 @@ private struct RadarHotTopicCard: View {
 struct ContentView: View {
     var body: some View {
         TabView {
+            OverviewView()
+                .tabItem { Label("总览", systemImage: "square.grid.2x2.fill") }
             RadarView()
                 .tabItem { Label("发现", systemImage: "dot.radiowaves.left.and.right") }
-            InsightView()
-                .tabItem { Label("洞察", systemImage: "waveform.path.ecg") }
             FeedsView()
                 .tabItem { Label("订阅", systemImage: "newspaper") }
             HotNewsView()
-                .tabItem { Label("热榜", systemImage: "flame") }
+                .tabItem { Label("热榜", systemImage: "flame.fill") }
             ReportCenterView()
                 .tabItem { Label("报告", systemImage: "doc.text.magnifyingglass") }
             SettingsView()
-                .tabItem { Label("设置", systemImage: "gearshape") }
+                .tabItem { Label("设置", systemImage: "gearshape.fill") }
         }
-        .tint(AppTheme.cyan)
+        .tint(AppTheme.brandCyan)
         .preferredColorScheme(.dark)
     }
 }

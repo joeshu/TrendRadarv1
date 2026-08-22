@@ -93,11 +93,16 @@ struct ReportDetailView: View {
             if let report {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 16) {
-                        detailHeader(report)
-                        statistics(report)
+                        PremiumPanel(tint: AppTheme.brandCyan) {
+                            detailHeader(report)
+                        }
+                        PremiumPanel(tint: AppTheme.brandIndigo) {
+                            statistics(report)
+                        }
                         if let analysis = report.aiAnalysis, analysis.hasContent {
-                            InsightPanel(title: "AI 洞察", icon: "sparkles", tint: AppTheme.cyan) {
+                            PremiumPanel(tint: AppTheme.brandMagenta) {
                                 VStack(alignment: .leading, spacing: 12) {
+                                    PremiumSectionHeader(eyebrow: "AI INSIGHTS", title: "AI 洞察", subtitle: "结构化分析与趋势判断", icon: "sparkles", tint: AppTheme.brandMagenta)
                                     analysisBlock(title: "核心热点态势", content: analysis.coreTrends ?? analysis.content)
                                     analysisBlock(title: "舆论风向争议", content: analysis.sentimentControversy)
                                     analysisBlock(title: "异动与弱信号", content: analysis.signals ?? analysis.weakSignals.joined(separator: "\n"))
