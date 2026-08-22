@@ -44,7 +44,9 @@ struct ReportOutputPreviewView: View {
         switch selectedFormat {
         case 1: return ReportHTMLFormatter().render(report)
         case 2:
-            guard let data = try? JSONEncoder.webhook.encode(report) else { return "JSON 编码失败" }
+            let encoder = JSONEncoder()
+            encoder.dateEncodingStrategy = .iso8601
+            guard let data = try? encoder.encode(report) else { return "JSON 编码失败" }
             return String(decoding: data, as: UTF8.self)
         default: return ReportFormatter().render(report, format: .markdown)
         }
