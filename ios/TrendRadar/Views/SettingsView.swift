@@ -146,25 +146,11 @@ struct SettingsView: View {
     private let keychain = KeychainStore()
 
     var body: some View {
-        NavigationStack {
-            settingsRootContent
-            .navigationTitle("配置中心")
-            .navigationBarTitleDisplayMode(.inline)
-            .scrollContentBackground(.hidden)
-            .background(AppTheme.background)
-            .preferredColorScheme(.dark)
-            .tint(AppTheme.cyan)
-            .navigationDestination(for: SettingsCategory.self) { category in
-                Form {
-                    categoryContent(category)
-                }
-                .navigationTitle(category.title)
-                .navigationBarTitleDisplayMode(.inline)
-                .scrollContentBackground(.hidden)
-                .background(AppTheme.background)
-                .preferredColorScheme(.dark)
-                .tint(AppTheme.cyan)
-            }
+        settingsInteractiveContent
+    }
+
+    private var settingsInteractiveContent: some View {
+        settingsNavigation
             .onChange(of: settingsStore.settings) { _, newSettings in
                 newsStore.settings = newSettings
                 BackgroundRefreshService.schedule(after: newSettings.refreshInterval * 60, enabled: newSettings.scheduleEnabled)
@@ -266,6 +252,29 @@ struct SettingsView: View {
                 }
                 Button("取消", role: .cancel) {}
             }
+        }
+    }
+
+    private var settingsNavigation: some View {
+        NavigationStack {
+            settingsRootContent
+                .navigationTitle("配置中心")
+                .navigationBarTitleDisplayMode(.inline)
+                .scrollContentBackground(.hidden)
+                .background(AppTheme.background)
+                .preferredColorScheme(.dark)
+                .tint(AppTheme.cyan)
+                .navigationDestination(for: SettingsCategory.self) { category in
+                    Form {
+                        categoryContent(category)
+                    }
+                    .navigationTitle(category.title)
+                    .navigationBarTitleDisplayMode(.inline)
+                    .scrollContentBackground(.hidden)
+                    .background(AppTheme.background)
+                    .preferredColorScheme(.dark)
+                    .tint(AppTheme.cyan)
+                }
         }
     }
 
