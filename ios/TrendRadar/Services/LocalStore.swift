@@ -5,31 +5,49 @@ actor LocalStore {
     static let shared = LocalStore()
 
     private let container: ModelContainer?
+    private let archiveContainer: ModelContainer?
     private let legacyFileURL: URL
 
     init() {
         let directory = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         container = Self.makeContainer(in: directory)
+        archiveContainer = Self.makeArchiveContainer(in: directory)
         legacyFileURL = directory.appendingPathComponent("news-v2.json")
     }
 
     private static func makeContainer(in directory: URL) -> ModelContainer? {
+        let schema = Schema([
+            NewsRecord.self,
+            ReportRecord.self,
+            ReportItemRecord.self,
+            HotNewsRecord.self,
+            HotNewsTrendRecord.self,
+            IntelligenceRecord.self,
+            TopicRecord.self,
+            TopicItemLinkRecord.self,
+            HotlistSnapshotRecord.self,
+            RefreshRunRecord.self
+        ])
         do {
-            let schema = Schema([
-                NewsRecord.self,
-                ReportRecord.self,
-                ReportItemRecord.self,
-                HotNewsRecord.self,
-                HotNewsTrendRecord.self,
-                IntelligenceRecord.self,
-                TopicRecord.self,
-                TopicItemLinkRecord.self,
-                HotlistSnapshotRecord.self,
-                RefreshRunRecord.self,
-                ArchiveRecord.self
-            ])
             let storeURL = directory.appendingPathComponent("TrendRadar-v2.store")
+            let configuration = ModelConfiguration(schema: schema, url: storeURL, allowsSave: true)
+            return try ModelContainer(for: schema, configurations: configuration)
+        } catch {
+            do {
+                let fallbackURL = directory.appendingPathComponent("TrendRadar-v3.store")
+                let configuration = ModelConfiguration(schema: schema, url: fallbackURL, allowsSave: true)
+                return try ModelContainer(for: schema, configurations: configuration)
+            } catch {
+                return nil
+            }
+        }
+    }
+
+    private static func makeArchiveContainer(in directory: URL) -> ModelContainer? {
+        do {
+            let schema = Schema([ArchiveRecord.self])
+            let storeURL = directory.appendingPathComponent("TrendRadar-archive.store")
             let configuration = ModelConfiguration(schema: schema, url: storeURL, allowsSave: true)
             return try ModelContainer(for: schema, configurations: configuration)
         } catch {
@@ -70,6 +88,11 @@ actor LocalStore {
     func clearAll() throws {
         guard let container else {
             try? FileManager.default.removeItem(at: legacyFileURL)
+            if let archiveContainer {
+                let archiveContext = ModelContext(archiveContainer)
+                for record in try archiveContext.fetch(FetchDescriptor<ArchiveRecord>()) { archiveContext.delete(record) }
+                try archiveContext.save()
+            }
             return
         }
         let context = ModelContext(container)
@@ -83,8 +106,12 @@ actor LocalStore {
         for record in try context.fetch(FetchDescriptor<TopicRecord>()) { context.delete(record) }
         for record in try context.fetch(FetchDescriptor<IntelligenceRecord>()) { context.delete(record) }
         for record in try context.fetch(FetchDescriptor<RefreshRunRecord>()) { context.delete(record) }
-        for record in try context.fetch(FetchDescriptor<ArchiveRecord>()) { context.delete(record) }
         try context.save()
+        if let archiveContainer {
+            let archiveContext = ModelContext(archiveContainer)
+            for record in try archiveContext.fetch(FetchDescriptor<ArchiveRecord>()) { archiveContext.delete(record) }
+            try archiveContext.save()
+        }
         try? FileManager.default.removeItem(at: legacyFileURL)
     }
 
@@ -179,8 +206,8 @@ actor LocalStore {
     }
 
     func saveArchive(_ resource: ArchiveResource) throws {
-        guard let container else { throw LocalStoreError.unavailable }
-        let context = ModelContext(container)
+        guard let archiveContainer else { throw LocalStoreError.unavailable }
+        let context = ModelContext(archiveContainer)
         let archiveID = resource.id
         let descriptor = FetchDescriptor<ArchiveRecord>(predicate: #Predicate { $0.id == archiveID })
         if let record = try context.fetch(descriptor).first {
@@ -192,8 +219,8 @@ actor LocalStore {
     }
 
     func loadArchive(kind: ArchiveResourceKind? = nil) -> [ArchiveResource] {
-        guard let container else { return [] }
-        let context = ModelContext(container)
+        guard let archiveContainer else { return [] }
+        let context = ModelContext(archiveContainer)
         let descriptor = FetchDescriptor<ArchiveRecord>(sortBy: [SortDescriptor(\ArchiveRecord.capturedAt, order: .reverse)])
         let records = (try? context.fetch(descriptor)) ?? []
         return records.compactMap { record in
@@ -203,8 +230,8 @@ actor LocalStore {
     }
 
     func deleteArchive(resourceID: String, kind: ArchiveResourceKind) throws {
-        guard let container else { throw LocalStoreError.unavailable }
-        let context = ModelContext(container)
+        guard let archiveContainer else { throw LocalStoreError.unavailable }
+        let context = ModelContext(archiveContainer)
         let archiveID = "\(kind.rawValue):\(resourceID)"
         let descriptor = FetchDescriptor<ArchiveRecord>(predicate: #Predicate { $0.id == archiveID })
         for record in try context.fetch(descriptor) { context.delete(record) }
