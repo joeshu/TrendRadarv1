@@ -514,6 +514,34 @@ final class NewsItemTests: XCTestCase {
         XCTAssertTrue(text.contains("Local story"))
     }
 
+    func testReportMarkdownRendererIncludesLinksSummariesAndFooter() {
+        let settings = AppSettings()
+        let item = NewsItem(id: "linked", title: "Linked story", source: "Feed", url: URL(string: "https://example.com/story"), summary: "A short summary")
+        let report = ReportGenerationService().generate(
+            request: ReportGenerationRequest(batchID: "presentation-markdown", type: .manual, trigger: .manual, generatedAt: Date(timeIntervalSince1970: 100), settings: settings),
+            items: [item]
+        )
+        let markdown = ReportMarkdownRenderer().render(report)
+        XCTAssertTrue(markdown.contains("[Linked story](https://example.com/story)"))
+        XCTAssertTrue(markdown.contains("> A short summary"))
+        XCTAssertTrue(markdown.contains("📊 报告概览"))
+        XCTAssertTrue(markdown.contains("报告 ID："))
+    }
+
+    func testReportMarkdownRendererHonorsConfiguredRegionOrder() {
+        var settings = AppSettings()
+        settings.display.regionOrder = ["rss", "hotlist", "ai_analysis"]
+        let generatedAt = Date(timeIntervalSince1970: 100)
+        let rss = NewsItem(id: "rss-order", title: "RSS order", source: "Feed", publishedAt: generatedAt)
+        let hot = HotNewsItem(id: "hot-order", title: "Hot order", url: URL(string: "https://example.com/hot"), platformID: "weibo", platformName: "微博", rank: 1, publishedAt: generatedAt, extraInfo: nil, topicKey: "hot", isRead: false, isFavorite: false)
+        let report = ReportGenerationService().generate(
+            request: ReportGenerationRequest(batchID: "presentation-order", type: .manual, trigger: .manual, generatedAt: generatedAt, settings: settings),
+            items: [rss], hotlistItems: [hot]
+        )
+        let markdown = ReportMarkdownRenderer().render(report)
+        XCTAssertLessThan(markdown.range(of: "## 全部情报")!.lowerBound, markdown.range(of: "## 热榜")!.lowerBound)
+    }
+
     func testReportFormatterIncludesStructuredAIFields() {
         let settings = AppSettings()
         let report = ReportDetail(

@@ -133,7 +133,16 @@ struct ReportGenerationService: Sendable {
         } else {
             orderedRSSSections = rssSections.sorted { $0.title.localizedCompare($1.title) == .orderedAscending }
         }
-        return hotlistSection + orderedRSSSections
+        let sections = hotlistSection + orderedRSSSections
+        let regionPositions = Dictionary(uniqueKeysWithValues: settings.display.regionOrder.enumerated().map { ($1, $0) })
+        return sections.enumerated().sorted { left, right in
+            let leftRegion = left.element.id == "hotlist" ? "hotlist" : "rss"
+            let rightRegion = right.element.id == "hotlist" ? "hotlist" : "rss"
+            let leftPosition = regionPositions[leftRegion] ?? Int.max
+            let rightPosition = regionPositions[rightRegion] ?? Int.max
+            if leftPosition != rightPosition { return leftPosition < rightPosition }
+            return left.offset < right.offset
+        }.map(\.element)
     }
 
     private func sort(_ items: [NewsItem]) -> [NewsItem] {
