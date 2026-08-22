@@ -162,11 +162,15 @@ struct RadarView: View {
                 Text("正在同步本地情报源")
             } else {
                 Image(systemName: "checkmark.circle.fill")
-                    .foregroundStyle(AppTheme.green)
+                    .foregroundStyle(store.sourceFailures.isEmpty ? AppTheme.green : AppTheme.yellow)
                 if let lastUpdated = store.lastUpdated {
                     Text("最近更新于 \(lastUpdated, style: .relative)")
                 } else {
                     Text("等待首次刷新")
+                }
+                if !store.sourceFailures.isEmpty {
+                    Text("部分源失败")
+                        .foregroundStyle(AppTheme.yellow)
                 }
             }
             Spacer()

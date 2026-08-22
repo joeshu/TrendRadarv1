@@ -75,7 +75,8 @@ enum BackgroundRefreshService {
             }
             let localStore = LocalStore()
             let oldItems = await localStore.load()
-            let hotlistItems = await localStore.loadHotNews()
+            let oldHotlistItems = await localStore.loadHotNews()
+            let hotlistItems = await refreshHotlist(settings: settings, previous: oldHotlistItems, localStore: localStore)
             let oldByID = oldItems.reduce(into: [String: NewsItem]()) { $0[$1.id] = $1 }
             let oldIDs = Set(oldByID.keys)
             let refreshedItems = freshItems.reduce(into: [String: NewsItem]()) { result, item in
@@ -116,6 +117,43 @@ enum BackgroundRefreshService {
             return AppSettings()
         }
         return settings
+    }
+
+    private static func refreshHotlist(settings: AppSettings, previous: [HotNewsItem], localStore: LocalStore) async -> [HotNewsItem] {
+        guard settings.platformsEnabled else { return [] }
+        let enabledSources = settings.platformSources.filter(\.isEnabled)
+        guard !enabledSources.isEmpty else { return previous }
+        let baseURL = settings.platformAPIURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? "https://newsnow.busiyi.world/api"
+            : settings.platformAPIURL
+        let service = NewsNowService()
+        let results = await withTaskGroup(of: (PlatformSource, [HotNewsItem]).self) { group in
+            for source in enabledSources {
+                group.addTask {
+                    do {
+                        return (source, try await service.fetch(sourceID: source.id, sourceName: source.name, expectedDomain: source.expectedDomain, baseURL: baseURL))
+                    } catch {
+                        return (source, [])
+                    }
+                }
+            }
+            return await group.reduce(into: [(PlatformSource, [HotNewsItem])]()) { $0.append($1) }
+        }
+        let successful = results.filter { !$0.1.isEmpty }
+        guard !successful.isEmpty else { return previous }
+        let previousByID = previous.reduce(into: [String: HotNewsItem]()) { $0[$1.id] = $1 }
+        let fetched = successful.flatMap(\.1).map { item in
+            var updated = item
+            updated.previousRank = previousByID[item.id]?.rank
+            updated.isRead = previousByID[item.id]?.isRead ?? false
+            updated.isFavorite = previousByID[item.id]?.isFavorite ?? false
+            return updated
+        }
+        let successfulIDs = Set(successful.map { $0.0.id })
+        let failedCached = previous.filter { !successfulIDs.contains($0.platformID) }
+        let merged = (fetched + failedCached).sorted { $0.rank < $1.rank }
+        try? await localStore.saveHotNews(merged, replacingPlatformIDs: successfulIDs)
+        return merged
     }
 
     private static func notify(newCount: Int, soundEnabled: Bool) async {

@@ -154,6 +154,9 @@ actor LocalStore {
         for record in existing where replacingPlatformIDs.contains(record.platformID) {
             context.delete(record)
         }
+        if !replacingPlatformIDs.isEmpty {
+            try context.save()
+        }
         for item in items {
             if let record = recordsByID[item.id], !replacingPlatformIDs.contains(record.platformID) {
                 record.update(with: item, seenAt: seenAt)

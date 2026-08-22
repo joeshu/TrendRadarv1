@@ -639,6 +639,19 @@ struct ReportCenterView: View {
                     Task { await reportStore.generate(type: type, settings: settingsStore.settings, items: store.items, hotlistItems: hotNewsStore.items) }
                 }
             }
+            .overlay {
+                if reportStore.isGenerating {
+                    ProgressView("正在生成报告")
+                        .padding(20)
+                        .background(AppTheme.card)
+                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                }
+            }
+            .alert("报告操作", isPresented: Binding(get: { reportStore.errorMessage != nil }, set: { if !$0 { reportStore.errorMessage = nil } })) {
+                Button("确定", role: .cancel) { reportStore.errorMessage = nil }
+            } message: {
+                Text(reportStore.errorMessage ?? "")
+            }
             .task { await reportStore.load() }
         }
     }

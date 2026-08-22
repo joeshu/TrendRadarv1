@@ -8,6 +8,7 @@ final class NewsStore: ObservableObject {
     @Published private(set) var isRefreshing = false
     @Published private(set) var lastUpdated: Date?
     @Published var errorMessage: String?
+    @Published private(set) var sourceFailures: [String] = []
 
     private let localStore = LocalStore()
     private let crawler = NewsCrawler()
@@ -33,18 +34,47 @@ final class NewsStore: ObservableObject {
         guard !isRefreshing else { return }
         isRefreshing = true
         errorMessage = nil
+        sourceFailures = []
         defer { isRefreshing = false }
 
         do {
+            guard settings.rssEnabled else {
+                items = []
+                lastUpdated = nil
+                return
+            }
+            let enabledFeeds = feeds.filter { feed in
+                settings.customFeeds.first(where: { $0.id == feed.id })?.isEnabled == true
+            }
+            guard !enabledFeeds.isEmpty else {
+                items = []
+                lastUpdated = nil
+                errorMessage = "请先在订阅中启用至少一个 RSS 源"
+                return
+            }
             let crawler = self.crawler
-            let results = try await withThrowingTaskGroup(of: [NewsItem].self) { group in
-                for feed in feeds where settings.rssEnabled && settings.customFeeds.first(where: { $0.id == feed.id })?.isEnabled == true {
-                    group.addTask { try await crawler.fetch(feed: feed) }
+            let results = await withTaskGroup(of: (String, [NewsItem]).self) { group in
+                for feed in enabledFeeds {
+                    group.addTask {
+                        do {
+                            return (feed.name, try await crawler.fetch(feed: feed))
+                        } catch {
+                            return (feed.name, [])
+                        }
+                    }
                 }
-                return try await group.reduce(into: []) { $0.append(contentsOf: $1) }
+                return await group.reduce(into: [(String, [NewsItem]) ]()) { result, value in
+                    result.append(value)
+                }
+            }
+            sourceFailures = results.filter { $0.1.isEmpty }.map(\.0).sorted()
+            let successfulResults = results.filter { !$0.1.isEmpty }
+            guard !successfulResults.isEmpty else {
+                throw URLError(.cannotLoadFromNetwork)
             }
             let oldByID = items.reduce(into: [String: NewsItem]()) { $0[$1.id] = $1 }
-            let uniqueResults = results.reduce(into: [String: NewsItem]()) { $0[$1.id] = $1 }.values
+            let fetchedItems = successfulResults.flatMap(\.1)
+            let uniqueResults = fetchedItems.reduce(into: [String: NewsItem]()) { $0[$1.id] = $1 }.values
             var filteredResults = uniqueResults.filter { matchesConfiguredFilters($0) }
             if settings.ai.enabled, settings.ai.filterMethod == "ai", !settings.ai.interests.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 do {
@@ -63,6 +93,9 @@ final class NewsStore: ObservableObject {
             items = refreshedItems + items.filter { !refreshedIDs.contains($0.id) }
             await localStore.save(items)
             lastUpdated = Date()
+            if !sourceFailures.isEmpty {
+                errorMessage = "部分 RSS 源刷新失败：\(sourceFailures.joined(separator: "、"))"
+            }
             let preset = TimelineCatalog.preset(for: settings.schedulePreset)
             let calendar = Calendar.trendRadar(timeZoneIdentifier: settings.timezone)
             let match = preset.match(at: Date(), calendar: calendar)
@@ -71,7 +104,9 @@ final class NewsStore: ObservableObject {
                 await generateReport(trigger: .foregroundRefresh, type: timelineAction.reportMode)
             }
         } catch {
-            errorMessage = "刷新失败：\(error.localizedDescription)"
+            errorMessage = sourceFailures.isEmpty
+                ? "刷新失败：\(error.localizedDescription)"
+                : "RSS 刷新失败：\(sourceFailures.joined(separator: "、"))"
         }
     }
 
