@@ -1,6 +1,15 @@
 import XCTest
 @testable import TrendRadar
 
+private actor RetryAttemptCounter {
+    private var value = 0
+
+    func increment() -> Int {
+        value += 1
+        return value
+    }
+}
+
 final class NewsItemTests: XCTestCase {
     private let feed = RSSFeed(id: "test", name: "Test Feed", url: URL(string: "https://example.com/rss")!)
 
@@ -285,6 +294,26 @@ final class NewsItemTests: XCTestCase {
         XCTAssertFalse(NewsNowService.isAllowed(url: URL(string: "http://www.zhihu.com/question/1"), expectedDomain: "zhihu.com"))
         XCTAssertFalse(NewsNowService.isAllowed(url: URL(string: "https://example.com/story"), expectedDomain: "zhihu.com"))
         XCTAssertTrue(NewsNowService.isAllowed(url: URL(string: "https://example.com/story"), expectedDomain: nil))
+    }
+
+    func testNetworkFetchErrorRetryability() {
+        XCTAssertTrue(NetworkFetchError.httpStatus(429).isRetryable)
+        XCTAssertTrue(NetworkFetchError.httpStatus(503).isRetryable)
+        XCTAssertFalse(NetworkFetchError.httpStatus(404).isRetryable)
+        XCTAssertFalse(NetworkFetchError.transport(URLError(.cancelled)).isRetryable)
+    }
+
+    func testNetworkRetrySucceedsAfterTransientFailures() async throws {
+        let counter = RetryAttemptCounter()
+        let result = try await NetworkRetrying.perform(attempts: 3) {
+            if await counter.increment() < 3 {
+                throw NetworkFetchError.transport(URLError(.timedOut))
+            }
+            return "ok"
+        }
+        XCTAssertEqual(result, "ok")
+        let attempts = await counter.increment()
+        XCTAssertEqual(attempts, 4)
     }
 
     func testAISettingsPreserveRetryAndFallbackConfiguration() throws {

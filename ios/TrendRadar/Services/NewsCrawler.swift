@@ -2,23 +2,25 @@ import Foundation
 
 struct NewsCrawler: Sendable {
     func fetch(feed: RSSFeed) async throws -> [NewsItem] {
-        var request = URLRequest(url: feed.url)
-        request.timeoutInterval = 20
-        request.setValue("TrendRadar/1.0", forHTTPHeaderField: "User-Agent")
-        request.setValue("application/rss+xml, application/atom+xml, application/xml, text/xml;q=0.9, */*;q=0.1", forHTTPHeaderField: "Accept")
-        let data: Data
-        let response: URLResponse
-        do {
-            (data, response) = try await URLSession.shared.data(for: request)
-        } catch {
-            throw NetworkFetchError.transport(error)
-        }
-        guard let httpResponse = response as? HTTPURLResponse,
-              200..<300 ~= httpResponse.statusCode else {
-            throw NetworkFetchError.httpStatus((response as? HTTPURLResponse)?.statusCode ?? 0)
-        }
+        return try await NetworkRetrying.perform {
+            var request = URLRequest(url: feed.url)
+            request.timeoutInterval = 20
+            request.setValue("TrendRadar/1.0", forHTTPHeaderField: "User-Agent")
+            request.setValue("application/rss+xml, application/atom+xml, application/xml, text/xml;q=0.9, */*;q=0.1", forHTTPHeaderField: "Accept")
+            let data: Data
+            let response: URLResponse
+            do {
+                (data, response) = try await URLSession.shared.data(for: request)
+            } catch {
+                throw NetworkFetchError.transport(error)
+            }
+            guard let httpResponse = response as? HTTPURLResponse,
+                  200..<300 ~= httpResponse.statusCode else {
+                throw NetworkFetchError.httpStatus((response as? HTTPURLResponse)?.statusCode ?? 0)
+            }
 
-        return try parse(data: data, feed: feed)
+            return try parse(data: data, feed: feed)
+        }
     }
 
     func parse(data: Data, feed: RSSFeed) throws -> [NewsItem] {
@@ -32,6 +34,16 @@ struct NewsCrawler: Sendable {
 enum NetworkFetchError: LocalizedError {
     case httpStatus(Int)
     case transport(Error)
+
+    var isRetryable: Bool {
+        switch self {
+        case .httpStatus(let statusCode):
+            return statusCode == 408 || statusCode == 429 || (500...599).contains(statusCode)
+        case .transport(let error):
+            guard let urlError = error as? URLError else { return true }
+            return urlError.code != .cancelled
+        }
+    }
 
     var errorDescription: String? {
         switch self {
@@ -49,6 +61,28 @@ enum NetworkFetchError: LocalizedError {
                 }
             }
             return "网络请求失败：\(error.localizedDescription)"
+        }
+    }
+}
+
+enum NetworkRetrying {
+    static func perform<T: Sendable>(
+        attempts: Int = 3,
+        operation: @escaping @Sendable () async throws -> T
+    ) async throws -> T {
+        var attempt = 0
+        while true {
+            do {
+                return try await operation()
+            } catch {
+                attempt += 1
+                guard let networkError = error as? NetworkFetchError,
+                      attempt < max(1, attempts),
+                      networkError.isRetryable else {
+                    throw error
+                }
+                try await Task.sleep(nanoseconds: UInt64(attempt) * 400_000_000)
+            }
         }
     }
 }

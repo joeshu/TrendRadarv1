@@ -3,26 +3,29 @@ import Foundation
 struct NewsNowService: Sendable {
     func fetch(sourceID: String, sourceName: String, expectedDomain: String? = nil, baseURL: String, latest: Bool = false, timeout: TimeInterval = 20) async throws -> [HotNewsItem] {
         let endpoint = try makeURL(sourceID: sourceID, baseURL: baseURL, latest: latest)
-        var request = URLRequest(url: endpoint)
-        request.timeoutInterval = timeout
-        request.setValue("TrendRadar/1.0", forHTTPHeaderField: "User-Agent")
-        let data: Data
-        let response: URLResponse
-        do {
-            (data, response) = try await URLSession.shared.data(for: request)
-        } catch {
-            throw NetworkFetchError.transport(error)
-        }
-        guard let httpResponse = response as? HTTPURLResponse, 200..<300 ~= httpResponse.statusCode else {
-            throw NetworkFetchError.httpStatus((response as? HTTPURLResponse)?.statusCode ?? 0)
-        }
-        let payload = try JSONDecoder().decode(NewsNowResponse.self, from: data)
-        let filteredItems: [NewsNowItem] = payload.items.filter { item in
-            Self.isAllowed(url: item.url, expectedDomain: expectedDomain)
-        }
-        return filteredItems.enumerated().map { index, item in
-            let id = "\(sourceID):\(item.id)"
-            return HotNewsItem(id: id, title: item.title, url: item.url, platformID: sourceID, platformName: sourceName, rank: index + 1, publishedAt: item.pubDate.map { Date(timeIntervalSince1970: Double($0) / 1000) }, extraInfo: item.extra?.info, topicKey: Self.topicKey(for: item.title), previousRank: nil, isRead: false, isFavorite: false)
+        return try await NetworkRetrying.perform {
+            var request = URLRequest(url: endpoint)
+            request.timeoutInterval = timeout
+            request.setValue("TrendRadar/1.0", forHTTPHeaderField: "User-Agent")
+            request.setValue("application/json", forHTTPHeaderField: "Accept")
+            let data: Data
+            let response: URLResponse
+            do {
+                (data, response) = try await URLSession.shared.data(for: request)
+            } catch {
+                throw NetworkFetchError.transport(error)
+            }
+            guard let httpResponse = response as? HTTPURLResponse, 200..<300 ~= httpResponse.statusCode else {
+                throw NetworkFetchError.httpStatus((response as? HTTPURLResponse)?.statusCode ?? 0)
+            }
+            let payload = try JSONDecoder().decode(NewsNowResponse.self, from: data)
+            let filteredItems: [NewsNowItem] = payload.items.filter { item in
+                Self.isAllowed(url: item.url, expectedDomain: expectedDomain)
+            }
+            return filteredItems.enumerated().map { index, item in
+                let id = "\(sourceID):\(item.id)"
+                return HotNewsItem(id: id, title: item.title, url: item.url, platformID: sourceID, platformName: sourceName, rank: index + 1, publishedAt: item.pubDate.map { Date(timeIntervalSince1970: Double($0) / 1000) }, extraInfo: item.extra?.info, topicKey: Self.topicKey(for: item.title), previousRank: nil, isRead: false, isFavorite: false)
+            }
         }
     }
 
