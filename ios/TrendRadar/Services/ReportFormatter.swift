@@ -16,13 +16,12 @@ struct ReportFormatter {
         value
             .replacingOccurrences(of: #"\[([^\]]+)\]\([^\)]+\)"#, with: "$1", options: .regularExpression)
             .replacingOccurrences(of: "**", with: "")
+            .replacingOccurrences(of: "### 策略建议\n", with: "策略建议：")
+            .replacingOccurrences(of: "### 弱信号\n", with: "弱信号：")
             .replacingOccurrences(of: "### ", with: "")
             .replacingOccurrences(of: "## ", with: "")
             .replacingOccurrences(of: "# ", with: "")
             .replacingOccurrences(of: "> ", with: "")
-            .replacingOccurrences(of: "### 策略建议\n", with: "策略建议：")
-            .replacingOccurrences(of: "### 弱信号\n", with: "弱信号：")
-            .replacingOccurrences(of: "### ", with: "")
             .replacingOccurrences(of: "`", with: "")
     }
 }
