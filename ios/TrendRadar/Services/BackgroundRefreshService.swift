@@ -12,7 +12,11 @@ enum BackgroundRefreshService {
         }
         let request = BGAppRefreshTaskRequest(identifier: identifier)
         request.earliestBeginDate = Date(timeIntervalSinceNow: interval)
-        try? BGTaskScheduler.shared.submit(request)
+        do {
+            try BGTaskScheduler.shared.submit(request)
+        } catch {
+            // Background scheduling is optional and must never affect foreground launch.
+        }
     }
 
     static func run(task: BGAppRefreshTask) async {

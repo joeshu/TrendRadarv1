@@ -6,10 +6,18 @@ actor LocalStore {
     private let legacyFileURL: URL
 
     init() {
-        container = try? ModelContainer(for: NewsRecord.self, ReportRecord.self, ReportItemRecord.self, HotNewsRecord.self, HotNewsTrendRecord.self)
+        container = Self.makeContainer()
         let directory = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         legacyFileURL = directory.appendingPathComponent("news.json")
+    }
+
+    private static func makeContainer() -> ModelContainer? {
+        do {
+            return try ModelContainer(for: NewsRecord.self, ReportRecord.self, ReportItemRecord.self, HotNewsRecord.self, HotNewsTrendRecord.self)
+        } catch {
+            return nil
+        }
     }
 
     func load() -> [NewsItem] {

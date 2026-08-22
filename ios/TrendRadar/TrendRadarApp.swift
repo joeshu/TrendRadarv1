@@ -9,13 +9,7 @@ struct TrendRadarApp: App {
     @StateObject private var hotNewsStore = HotNewsStore()
 
     init() {
-        BGTaskScheduler.shared.register(forTaskWithIdentifier: BackgroundRefreshService.identifier, using: nil) { task in
-            guard let refreshTask = task as? BGAppRefreshTask else {
-                task.setTaskCompleted(success: false)
-                return
-            }
-            Task { await BackgroundRefreshService.run(task: refreshTask) }
-        }
+        registerBackgroundTask()
     }
 
     var body: some Scene {
@@ -28,13 +22,28 @@ struct TrendRadarApp: App {
                 .task {
                     await store.load()
                     store.settings = settingsStore.settings
-                    await reportStore.load()
-                    await hotNewsStore.load()
-                    await reportStore.applyRetentionPolicy(days: settingsStore.settings.storage.localRetentionDays)
+                    await loadSecondaryStores()
                 }
                 .onAppear {
                     BackgroundRefreshService.schedule(after: settingsStore.settings.refreshInterval * 60, enabled: settingsStore.settings.scheduleEnabled)
                 }
         }
+    }
+
+    private func registerBackgroundTask() {
+        BGTaskScheduler.shared.register(forTaskWithIdentifier: BackgroundRefreshService.identifier, using: nil) { task in
+            guard let refreshTask = task as? BGAppRefreshTask else {
+                task.setTaskCompleted(success: false)
+                return
+            }
+            Task { await BackgroundRefreshService.run(task: refreshTask) }
+        }
+    }
+
+    @MainActor
+    private func loadSecondaryStores() async {
+        await reportStore.load()
+        await hotNewsStore.load()
+        await reportStore.applyRetentionPolicy(days: settingsStore.settings.storage.localRetentionDays)
     }
 }
