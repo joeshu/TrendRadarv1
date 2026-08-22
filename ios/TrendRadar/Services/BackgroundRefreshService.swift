@@ -86,7 +86,12 @@ enum BackgroundRefreshService {
                 result[item.id] = updated
             }.values
             var merged = Array(refreshedItems)
-            merged.append(contentsOf: oldItems.filter { old in !freshItems.contains(where: { $0.id == old.id }) })
+            let enabledSourceNames = Set(feeds.filter { feed in
+                settings.customFeeds.first(where: { $0.id == feed.id })?.isEnabled == true
+            }.map(\.name))
+            merged.append(contentsOf: oldItems.filter { old in
+                enabledSourceNames.contains(old.source) && !freshItems.contains(where: { $0.id == old.id })
+            })
             await localStore.save(merged)
             try Task.checkCancellation()
             if settings.scheduleEnabled, timelineAction.push, let reportType = ReportType(rawValue: timelineAction.reportMode.rawValue) {

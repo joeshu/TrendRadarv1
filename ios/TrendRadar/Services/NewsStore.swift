@@ -90,7 +90,10 @@ final class NewsStore: ObservableObject {
                 return updated
             }
             let refreshedIDs = Set(refreshedItems.map(\.id))
-            items = refreshedItems + items.filter { !refreshedIDs.contains($0.id) }
+            let enabledSourceNames = Set(enabledFeeds.map(\.name))
+            items = refreshedItems + items.filter {
+                enabledSourceNames.contains($0.source) && !refreshedIDs.contains($0.id)
+            }
             await localStore.save(items)
             lastUpdated = Date()
             if !sourceFailures.isEmpty {
