@@ -10,7 +10,9 @@ struct RadarView: View {
     @State private var showingSettings = false
 
     private var sourceNames: [String] {
-        ["全部"] + Array(Set(store.items.map(\.source))).sorted()
+        let configured = settingsStore.settings.customFeeds.filter(\.isEnabled).map(\.name)
+        let cached = store.items.map(\.source)
+        return ["全部"] + Array(Set(configured + cached)).sorted()
     }
 
     private var filteredItems: [NewsItem] {
@@ -94,7 +96,12 @@ struct RadarView: View {
                     }
                 }
             }
-            .task { await store.requestNotifications() }
+            .task {
+                await store.requestNotifications()
+                if store.items.isEmpty {
+                    await store.refresh()
+                }
+            }
             .sheet(isPresented: $showingSettings) { SettingsView() }
             .alert("提示", isPresented: Binding(get: { store.errorMessage != nil }, set: { if !$0 { store.errorMessage = nil } })) {
                 Button("确定", role: .cancel) { store.errorMessage = nil }

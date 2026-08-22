@@ -6,6 +6,7 @@ struct FeedsView: View {
     @EnvironmentObject private var settingsStore: SettingsStore
     @State private var selectedFeedID: String?
     @State private var showingFeedInfo = false
+    @State private var showingSourceManager = false
 
     private var enabledFeeds: [ConfigFeed] {
         settingsStore.settings.customFeeds.filter(\.isEnabled)
@@ -24,6 +25,7 @@ struct FeedsView: View {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 16) {
                          feedIntro
+                         sourceSummary
                          feedPicker
                         if enabledFeeds.isEmpty {
                             FeatureEmptyState(icon: "antenna.radiowaves.left.and.right.slash", title: "还没有启用订阅源", message: "在设置中启用 RSS 源，再回来刷新你的信息流。")
@@ -53,17 +55,30 @@ struct FeedsView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(AppTheme.background, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)
-            .toolbar {
+             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button { showingFeedInfo = true } label: {
-                        Image(systemName: "info.circle")
+                    Button { showingSourceManager = true } label: {
+                        Image(systemName: "slider.horizontal.3")
                     }
+                    .accessibilityLabel("管理信息源")
                 }
             }
             .sheet(isPresented: $showingFeedInfo) {
                 FeedInfoSheet(feedCount: enabledFeeds.count)
             }
+            .sheet(isPresented: $showingSourceManager) {
+                SubscriptionSourceManager()
+            }
         }
+    }
+
+    private var sourceSummary: some View {
+        HStack(spacing: 12) {
+            FeedSummaryMetric(value: "\(enabledFeeds.count)", label: "RSS 源", tint: AppTheme.cyan)
+            FeedSummaryMetric(value: "\(settingsStore.settings.platformSources.filter(\.isEnabled).count)", label: "热榜平台", tint: AppTheme.pink)
+            FeedSummaryMetric(value: "\(feedItems.filter { !$0.isRead }.count)", label: "待阅读", tint: AppTheme.yellow)
+        }
+        .padding(.vertical, 4)
     }
 
     private var feedIntro: some View {
@@ -95,6 +110,72 @@ struct FeedsView: View {
             FeedSummaryMetric(value: "\(feedItems.filter { !$0.isRead }.count)", label: "待阅读", tint: AppTheme.pink)
         }
         .padding(.vertical, 4)
+    }
+}
+
+struct SubscriptionSourceManager: View {
+    @EnvironmentObject private var settingsStore: SettingsStore
+    @Environment(\.dismiss) private var dismiss
+    @State private var showingFeedEditor = false
+    @State private var editingFeed: ConfigFeed?
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("RSS 订阅") {
+                    Toggle("启用 RSS", isOn: $settingsStore.settings.rssEnabled)
+                    Toggle("只保留最近文章", isOn: $settingsStore.settings.rssFreshnessEnabled)
+                    if settingsStore.settings.rssFreshnessEnabled {
+                        Stepper("文章保留 \(settingsStore.settings.rssMaxAgeDays) 天", value: $settingsStore.settings.rssMaxAgeDays, in: 0...30)
+                    }
+                    ForEach($settingsStore.settings.customFeeds) { $feed in
+                        Button {
+                            editingFeed = feed
+                            showingFeedEditor = true
+                        } label: {
+                            HStack {
+                                Image(systemName: feed.isEnabled ? "checkmark.circle.fill" : "circle")
+                                    .foregroundStyle(feed.isEnabled ? AppTheme.cyan : AppTheme.textTertiary)
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text(feed.name).foregroundStyle(.white)
+                                    Text(feed.url).font(AppTheme.captionFont).foregroundStyle(AppTheme.textTertiary).lineLimit(1)
+                                }
+                            }
+                        }
+                    }
+                    Button("添加 RSS 源") {
+                        editingFeed = nil
+                        showingFeedEditor = true
+                    }
+                }
+                Section("热榜平台") {
+                    Toggle("启用热榜", isOn: $settingsStore.settings.platformsEnabled)
+                    ForEach($settingsStore.settings.platformSources) { $source in
+                        Toggle(source.name, isOn: $source.isEnabled)
+                    }
+                    TextField("热榜 API 地址", text: $settingsStore.settings.platformAPIURL)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                }
+            }
+            .navigationTitle("信息源")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) { Button("完成") { dismiss() } }
+            }
+            .sheet(isPresented: $showingFeedEditor) {
+                FeedEditorView(feed: editingFeed) { feed in
+                    if let index = settingsStore.settings.customFeeds.firstIndex(where: { $0.id == feed.id }) {
+                        settingsStore.settings.customFeeds[index] = feed
+                    } else {
+                        settingsStore.settings.customFeeds.append(feed)
+                    }
+                    editingFeed = nil
+                }
+            }
+            .preferredColorScheme(.dark)
+            .tint(AppTheme.cyan)
+        }
     }
 }
 

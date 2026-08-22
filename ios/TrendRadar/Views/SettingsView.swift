@@ -3,7 +3,6 @@ import UniformTypeIdentifiers
 
 private enum SettingsCategory: String, CaseIterable, Identifiable, Hashable {
     case runtime
-    case sources
     case filtering
     case ai
     case display
@@ -17,7 +16,6 @@ private enum SettingsCategory: String, CaseIterable, Identifiable, Hashable {
     var title: String {
         switch self {
         case .runtime: return "运行与调度"
-        case .sources: return "信息源"
         case .filtering: return "筛选与报告"
         case .ai: return "AI"
         case .display: return "展示"
@@ -31,7 +29,6 @@ private enum SettingsCategory: String, CaseIterable, Identifiable, Hashable {
     var subtitle: String {
         switch self {
         case .runtime: return "时区、刷新和时间线"
-        case .sources: return "RSS 与平台热榜"
         case .filtering: return "关键词、AI 筛选和报告"
         case .ai: return "模型、兴趣和翻译"
         case .display: return "首页区域与独立展示"
@@ -45,7 +42,6 @@ private enum SettingsCategory: String, CaseIterable, Identifiable, Hashable {
     var icon: String {
         switch self {
         case .runtime: return "clock"
-        case .sources: return "antenna.radiowaves.left.and.right"
         case .filtering: return "line.3.horizontal.decrease.circle"
         case .ai: return "sparkles"
         case .display: return "rectangle.3.group"
@@ -196,8 +192,6 @@ struct SettingsView: View {
         case .runtime:
             generalSection
             scheduleSection
-        case .sources:
-            sourceSection
         case .filtering:
             filterSection
         case .ai:
