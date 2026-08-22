@@ -149,39 +149,39 @@ struct SettingsView: View {
         settingsInteractiveContent
     }
 
-    private var settingsInteractiveContent: some View {
-        settingsNavigation
-            .onChange(of: settingsStore.settings) { _, newSettings in
+    private var settingsInteractiveContent: AnyView {
+        var view = AnyView(settingsNavigation)
+        view = AnyView(view.onChange(of: settingsStore.settings) { _, newSettings in
                 newsStore.settings = newSettings
                 BackgroundRefreshService.schedule(after: newSettings.refreshInterval * 60, enabled: newSettings.scheduleEnabled)
-            }
-            .onChange(of: keywordText) { _, value in
+            })
+        view = AnyView(view.onChange(of: keywordText) { _, value in
                 settingsStore.settings.keywords = split(value)
-            }
-            .onChange(of: filterText) { _, value in
+            })
+        view = AnyView(view.onChange(of: filterText) { _, value in
                 settingsStore.settings.globalFilterWords = split(value)
-            }
-            .onChange(of: interestText) { _, value in
+            })
+        view = AnyView(view.onChange(of: interestText) { _, value in
                 settingsStore.settings.ai.interests = value
-            }
-            .onChange(of: apiBase) { _, value in
+            })
+        view = AnyView(view.onChange(of: apiBase) { _, value in
                 keychain.write(value, for: "api-base")
-            }
-            .onChange(of: apiKey) { _, value in
+            })
+        view = AnyView(view.onChange(of: apiKey) { _, value in
                 keychain.write(value, for: "api-key")
-            }
-            .onChange(of: aiModel) { _, value in
+            })
+        view = AnyView(view.onChange(of: aiModel) { _, value in
                 keychain.write(value, for: "ai-model")
-            }
-            .onChange(of: channelSecrets) { _, values in
+            })
+        view = AnyView(view.onChange(of: channelSecrets) { _, values in
                 persistChannelSecrets(values)
-            }
-            .onChange(of: settingsMessage) { _, value in
+            })
+        view = AnyView(view.onChange(of: settingsMessage) { _, value in
                 if value != nil {
                     showingSettingsMessage = true
                 }
-            }
-            .toolbar {
+            })
+        view = AnyView(view.toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("取消") {
                         if let originalSettings {
@@ -195,9 +195,9 @@ struct SettingsView: View {
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) { Button("保存", action: save) }
-            }
-            .onAppear(perform: load)
-            .sheet(isPresented: $showingFeedEditor) {
+            })
+        view = AnyView(view.onAppear(perform: load))
+        view = AnyView(view.sheet(isPresented: $showingFeedEditor) {
                 FeedEditorView(feed: editingFeed) { feed in
                     if let index = settingsStore.settings.customFeeds.firstIndex(where: { $0.id == feed.id }) {
                         settingsStore.settings.customFeeds[index] = feed
@@ -206,16 +206,16 @@ struct SettingsView: View {
                     }
                     editingFeed = nil
                 }
-            }
-            .fileImporter(isPresented: $showingSettingsImporter, allowedContentTypes: [.json]) { result in
+            })
+        view = AnyView(view.fileImporter(isPresented: $showingSettingsImporter, allowedContentTypes: [.json]) { result in
                 importSettings(result)
-            }
-            .alert("操作结果", isPresented: $showingSettingsMessage) {
+            })
+        view = AnyView(view.alert("操作结果", isPresented: $showingSettingsMessage) {
                 Button("确定", role: .cancel) { settingsMessage = nil }
             } message: {
                 Text(settingsMessage ?? "")
-            }
-            .confirmationDialog("清理本地缓存？", isPresented: $showingClearCacheConfirmation, titleVisibility: .visible) {
+            })
+        view = AnyView(view.confirmationDialog("清理本地缓存？", isPresented: $showingClearCacheConfirmation, titleVisibility: .visible) {
                 Button("清理缓存", role: .destructive) {
                     Task {
                         do {
@@ -229,8 +229,8 @@ struct SettingsView: View {
                     }
                 }
                 Button("取消", role: .cancel) {}
-            }
-            .confirmationDialog("重置本机数据？", isPresented: $showingResetConfirmation, titleVisibility: .visible) {
+            })
+        view = AnyView(view.confirmationDialog("重置本机数据？", isPresented: $showingResetConfirmation, titleVisibility: .visible) {
                 Button("重置数据", role: .destructive) {
                     isResettingData = true
                     Task {
@@ -251,7 +251,8 @@ struct SettingsView: View {
                     }
                 }
                 Button("取消", role: .cancel) {}
-            }
+            })
+        return view
     }
 
     private var settingsNavigation: AnyView {
