@@ -252,7 +252,6 @@ struct SettingsView: View {
                 }
                 Button("取消", role: .cancel) {}
             }
-        }
     }
 
     private var settingsNavigation: some View {
