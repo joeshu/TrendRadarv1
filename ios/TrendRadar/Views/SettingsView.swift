@@ -264,17 +264,23 @@ struct SettingsView: View {
                 .preferredColorScheme(.dark)
                 .tint(AppTheme.cyan)
                 .navigationDestination(for: SettingsCategory.self) { category in
-                    Form {
-                        categoryContent(category)
-                    }
-                    .navigationTitle(category.title)
-                    .navigationBarTitleDisplayMode(.inline)
-                    .scrollContentBackground(.hidden)
-                    .background(AppTheme.background)
-                    .preferredColorScheme(.dark)
-                    .tint(AppTheme.cyan)
+                    categoryDestination(category)
                 }
         }
+    }
+
+    private func categoryDestination(_ category: SettingsCategory) -> AnyView {
+        AnyView(
+            Form {
+                categoryContent(category)
+            }
+            .navigationTitle(category.title)
+            .navigationBarTitleDisplayMode(.inline)
+            .scrollContentBackground(.hidden)
+            .background(AppTheme.background)
+            .preferredColorScheme(.dark)
+            .tint(AppTheme.cyan)
+        )
     }
 
     private var settingsRootContent: some View {
