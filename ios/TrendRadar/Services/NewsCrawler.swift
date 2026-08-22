@@ -75,7 +75,7 @@ private final class RSSParser: NSObject, XMLParserDelegate {
     }
 
     func parser(_ parser: XMLParser, didStartElement elementName: String, namespaceURI: String?, qualifiedName qName: String?, attributes attributeDict: [String: String] = [:]) {
-        currentElement = elementName.lowercased()
+        currentElement = (qName ?? elementName).lowercased()
         text = ""
         if currentElement == "item" || currentElement == "entry" {
             currentItem = ParsedItem()
@@ -90,21 +90,23 @@ private final class RSSParser: NSObject, XMLParserDelegate {
     }
 
     func parser(_ parser: XMLParser, didEndElement elementName: String, namespaceURI: String?, qualifiedName qName: String?) {
-        let element = elementName.lowercased()
+        let element = (qName ?? elementName).lowercased()
         guard currentItem != nil else { return }
         let value = text.trimmingCharacters(in: .whitespacesAndNewlines).decodedHTML
         switch element {
         case "title": currentItem?.title = value
         case "link":
             if !value.isEmpty { currentItem?.link = value }
-        case "description", "summary", "content": currentItem?.summary = value
+        case "description", "summary": currentItem?.summary = value
+        case "content", "content:encoded": currentItem?.body = value
+        case "author", "dc:creator": currentItem?.author = value
         case "pubdate", "published", "updated": currentItem?.dateText = value
         case "item", "entry":
             guard let item = currentItem else { return }
             if !item.title.isEmpty {
                 let url = URL(string: item.link)
                 let id = url?.absoluteString ?? "\(feed.id):\(item.title)"
-                items.append(NewsItem(id: id, title: item.title, source: feed.name, url: url, publishedAt: item.date, summary: item.summary))
+                items.append(NewsItem(id: id, title: item.title, source: feed.name, url: url, publishedAt: item.date, summary: item.summary, author: item.author, body: item.body))
             }
             currentItem = nil
         default: break
@@ -118,6 +120,8 @@ private struct ParsedItem {
     var title = ""
     var link = ""
     var summary: String?
+    var body: String?
+    var author: String?
     var dateText = ""
 
     var date: Date? {

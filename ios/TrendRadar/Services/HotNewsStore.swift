@@ -10,6 +10,7 @@ final class HotNewsStore: ObservableObject {
     @Published private(set) var sourceFailures: [String] = []
     @Published private(set) var sourceFailureDetails: [String: String] = [:]
     @Published var selectedPlatformID: String?
+    @Published private(set) var blockedTopicKeys: Set<String> = []
 
     struct TrendPoint: Identifiable, Sendable {
         let date: Date
@@ -18,7 +19,8 @@ final class HotNewsStore: ObservableObject {
     }
 
     private let localStore = LocalStore.shared
-    private let service = NewsNowService()
+    private let collector = HotlistCollector()
+    private let deduplicator = TopicDeduplicator()
 
     var filteredItems: [HotNewsItem] {
         guard let selectedPlatformID else { return items }
@@ -26,9 +28,24 @@ final class HotNewsStore: ObservableObject {
     }
 
     var topics: [HotNewsTopic] {
-        Dictionary(grouping: filteredItems, by: \.topicKey)
-            .map { HotNewsTopic(id: $0.key, title: $0.value.min { $0.rank < $1.rank }?.title ?? "", items: $0.value.sorted { $0.rank < $1.rank }) }
-            .sorted { $0.bestRank < $1.bestRank }
+        Dictionary(grouping: filteredItems.filter { !blockedTopicKeys.contains($0.topicKey) }, by: \.topicKey)
+            .map { key, values in
+                HotNewsTopic(
+                    id: key,
+                    title: values.min { left, right in
+                        if left.rank != right.rank { return left.rank < right.rank }
+                        return left.title.localizedCompare(right.title) == .orderedAscending
+                    }?.title ?? "",
+                    items: values.sorted { left, right in
+                        if left.rank != right.rank { return left.rank < right.rank }
+                        return left.title.localizedCompare(right.title) == .orderedAscending
+                    }
+                )
+            }
+            .sorted { left, right in
+                if left.bestRank != right.bestRank { return left.bestRank < right.bestRank }
+                return left.title.localizedCompare(right.title) == .orderedAscending
+            }
     }
 
     var anomalies: [HotNewsAnomaly] {
@@ -49,14 +66,30 @@ final class HotNewsStore: ObservableObject {
     }
 
     func load() async {
+        blockedTopicKeys = Set(UserDefaults.standard.stringArray(forKey: "trendradar.blockedTopics") ?? [])
         items = await localStore.loadHotNews()
         lastUpdated = await localStore.loadHotNewsLastUpdated()
+    }
+
+    func toggleFavorite(for topic: HotNewsTopic) async {
+        let topicIDs = Set(topic.items.map(\.id))
+        for index in items.indices where topicIDs.contains(items[index].id) {
+            items[index].isFavorite.toggle()
+        }
+        try? await localStore.saveHotNews(items)
+    }
+
+    func block(topic: HotNewsTopic) {
+        blockedTopicKeys.insert(topic.id)
+        UserDefaults.standard.set(Array(blockedTopicKeys).sorted(), forKey: "trendradar.blockedTopics")
     }
 
     func clearCache() async throws {
         try await localStore.clearAll()
         items = []
         lastUpdated = nil
+        blockedTopicKeys = []
+        UserDefaults.standard.removeObject(forKey: "trendradar.blockedTopics")
     }
 
     func refresh(settings: AppSettings, latest: Bool = false, showError: Bool = true) async {
@@ -77,29 +110,18 @@ final class HotNewsStore: ObservableObject {
                 errorMessage = "请先在设置中启用至少一个热榜平台"
                 return
             }
-            let service = self.service
-            var results: [(String, [HotNewsItem], String?)] = []
-            for batch in enabledSources.chunked(into: 3) {
-                let batchResults = await withTaskGroup(of: (String, [HotNewsItem], String?).self) { group in
-                    for source in batch {
-                        group.addTask {
-                            do {
-                                let items = try await service.fetch(sourceID: source.id, sourceName: source.name, expectedDomain: source.expectedDomain, baseURL: baseURL, latest: latest)
-                                return (source.name, items, nil)
-                            } catch {
-                                return (source.name, [], error.localizedDescription)
-                            }
-                        }
-                    }
-                    return await group.reduce(into: [(String, [HotNewsItem], String?)]()) { $0.append($1) }
-                }
-                results.append(contentsOf: batchResults)
-            }
-            let fetched = results.flatMap(\.1)
-            sourceFailures = results.filter { $0.1.isEmpty }.map(\.0).sorted()
-            sourceFailureDetails = results.reduce(into: [:]) { details, result in
-                if let detail = result.2 {
-                    details[result.0] = detail
+            let result = await collector.collect(
+                sources: enabledSources,
+                configuration: CollectorConfiguration(baseURL: baseURL, latest: latest),
+                trigger: latest ? .manual : .foreground
+            )
+            let fetched = result.values.items
+            sourceFailures = result.batch.failedSourceIDs.compactMap { id in
+                enabledSources.first(where: { $0.id == id })?.name
+            }.sorted()
+            sourceFailureDetails = result.batch.errorMessages.reduce(into: [:]) { details, entry in
+                if let source = enabledSources.first(where: { $0.id == entry.key }) {
+                    details[source.name] = entry.value
                 }
             }
             guard !fetched.isEmpty else {
@@ -110,17 +132,23 @@ final class HotNewsStore: ObservableObject {
             let refreshed = fetched.map { item in
                 var updated = item
                 updated.previousRank = oldByID[item.id]?.rank
+                updated.firstSeenAt = oldByID[item.id]?.firstSeenAt ?? Date()
                 updated.isRead = oldByID[item.id]?.isRead ?? false
                 updated.isFavorite = oldByID[item.id]?.isFavorite ?? false
                 return updated
             }
-            let successfulSourceNames = Set(results.filter { !$0.1.isEmpty }.map(\.0))
-            let successfulPlatformIDs = Set(enabledSources.filter { successfulSourceNames.contains($0.name) }.map(\.id))
+            let successfulPlatformIDs = Set(result.batch.successfulSourceIDs)
             let staleItems = items.filter { item in
                 !successfulPlatformIDs.contains(item.platformID) && sourceFailures.contains(item.platformName)
             }
             items = (refreshed + staleItems).sorted { $0.rank < $1.rank }
             try await localStore.saveHotNews(items, replacingPlatformIDs: successfulPlatformIDs)
+            try await localStore.saveIntelligenceSnapshot(
+                items: result.values.intelligenceItems,
+                topics: result.values.topics,
+                batch: result.batch,
+                replacingSourceIDs: successfulPlatformIDs
+            )
             lastUpdated = Date()
         } catch {
             let suffix = sourceFailures.isEmpty ? "" : "失败平台：\(sourceFailures.joined(separator: "、"))。"
@@ -132,16 +160,6 @@ final class HotNewsStore: ObservableObject {
                 errorMessage = "热榜刷新失败：\(reason)\(suffix)"
             }
             if items.isEmpty { await load() }
-        }
-    }
-}
-
-
-private extension Array {
-    func chunked(into size: Int) -> [[Element]] {
-        guard size > 0 else { return [self] }
-        return stride(from: 0, to: count, by: size).map { start in
-            Array(self[start..<Swift.min(start + size, count)])
         }
     }
 }

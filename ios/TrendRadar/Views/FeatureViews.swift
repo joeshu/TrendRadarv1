@@ -3,19 +3,23 @@ import Charts
 
 struct FeedsView: View {
     @EnvironmentObject private var store: NewsStore
+    @EnvironmentObject private var hotNewsStore: HotNewsStore
     @EnvironmentObject private var settingsStore: SettingsStore
     @State private var selectedFeedID: String?
     @State private var showingFeedInfo = false
     @State private var showingSourceManager = false
+    @State private var showingUnreadOnly = false
 
     private var enabledFeeds: [ConfigFeed] {
         settingsStore.settings.customFeeds.filter(\.isEnabled)
     }
 
     private var feedItems: [NewsItem] {
-        guard let selectedFeedID else { return store.items }
+        let filterEngine = FilterEngine(settings: settingsStore.settings)
+        let filtered = store.items.filter { filterEngine.includes($0) && (!showingUnreadOnly || !$0.isRead) }
+        guard let selectedFeedID else { return filtered }
         guard let feed = settingsStore.settings.customFeeds.first(where: { $0.id == selectedFeedID }) else { return [] }
-        return store.items.filter { $0.source == feed.name }
+        return filtered.filter { $0.source == feed.name }
     }
 
     var body: some View {
@@ -27,6 +31,13 @@ struct FeedsView: View {
                         feedIntro
                         sourceSummary
                         feedPicker
+                        HStack {
+                            Toggle("仅未读", isOn: $showingUnreadOnly)
+                            Spacer()
+                            Button("全部已读") { Task { await store.markAllRead() } }
+                                .font(AppTheme.captionFont)
+                                .foregroundStyle(AppTheme.cyan)
+                        }
                         if enabledFeeds.isEmpty {
                             FeatureEmptyState(icon: "antenna.radiowaves.left.and.right.slash", title: "还没有启用订阅源", message: "在设置中启用 RSS 源，再回来刷新你的信息流。")
                                 .frame(maxWidth: .infinity)
@@ -38,12 +49,24 @@ struct FeedsView: View {
                         } else {
                             ForEach(feedItems) { item in
                                 NavigationLink {
-                                    NewsDetailView(item: item)
+                                    FeedReaderView(item: item)
                                         .task { await store.markRead(item) }
                                 } label: {
                                     CompactFeedCard(item: item)
                                 }
                                 .buttonStyle(.plain)
+                                .overlay(alignment: .topTrailing) {
+                                    if relatedTopic(for: item) != nil {
+                                        Text("关联热榜")
+                                            .font(.caption2.weight(.semibold))
+                                            .foregroundStyle(AppTheme.yellow)
+                                            .padding(.horizontal, 7)
+                                            .padding(.vertical, 4)
+                                            .background(AppTheme.yellow.opacity(0.14))
+                                            .clipShape(Capsule())
+                                            .padding(8)
+                                    }
+                                }
                             }
                         }
                     }
@@ -69,6 +92,13 @@ struct FeedsView: View {
             .sheet(isPresented: $showingSourceManager) {
                 SubscriptionSourceManager()
             }
+        }
+    }
+
+    private func relatedTopic(for item: NewsItem) -> HotNewsTopic? {
+        let key = TopicDeduplicator().topicKey(for: item.title)
+        return hotNewsStore.topics.first { topic in
+            topic.id == key || topic.items.contains { item.title.localizedCaseInsensitiveContains($0.title) }
         }
     }
 
@@ -121,6 +151,7 @@ struct FeedsView: View {
 
 struct SubscriptionSourceManager: View {
     @EnvironmentObject private var settingsStore: SettingsStore
+    @EnvironmentObject private var newsStore: NewsStore
     @Environment(\.dismiss) private var dismiss
     @State private var showingFeedEditor = false
     @State private var editingFeed: ConfigFeed?
@@ -145,6 +176,11 @@ struct SubscriptionSourceManager: View {
                                 VStack(alignment: .leading, spacing: 3) {
                                     Text(feed.name).foregroundStyle(.white)
                                     Text(feed.url).font(AppTheme.captionFont).foregroundStyle(AppTheme.textTertiary).lineLimit(1)
+                                    if let health = newsStore.feedHealth[feed.id], health.shouldShowWarning {
+                                        Text("连续失败 \(health.consecutiveFailures) 次：\(health.lastError ?? "请检查来源")")
+                                            .font(.caption2)
+                                            .foregroundStyle(AppTheme.yellow)
+                                    }
                                 }
                             }
                         }
@@ -186,19 +222,64 @@ struct SubscriptionSourceManager: View {
             .tint(AppTheme.cyan)
         }
     }
+
+}
+
+struct FeedReaderView: View {
+    let item: NewsItem
+    @EnvironmentObject private var store: NewsStore
+
+    var body: some View {
+        ZStack {
+            AppTheme.background.ignoresSafeArea()
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    Text(item.source.uppercased())
+                        .font(AppTheme.captionFont)
+                        .foregroundStyle(AppTheme.cyan)
+                    Text(item.title)
+                        .font(AppTheme.titleFont)
+                        .foregroundStyle(.white)
+                    if let author = item.author, !author.isEmpty {
+                        Text(author).font(AppTheme.captionFont).foregroundStyle(AppTheme.textSecondary)
+                    }
+                    Text(item.body ?? item.summary ?? "暂无正文缓存")
+                        .font(.system(size: 18, weight: .regular, design: .serif))
+                        .foregroundStyle(.white.opacity(0.88))
+                        .lineSpacing(7)
+                    if let url = item.url {
+                        Link(destination: url) {
+                            Label("阅读原文", systemImage: "arrow.up.right")
+                        }
+                        .buttonStyle(OutlineButtonStyle())
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(20)
+            }
+        }
+        .navigationTitle("阅读器")
+        .navigationBarTitleDisplayMode(.inline)
+        .task { await store.markRead(item) }
+    }
 }
 
 struct InsightView: View {
     @EnvironmentObject private var store: NewsStore
     @EnvironmentObject private var hotNewsStore: HotNewsStore
+    @EnvironmentObject private var reportStore: ReportStore
     @EnvironmentObject private var settingsStore: SettingsStore
     @State private var showingSettings = false
+    @State private var selectedWindow: InsightTimeWindow = .current
+    @State private var queryText = ""
+    @State private var queryResult: InsightQueryResult?
+    @State private var isQuerying = false
+    @State private var isGenerating = false
+    @State private var latestAnalysis: ReportAIAnalysis?
 
     private var keywordMatches: [NewsItem] {
-        guard !settingsStore.settings.keywords.isEmpty else { return store.items }
-        return store.items.filter { item in
-            settingsStore.settings.keywords.contains { item.title.localizedCaseInsensitiveContains($0) }
-        }
+        let filterEngine = FilterEngine(settings: settingsStore.settings)
+        return store.items.filter { filterEngine.includes($0) }
     }
 
     var body: some View {
@@ -208,11 +289,14 @@ struct InsightView: View {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 16) {
                         insightHeader
+                        insightWindowPicker
                         signalCard
+                        sentimentCard
                         keywordCard
                         hotNewsInsightCard
                         anomalyCard
                         aiCard
+                        queryCard
                     }
                     .padding(20)
                 }
@@ -227,7 +311,19 @@ struct InsightView: View {
                 }
             }
             .sheet(isPresented: $showingSettings) { SettingsView() }
+            .task {
+                await reportStore.load()
+                await loadLatestAnalysis()
+            }
         }
+    }
+
+    private func loadLatestAnalysis() async {
+        guard let latest = reportStore.reports.first else {
+            latestAnalysis = nil
+            return
+        }
+        latestAnalysis = await reportStore.detail(id: latest.id)?.aiAnalysis
     }
 
     private var insightHeader: some View {
@@ -241,14 +337,63 @@ struct InsightView: View {
         }
     }
 
+    private var windowItems: [NewsItem] {
+        store.items.filter { selectedWindow.includes($0.publishedAt) }
+    }
+
+    private var windowHotlistItems: [HotNewsItem] {
+        hotNewsStore.items.filter { selectedWindow.includes($0.publishedAt) }
+    }
+
+    private var insightWindowPicker: some View {
+        Picker("分析范围", selection: $selectedWindow) {
+            ForEach(InsightTimeWindow.allCases, id: \.self) { window in
+                Text(window.title).tag(window)
+            }
+        }
+        .pickerStyle(.segmented)
+    }
+
     private var signalCard: some View {
         InsightPanel(title: "情报脉搏", icon: "waveform.path.ecg", tint: AppTheme.cyan) {
             HStack(spacing: 12) {
-                InsightMetric(value: "\(store.items.count)", label: "已采集", tint: AppTheme.cyan)
+                InsightMetric(value: "\(windowItems.count + windowHotlistItems.count)", label: "分析样本", tint: AppTheme.cyan)
                 InsightMetric(value: "\(keywordMatches.count)", label: "关注命中", tint: AppTheme.yellow)
-                InsightMetric(value: "\(store.items.filter { !$0.isRead }.count)", label: "待阅读", tint: AppTheme.pink)
+                InsightMetric(value: "\(windowItems.filter { !$0.isRead }.count)", label: "待阅读", tint: AppTheme.pink)
             }
         }
+    }
+
+    private var sentimentCard: some View {
+        let sentiment = localSentiment
+        return InsightPanel(title: "情绪面板", icon: "gauge.with.dots.needle.67percent", tint: AppTheme.pink) {
+            if sentiment.isComputed {
+                HStack(spacing: 12) {
+                    InsightMetric(value: "\(Int(sentiment.positive * 100))%", label: "正面", tint: AppTheme.green)
+                    InsightMetric(value: "\(Int(sentiment.neutral * 100))%", label: "中立", tint: AppTheme.textSecondary)
+                    InsightMetric(value: "\(Int(sentiment.negative * 100))%", label: "负面", tint: AppTheme.red)
+                }
+                Text("样本 \(sentiment.sampleCount) 条，指数 \(sentiment.score >= 0 ? "+" : "")\(sentiment.score, specifier: "%.2f")")
+                    .font(AppTheme.captionFont)
+                    .foregroundStyle(AppTheme.textTertiary)
+            } else {
+                Text("当前范围尚未完成情绪计算。生成 AI 报告后会显示模型结果。")
+                    .font(AppTheme.bodyFont)
+                    .foregroundStyle(AppTheme.textSecondary)
+            }
+        }
+    }
+
+    private var localSentiment: InsightSentiment {
+        guard let analysis = latestAnalysis,
+              let positive = analysis.sentimentPositive,
+              let neutral = analysis.sentimentNeutral,
+              let negative = analysis.sentimentNegative,
+              analysis.hasContent else {
+            return InsightSentiment(positive: 0, neutral: 0, negative: 0, sampleCount: 0)
+        }
+        let total = max(1, windowItems.count + windowHotlistItems.count)
+        return InsightSentiment(positive: positive, neutral: neutral, negative: negative, sampleCount: total)
     }
 
     private var keywordCard: some View {
@@ -273,9 +418,64 @@ struct InsightView: View {
                     .font(AppTheme.bodyFont)
                     .foregroundStyle(AppTheme.textSecondary)
                 if settingsStore.settings.ai.enabled {
+                    Button {
+                        isGenerating = true
+                        Task {
+                            await reportStore.generate(type: reportType, settings: settingsStore.settings, items: windowItems, hotlistItems: windowHotlistItems)
+                            await loadLatestAnalysis()
+                            isGenerating = false
+                        }
+                    } label: {
+                        Label(isGenerating ? "正在生成" : "生成 \(selectedWindow.title) 报告", systemImage: "doc.text.magnifyingglass")
+                    }
+                    .buttonStyle(AccentButtonStyle())
+                    .disabled(isGenerating)
                     Label("报告生成时会按结构化 JSON 保存情绪比例、弱信号和策略建议。", systemImage: "info.circle")
                         .font(AppTheme.captionFont)
                         .foregroundStyle(AppTheme.textTertiary)
+                }
+            }
+        }
+    }
+
+    private var reportType: ReportType {
+        switch selectedWindow {
+        case .current: return .current
+        case .daily: return .daily
+        case .incremental: return .incremental
+        }
+    }
+
+    private var queryCard: some View {
+        InsightPanel(title: "自然语言查询", icon: "bubble.left.and.text.bubble.right", tint: AppTheme.cyan) {
+            TextField("例如：最近一周科技圈有什么大事？", text: $queryText, axis: .vertical)
+            Button {
+                let question = queryText.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !question.isEmpty else { return }
+                isQuerying = true
+                Task {
+                    defer { isQuerying = false }
+                    do {
+                        queryResult = try await AIService().query(question: question, hotlistItems: windowHotlistItems, rssItems: windowItems, settings: settingsStore.settings)
+                    } catch {
+                        queryResult = InsightQueryResult(answer: "查询失败：\(error.localizedDescription)", citations: [], createdAt: Date())
+                    }
+                }
+            } label: {
+                Label(isQuerying ? "查询中" : "查询本地情报", systemImage: "arrow.up.circle")
+            }
+            .buttonStyle(OutlineButtonStyle())
+            .disabled(isQuerying)
+            if let result = queryResult {
+                Text(result.answer)
+                    .font(AppTheme.bodyFont)
+                    .foregroundStyle(.white)
+                ForEach(result.citations) { citation in
+                    if let url = citation.url {
+                        Link("引用：\(citation.source) · \(citation.title)", destination: url)
+                            .font(AppTheme.captionFont)
+                            .foregroundStyle(AppTheme.cyan)
+                    }
                 }
             }
         }
@@ -302,9 +502,14 @@ struct InsightView: View {
                                         .font(AppTheme.headlineFont)
                                         .foregroundStyle(.white)
                                         .lineLimit(2)
-                                    Text(topic.platforms.joined(separator: " · "))
-                                        .font(AppTheme.captionFont)
-                                        .foregroundStyle(AppTheme.textTertiary)
+                    Text(topic.platforms.joined(separator: " · "))
+                        .font(AppTheme.captionFont)
+                        .foregroundStyle(AppTheme.textTertiary)
+                    if let duration = topic.duration, duration >= 3600 {
+                        Text("持续上榜 \(Int(duration / 3600)) 小时")
+                            .font(AppTheme.captionFont)
+                            .foregroundStyle(AppTheme.yellow)
+                    }
                                 }
                                 Spacer()
                                 Image(systemName: "chevron.right")

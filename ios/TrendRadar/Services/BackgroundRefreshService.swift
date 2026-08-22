@@ -53,14 +53,8 @@ enum BackgroundRefreshService {
                 freshItems.append(contentsOf: try await crawler.fetch(feed: feed))
             }
             try Task.checkCancellation()
-            if !settings.keywords.isEmpty {
-                freshItems = freshItems.filter { item in
-                    settings.keywords.contains { item.title.localizedCaseInsensitiveContains($0) }
-                }
-            }
-            freshItems = freshItems.filter { item in
-                !settings.globalFilterWords.contains { item.title.localizedCaseInsensitiveContains($0) }
-            }
+            let filterEngine = FilterEngine(settings: settings)
+            freshItems = freshItems.filter { filterEngine.includes($0) }
             if settings.rssFreshnessEnabled {
                 freshItems = freshItems.filter { item in
                     let feedAge = settings.customFeeds.first { $0.name == item.source }?.maxAgeDays ?? 0
@@ -106,6 +100,9 @@ enum BackgroundRefreshService {
                     let aiService = AIService()
                     let standaloneContent = aiService.standaloneContent(hotlistItems: hotlistItems, rssItems: merged, settings: settings)
                     report.aiAnalysis = await aiService.reportAnalysis(hotlistItems: hotlistItems, rssItems: merged, settings: settings, reportType: reportType.displayName, standaloneContent: standaloneContent)
+                    report.aiAnalysis?.citations = report.sections.flatMap(\.items).compactMap { item in
+                        InsightCitation(itemID: item.id, title: item.title, source: item.source, url: item.url)
+                    }
                 }
                 try Task.checkCancellation()
                 try? await localStore.save(report)

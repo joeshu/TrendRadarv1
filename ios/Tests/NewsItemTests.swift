@@ -29,11 +29,201 @@ final class NewsItemTests: XCTestCase {
         XCTAssertEqual(settings.aiTranslation.batchInterval, 2)
     }
 
+    func testDefaultPlatformCatalogContainsAtLeastThirtyFiveUniqueSources() {
+        let sources = AppSettings.defaultPlatformSources
+        let ids = Set(sources.map(\.id))
+
+        XCTAssertGreaterThanOrEqual(sources.count, 35)
+        XCTAssertEqual(ids.count, sources.count)
+        XCTAssertTrue(ids.contains("zhihu"))
+        XCTAssertTrue(ids.contains("github-trending-today"))
+    }
+
+    func testHotlistCollectorOutputPreservesPlatformAndRankFields() {
+        let item = HotNewsItem(
+            id: "zhihu:1",
+            title: "热点",
+            url: URL(string: "https://www.zhihu.com/question/1"),
+            platformID: "zhihu",
+            platformName: "知乎",
+            rank: 3,
+            publishedAt: nil,
+            extraInfo: "热度",
+            topicKey: "redian",
+            previousRank: 6,
+            isRead: false,
+            isFavorite: true
+        )
+        let intelligence = IntelligenceItem(
+            id: item.id,
+            sourceType: .hotlist,
+            sourceID: item.platformID,
+            sourceName: item.platformName,
+            title: item.title,
+            url: item.url,
+            summary: item.extraInfo,
+            topicKey: item.topicKey,
+            rank: item.rank,
+            previousRank: item.previousRank,
+            isFavorite: item.isFavorite
+        )
+
+        XCTAssertEqual(intelligence.sourceID, "zhihu")
+        XCTAssertEqual(intelligence.rank, 3)
+        XCTAssertEqual(intelligence.previousRank, 6)
+        XCTAssertTrue(intelligence.isFavorite)
+    }
+
+    func testTopicDeduplicatorMergesEquivalentTitlesAndKeepsBestRank() {
+        let first = IntelligenceItem(id: "a", sourceType: .hotlist, sourceID: "zhihu", sourceName: "知乎", title: "AI 热榜", topicKey: "ignored", rank: 6)
+        let second = IntelligenceItem(id: "b", sourceType: .hotlist, sourceID: "weibo", sourceName: "微博", title: "AI热榜", topicKey: "ignored", rank: 2)
+
+        let topics = TopicDeduplicator().topics(from: [first, second])
+
+        XCTAssertEqual(topics.count, 1)
+        XCTAssertEqual(topics.first?.items.count, 2)
+        XCTAssertEqual(topics.first?.bestRank, 2)
+        XCTAssertEqual(topics.first?.platformCount, 2)
+    }
+
+    func testHotNewsTopicDurationUsesFirstSeenTime() {
+        let item = HotNewsItem(
+            id: "topic:1",
+            title: "持续热点",
+            url: nil,
+            platformID: "zhihu",
+            platformName: "知乎",
+            rank: 1,
+            publishedAt: nil,
+            extraInfo: nil,
+            topicKey: "topic",
+            firstSeenAt: Date(timeIntervalSinceNow: -7_200),
+            previousRank: 2,
+            isRead: false,
+            isFavorite: false
+        )
+        let topic = HotNewsTopic(id: "topic", title: item.title, items: [item])
+
+        XCTAssertGreaterThanOrEqual(topic.duration ?? 0, 7_200)
+    }
+
+    func testFilterEngineSupportsRequiredExcludedAndStandaloneRules() {
+        var settings = AppSettings()
+        settings.keywords = ["AI", "+发布", "!广告"]
+        settings.display.standalonePlatforms = ["zhihu"]
+        let engine = FilterEngine(settings: settings)
+
+        XCTAssertTrue(engine.includes(NewsItem(title: "AI 发布新模型", source: "feed")))
+        XCTAssertFalse(engine.includes(NewsItem(title: "AI 发布广告", source: "feed")))
+        let hotItem = HotNewsItem(id: "zhihu:1", title: "完全不同的标题", url: nil, platformID: "zhihu", platformName: "知乎", rank: 1, publishedAt: nil, extraInfo: nil, topicKey: "other", isRead: false, isFavorite: false)
+        XCTAssertTrue(engine.preview(hotItem).isStandalone)
+    }
+
+    func testLegacyNewsItemJSONDecodesWithoutArticleBodyFields() throws {
+        let data = Data("{\"id\":\"legacy\",\"title\":\"旧文章\",\"source\":\"源\",\"isRead\":false,\"isFavorite\":false}".utf8)
+        let item = try JSONDecoder().decode(NewsItem.self, from: data)
+
+        XCTAssertEqual(item.id, "legacy")
+        XCTAssertNil(item.body)
+        XCTAssertNil(item.author)
+    }
+
+    func testRSSParserExtractsAuthorAndArticleBody() throws {
+        let xml = """
+        <rss><channel><item><title>文章</title><link>https://example.com/a</link><dc:creator>作者</dc:creator><description>摘要</description><content:encoded>正文</content:encoded></item></channel></rss>
+        """
+        let feed = RSSFeed(id: "test", name: "测试源", url: URL(string: "https://example.com/rss")!)
+        let items = try NewsCrawler().parse(data: Data(xml.utf8), feed: feed)
+
+        XCTAssertEqual(items.first?.author, "作者")
+        XCTAssertEqual(items.first?.body, "正文")
+    }
+
+    func testInsightTimeWindowFiltersDailyItems() {
+        let now = Date()
+        XCTAssertTrue(InsightTimeWindow.daily.includes(now.addingTimeInterval(-3_600), now: now))
+        XCTAssertFalse(InsightTimeWindow.daily.includes(now.addingTimeInterval(-90_000), now: now))
+        XCTAssertTrue(InsightTimeWindow.current.includes(now.addingTimeInterval(-900_000), now: now))
+    }
+
+    func testInsightCitationKeepsSourceAndURL() {
+        let citation = InsightCitation(itemID: "item-1", title: "热点", source: "知乎", url: URL(string: "https://example.com/1"))
+        XCTAssertEqual(citation.id, "item-1")
+        XCTAssertEqual(citation.source, "知乎")
+        XCTAssertNotNil(citation.url)
+    }
+
     func testHotNewsTrendCalculatesRankDirection() {
         let item = HotNewsItem(id: "weibo:1", title: "Trend", url: nil, platformID: "weibo", platformName: "微博", rank: 2, publishedAt: nil, extraInfo: nil, topicKey: "trend", previousRank: 5, isRead: false, isFavorite: false)
         XCTAssertEqual(item.trend, .up)
         XCTAssertEqual(HotNewsItem(id: "x", title: "x", url: nil, platformID: "p", platformName: "P", rank: 5, publishedAt: nil, extraInfo: nil, topicKey: "x", previousRank: 2, isRead: false, isFavorite: false).trend, .down)
         XCTAssertEqual(HotNewsItem(id: "y", title: "y", url: nil, platformID: "p", platformName: "P", rank: 1, publishedAt: nil, extraInfo: nil, topicKey: "y", previousRank: nil, isRead: false, isFavorite: false).trend, .new)
+    }
+
+    func testIntelligenceItemRoundTripsAndPreservesSnapshotFields() throws {
+        let collectedAt = Date(timeIntervalSince1970: 100)
+        let item = IntelligenceItem(
+            id: "hotlist:1",
+            sourceType: .hotlist,
+            sourceID: "zhihu",
+            sourceName: "知乎",
+            title: "AI 进展",
+            url: URL(string: "https://www.zhihu.com/question/1"),
+            summary: "摘要",
+            topicKey: "aijin zhan".replacingOccurrences(of: " ", with: ""),
+            rank: 2,
+            previousRank: 5,
+            collectedAt: collectedAt,
+            isRead: true,
+            isFavorite: true
+        )
+
+        let restored = try JSONDecoder().decode(IntelligenceItem.self, from: JSONEncoder().encode(item))
+
+        XCTAssertEqual(restored, item)
+        XCTAssertEqual(restored.rank, 2)
+        XCTAssertEqual(restored.previousRank, 5)
+        XCTAssertTrue(restored.isFavorite)
+    }
+
+    func testIntelligenceTopicReportsUniquePlatformsAndBestRank() {
+        let items = [
+            IntelligenceItem(id: "a", sourceType: .hotlist, sourceID: "zhihu", sourceName: "知乎", title: "主题", topicKey: "topic", rank: 4),
+            IntelligenceItem(id: "b", sourceType: .hotlist, sourceID: "weibo", sourceName: "微博", title: "主题", topicKey: "topic", rank: 2),
+            IntelligenceItem(id: "c", sourceType: .hotlist, sourceID: "weibo", sourceName: "微博", title: "主题", topicKey: "topic", rank: 8)
+        ]
+        let topic = IntelligenceTopic(id: "topic", topicKey: "topic", title: "主题", items: items, collectedAt: Date())
+
+        XCTAssertEqual(topic.platformNames, ["微博", "知乎"])
+        XCTAssertEqual(topic.platformCount, 2)
+        XCTAssertEqual(topic.bestRank, 2)
+    }
+
+    func testRefreshBatchRoundTripsFailureDetails() throws {
+        var batch = RefreshBatch(trigger: .foreground)
+        batch.status = .partial
+        batch.successfulSourceIDs = ["zhihu"]
+        batch.failedSourceIDs = ["weibo"]
+        batch.errorMessages = ["weibo": "请求超时"]
+
+        let restored = try JSONDecoder().decode(RefreshBatch.self, from: JSONEncoder().encode(batch))
+
+        XCTAssertEqual(restored, batch)
+        XCTAssertEqual(restored.status, .partial)
+        XCTAssertEqual(restored.errorMessages["weibo"], "请求超时")
+    }
+
+    func testSourceDataCompletenessMarksCachedDataUsable() {
+        let source = SourceDataCompleteness(
+            sourceID: "zhihu",
+            sourceName: "知乎",
+            status: .cached,
+            itemCount: 10,
+            collectedAt: Date(),
+            errorMessage: "本次刷新失败"
+        )
+
+        XCTAssertTrue(source.hasUsableData)
     }
 
     func testHotNewsAnomalyUsesThreeRankChangeThreshold() {

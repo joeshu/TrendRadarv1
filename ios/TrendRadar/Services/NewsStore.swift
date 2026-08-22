@@ -10,6 +10,7 @@ final class NewsStore: ObservableObject {
     @Published var errorMessage: String?
     @Published private(set) var sourceFailures: [String] = []
     @Published private(set) var sourceFailureDetails: [String: String] = [:]
+    @Published private(set) var feedHealth: [String: FeedHealth] = [:]
 
     private let localStore = LocalStore.shared
     private let crawler = NewsCrawler()
@@ -21,6 +22,7 @@ final class NewsStore: ObservableObject {
     }
 
     func load() async {
+        loadFeedHealth()
         items = await localStore.load()
         lastUpdated = items.compactMap(\.publishedAt).max()
     }
@@ -29,6 +31,8 @@ final class NewsStore: ObservableObject {
         try await localStore.clearAll()
         items = []
         lastUpdated = nil
+        feedHealth = [:]
+        UserDefaults.standard.removeObject(forKey: "trendradar.feedHealth")
     }
 
     func refresh(showError: Bool = true) async {
@@ -75,6 +79,7 @@ final class NewsStore: ObservableObject {
                     details[result.0] = detail
                 }
             }
+            updateFeedHealth(enabledFeeds: enabledFeeds, failedNames: sourceFailures, details: sourceFailureDetails)
             let successfulResults = results.filter { !$0.1.isEmpty }
             guard !successfulResults.isEmpty else {
                 if !items.isEmpty {
@@ -89,7 +94,8 @@ final class NewsStore: ObservableObject {
             let oldByID = items.reduce(into: [String: NewsItem]()) { $0[$1.id] = $1 }
             let fetchedItems = successfulResults.flatMap(\.1)
             let uniqueResults = fetchedItems.reduce(into: [String: NewsItem]()) { $0[$1.id] = $1 }.values
-            var filteredResults = uniqueResults.filter { matchesConfiguredFilters($0) }
+            let filterEngine = FilterEngine(settings: settings)
+            var filteredResults = uniqueResults.filter { filterEngine.includes($0) }
             if settings.ai.enabled, settings.ai.filterMethod == "ai", !settings.ai.interests.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 do {
                     filteredResults = try await aiService.filter(Array(filteredResults), settings: settings)
@@ -152,6 +158,15 @@ final class NewsStore: ObservableObject {
         await localStore.save(items)
     }
 
+    func markAllRead() async {
+        items = items.map { item in
+            var updated = item
+            updated.isRead = true
+            return updated
+        }
+        await localStore.save(items)
+    }
+
     func summarize(_ item: NewsItem) async {
         guard let index = items.firstIndex(where: { $0.id == item.id }) else { return }
         do {
@@ -175,16 +190,44 @@ final class NewsStore: ObservableObject {
         if settings.aiAnalysis.enabled && settings.display.showAIAnalysis {
             let standaloneContent = aiService.standaloneContent(hotlistItems: hotlistItems, rssItems: items, settings: settings)
             report.aiAnalysis = await aiService.reportAnalysis(hotlistItems: hotlistItems, rssItems: items, settings: settings, reportType: type.displayName, standaloneContent: standaloneContent)
+            report.aiAnalysis?.citations = report.sections.flatMap(\.items).compactMap { item in
+                InsightCitation(itemID: item.id, title: item.title, source: item.source, url: item.url)
+            }
         }
         try? await localStore.save(report)
     }
 
     private func matchesConfiguredFilters(_ item: NewsItem) -> Bool {
-        guard KeywordRuleSet(keywords: settings.keywords, globalExcluded: settings.globalFilterWords).matches(item.title) else { return false }
+        guard FilterEngine(settings: settings).includes(item) else { return false }
         guard settings.rssFreshnessEnabled, let publishedAt = item.publishedAt else { return true }
         let feedAge = settings.customFeeds.first { $0.name == item.source }?.maxAgeDays ?? 0
         let maxAgeDays = feedAge > 0 ? feedAge : settings.rssMaxAgeDays
         guard maxAgeDays > 0 else { return true }
         return publishedAt >= Date(timeIntervalSinceNow: -Double(maxAgeDays) * 86_400)
+    }
+
+    private func loadFeedHealth() {
+        guard let data = UserDefaults.standard.data(forKey: "trendradar.feedHealth"),
+              let health = try? JSONDecoder().decode([String: FeedHealth].self, from: data) else { return }
+        feedHealth = health
+    }
+
+    private func updateFeedHealth(enabledFeeds: [RSSFeed], failedNames: [String], details: [String: String]) {
+        for feed in enabledFeeds {
+            var status = feedHealth[feed.id] ?? FeedHealth(sourceID: feed.id, consecutiveFailures: 0, lastSuccessAt: nil, lastFailureAt: nil, lastError: nil)
+            if failedNames.contains(feed.name) {
+                status.consecutiveFailures += 1
+                status.lastFailureAt = Date()
+                status.lastError = details[feed.name]
+            } else {
+                status.consecutiveFailures = 0
+                status.lastSuccessAt = Date()
+                status.lastError = nil
+            }
+            feedHealth[feed.id] = status
+        }
+        if let data = try? JSONEncoder().encode(feedHealth) {
+            UserDefaults.standard.set(data, forKey: "trendradar.feedHealth")
+        }
     }
 }

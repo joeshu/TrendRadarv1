@@ -21,7 +21,12 @@ actor LocalStore {
                 ReportRecord.self,
                 ReportItemRecord.self,
                 HotNewsRecord.self,
-                HotNewsTrendRecord.self
+                HotNewsTrendRecord.self,
+                IntelligenceRecord.self,
+                TopicRecord.self,
+                TopicItemLinkRecord.self,
+                HotlistSnapshotRecord.self,
+                RefreshRunRecord.self
             ])
             let storeURL = directory.appendingPathComponent("TrendRadar-v2.store")
             let configuration = ModelConfiguration(schema: schema, url: storeURL, allowsSave: true)
@@ -72,6 +77,11 @@ actor LocalStore {
         for record in try context.fetch(FetchDescriptor<ReportRecord>()) { context.delete(record) }
         for record in try context.fetch(FetchDescriptor<HotNewsTrendRecord>()) { context.delete(record) }
         for record in try context.fetch(FetchDescriptor<HotNewsRecord>()) { context.delete(record) }
+        for record in try context.fetch(FetchDescriptor<TopicItemLinkRecord>()) { context.delete(record) }
+        for record in try context.fetch(FetchDescriptor<HotlistSnapshotRecord>()) { context.delete(record) }
+        for record in try context.fetch(FetchDescriptor<TopicRecord>()) { context.delete(record) }
+        for record in try context.fetch(FetchDescriptor<IntelligenceRecord>()) { context.delete(record) }
+        for record in try context.fetch(FetchDescriptor<RefreshRunRecord>()) { context.delete(record) }
         try context.save()
         try? FileManager.default.removeItem(at: legacyFileURL)
     }
@@ -193,6 +203,65 @@ actor LocalStore {
         try context.save()
     }
 
+    func saveIntelligenceSnapshot(
+        items: [IntelligenceItem],
+        topics: [IntelligenceTopic],
+        batch: RefreshBatch,
+        replacingSourceIDs: Set<String>
+    ) throws {
+        guard let container else { throw LocalStoreError.unavailable }
+        let context = ModelContext(container)
+
+        for record in try context.fetch(FetchDescriptor<TopicItemLinkRecord>()) where record.batchID == batch.id {
+            context.delete(record)
+        }
+        for record in try context.fetch(FetchDescriptor<HotlistSnapshotRecord>()) where record.batchID == batch.id {
+            context.delete(record)
+        }
+        for record in try context.fetch(FetchDescriptor<RefreshRunRecord>()) where record.id == batch.id {
+            context.delete(record)
+        }
+
+        let existingItems = try context.fetch(FetchDescriptor<IntelligenceRecord>())
+        let itemRecordsByID = existingItems.reduce(into: [String: IntelligenceRecord]()) { result, record in
+            result[record.id] = record
+        }
+        for record in existingItems where replacingSourceIDs.contains(record.sourceID) {
+            context.delete(record)
+        }
+
+        let existingTopics = try context.fetch(FetchDescriptor<TopicRecord>())
+        let topicRecordsByID = existingTopics.reduce(into: [String: TopicRecord]()) { result, record in
+            result[record.id] = record
+        }
+        for topic in topics {
+            if let record = topicRecordsByID[topic.id] {
+                record.update(with: topic)
+            } else {
+                context.insert(TopicRecord(topic: topic))
+            }
+        }
+
+        let snapshotItems = items.filter { $0.sourceType == .hotlist }
+        for item in items {
+            if let record = itemRecordsByID[item.id], !replacingSourceIDs.contains(record.sourceID) {
+                record.update(with: item)
+            } else {
+                context.insert(IntelligenceRecord(item: item))
+            }
+        }
+        for topic in topics {
+            for item in topic.items {
+                context.insert(TopicItemLinkRecord(topicID: topic.id, itemID: item.id, batchID: batch.id, rank: item.rank, collectedAt: batch.startedAt))
+            }
+        }
+        for item in snapshotItems {
+            context.insert(HotlistSnapshotRecord(item: item, batchID: batch.id))
+        }
+        context.insert(RefreshRunRecord(batch: batch))
+        try context.save()
+    }
+
     func loadHotNews() -> [HotNewsItem] {
         guard let container else { return [] }
         let context = ModelContext(container)
@@ -231,6 +300,9 @@ actor LocalStore {
         record.urlString = item.url?.absoluteString
         record.publishedAt = item.publishedAt
         record.summary = item.summary
+        record.author = item.author
+        record.body = item.body
+        record.bodyCachedAt = item.bodyCachedAt
         record.isRead = item.isRead
         record.isFavorite = item.isFavorite
     }

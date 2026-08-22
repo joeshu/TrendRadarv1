@@ -9,6 +9,9 @@ final class NewsRecord {
     var urlString: String?
     var publishedAt: Date?
     var summary: String?
+    var author: String?
+    var body: String?
+    var bodyCachedAt: Date?
     var isRead: Bool
     var isFavorite: Bool
 
@@ -19,6 +22,9 @@ final class NewsRecord {
         urlString = item.url?.absoluteString
         publishedAt = item.publishedAt
         summary = item.summary
+        author = item.author
+        body = item.body
+        bodyCachedAt = item.bodyCachedAt
         isRead = item.isRead
         isFavorite = item.isFavorite
     }
@@ -31,6 +37,9 @@ final class NewsRecord {
             url: urlString.flatMap(URL.init(string:)),
             publishedAt: publishedAt,
             summary: summary,
+            author: author,
+            body: body,
+            bodyCachedAt: bodyCachedAt,
             isRead: isRead,
             isFavorite: isFavorite
         )

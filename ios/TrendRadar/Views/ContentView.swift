@@ -18,10 +18,7 @@ struct RadarView: View {
     private var filteredItems: [NewsItem] {
         store.items.filter { item in
             let matchesSearch = searchText.isEmpty || item.title.localizedCaseInsensitiveContains(searchText) || item.source.localizedCaseInsensitiveContains(searchText)
-            let matchesKeywords = KeywordRuleSet(
-                keywords: settingsStore.settings.keywords,
-                globalExcluded: settingsStore.settings.globalFilterWords
-            ).matches(item.title)
+            let matchesKeywords = FilterEngine(settings: settingsStore.settings).includes(item)
             let matchesSource = selectedSource == "全部" || item.source == selectedSource
             return matchesSearch && matchesKeywords && matchesSource && (!showingFavorites || item.isFavorite)
         }
@@ -221,8 +218,17 @@ struct RadarView: View {
                 FeatureEmptyState(icon: "flame", title: "暂无热榜缓存", message: "点击刷新获取 NewsNow 公开热榜数据。")
             } else {
                 hotPlatformPicker
-                ForEach(hotNewsStore.filteredItems.prefix(8)) { item in
-                    HotNewsCard(item: item)
+                ForEach(hotNewsStore.topics.prefix(8)) { topic in
+                    NavigationLink {
+                        HotNewsTrendView(topic: topic)
+                    } label: {
+                        RadarHotTopicCard(
+                            topic: topic,
+                            onFavorite: { Task { await hotNewsStore.toggleFavorite(for: topic) } },
+                            onBlock: { hotNewsStore.block(topic: topic) }
+                        )
+                    }
+                    .buttonStyle(.plain)
                 }
             }
         }
@@ -239,6 +245,69 @@ struct RadarView: View {
                 }
             }
         }
+    }
+}
+
+private struct RadarHotTopicCard: View {
+    let topic: HotNewsTopic
+    let onFavorite: () -> Void
+    let onBlock: () -> Void
+
+    private var isFavorite: Bool {
+        topic.items.allSatisfy(\.isFavorite)
+    }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Text("#\(topic.bestRank)")
+                .font(AppTheme.rankFont)
+                .foregroundStyle(topic.strongestTrend == .up ? AppTheme.green : AppTheme.pink)
+                .frame(width: 50, alignment: .leading)
+            VStack(alignment: .leading, spacing: 5) {
+                Text(topic.title)
+                    .font(AppTheme.headlineFont)
+                    .foregroundStyle(.white)
+                    .lineLimit(2)
+                HStack(spacing: 6) {
+                    Text("\(topic.platformCount) 个平台正在讨论")
+                    if topic.strongestTrend == .new {
+                        Text("NEW").foregroundStyle(AppTheme.yellow)
+                    }
+                    if let duration = topic.duration, duration >= 3600 {
+                        Text("持续 \(Int(duration / 3600)) 小时")
+                            .foregroundStyle(AppTheme.yellow)
+                    }
+                }
+                .font(AppTheme.captionFont)
+                .foregroundStyle(AppTheme.textTertiary)
+            }
+            Spacer()
+            Image(systemName: "chevron.right")
+                .foregroundStyle(AppTheme.textTertiary)
+        }
+        .padding(14)
+        .background(AppTheme.card)
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(topic.strongestTrend == .new ? AppTheme.yellow.opacity(0.7) : AppTheme.cardBorder, lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .contextMenu {
+            Button(action: onFavorite) {
+                Label(isFavorite ? "取消收藏" : "收藏主题", systemImage: isFavorite ? "star.slash" : "star")
+            }
+            ShareLink(item: shareText) {
+                Label("分享主题", systemImage: "square.and.arrow.up")
+            }
+            Button(role: .destructive, action: onBlock) {
+                Label("屏蔽主题", systemImage: "eye.slash")
+            }
+        }
+    }
+
+    private var shareText: String {
+        let platforms = topic.platforms.joined(separator: "、")
+        return "\(topic.title)\n排名：#\(topic.bestRank)\n讨论平台：\(platforms)"
     }
 }
 

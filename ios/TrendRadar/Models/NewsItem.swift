@@ -7,18 +7,41 @@ struct NewsItem: Codable, Identifiable, Hashable, Sendable {
     let url: URL?
     let publishedAt: Date?
     var summary: String?
+    var author: String?
+    var body: String?
+    var bodyCachedAt: Date?
     var isRead: Bool = false
     var isFavorite: Bool = false
 
-    init(id: String = UUID().uuidString, title: String, source: String, url: URL? = nil, publishedAt: Date? = nil, summary: String? = nil, isRead: Bool = false, isFavorite: Bool = false) {
+    private enum CodingKeys: String, CodingKey { case id, title, source, url, publishedAt, summary, author, body, bodyCachedAt, isRead, isFavorite }
+
+    init(id: String = UUID().uuidString, title: String, source: String, url: URL? = nil, publishedAt: Date? = nil, summary: String? = nil, author: String? = nil, body: String? = nil, bodyCachedAt: Date? = nil, isRead: Bool = false, isFavorite: Bool = false) {
         self.id = id
         self.title = title
         self.source = source
         self.url = url
         self.publishedAt = publishedAt
         self.summary = summary
+        self.author = author
+        self.body = body
+        self.bodyCachedAt = bodyCachedAt
         self.isRead = isRead
         self.isFavorite = isFavorite
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        title = try container.decode(String.self, forKey: .title)
+        source = try container.decode(String.self, forKey: .source)
+        url = try container.decodeIfPresent(URL.self, forKey: .url)
+        publishedAt = try container.decodeIfPresent(Date.self, forKey: .publishedAt)
+        summary = try container.decodeIfPresent(String.self, forKey: .summary)
+        author = try container.decodeIfPresent(String.self, forKey: .author)
+        body = try container.decodeIfPresent(String.self, forKey: .body)
+        bodyCachedAt = try container.decodeIfPresent(Date.self, forKey: .bodyCachedAt)
+        isRead = try container.decodeIfPresent(Bool.self, forKey: .isRead) ?? false
+        isFavorite = try container.decodeIfPresent(Bool.self, forKey: .isFavorite) ?? false
     }
 }
 
@@ -48,13 +71,27 @@ struct ConfigFeed: Codable, Identifiable, Hashable, Sendable {
     var url: String
     var isEnabled: Bool
     var maxAgeDays: Int
+    var group: String
 
-    init(id: String, name: String, url: String, isEnabled: Bool = true, maxAgeDays: Int = 0) {
+    private enum CodingKeys: String, CodingKey { case id, name, url, isEnabled, maxAgeDays, group }
+
+    init(id: String, name: String, url: String, isEnabled: Bool = true, maxAgeDays: Int = 0, group: String = "未分组") {
         self.id = id
         self.name = name
         self.url = url
         self.isEnabled = isEnabled
         self.maxAgeDays = maxAgeDays
+        self.group = group
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        name = try container.decode(String.self, forKey: .name)
+        url = try container.decode(String.self, forKey: .url)
+        isEnabled = try container.decodeIfPresent(Bool.self, forKey: .isEnabled) ?? true
+        maxAgeDays = try container.decodeIfPresent(Int.self, forKey: .maxAgeDays) ?? 0
+        group = try container.decodeIfPresent(String.self, forKey: .group) ?? "未分组"
     }
 
     var rssFeed: RSSFeed? {
@@ -250,7 +287,40 @@ struct AppSettings: Codable, Equatable, Sendable {
         PlatformSource(id: "tieba", name: "贴吧", expectedDomain: "baidu.com"),
         PlatformSource(id: "weibo", name: "微博", expectedDomain: "weibo.com"),
         PlatformSource(id: "douyin", name: "抖音", expectedDomain: "douyin.com"),
-        PlatformSource(id: "zhihu", name: "知乎", expectedDomain: "zhihu.com")
+        PlatformSource(id: "zhihu", name: "知乎", expectedDomain: "zhihu.com"),
+        PlatformSource(id: "36kr", name: "36氪", expectedDomain: "36kr.com"),
+        PlatformSource(id: "ithome", name: "IT之家", expectedDomain: "ithome.com"),
+        PlatformSource(id: "hupu", name: "虎扑", expectedDomain: "hupu.com"),
+        PlatformSource(id: "nga", name: "NGA", expectedDomain: "nga.cn"),
+        PlatformSource(id: "juejin", name: "掘金", expectedDomain: "juejin.cn"),
+        PlatformSource(id: "sspai", name: "少数派", expectedDomain: "sspai.com"),
+        PlatformSource(id: "coolapk", name: "酷安", expectedDomain: "coolapk.com"),
+        PlatformSource(id: "v2ex", name: "V2EX", expectedDomain: "v2ex.com"),
+        PlatformSource(id: "github-trending-today", name: "GitHub Trending", expectedDomain: "github.com"),
+        PlatformSource(id: "producthunt", name: "Product Hunt", expectedDomain: "producthunt.com"),
+        PlatformSource(id: "hackernews", name: "Hacker News", expectedDomain: "ycombinator.com"),
+        PlatformSource(id: "reddit", name: "Reddit", expectedDomain: "reddit.com"),
+        PlatformSource(id: "youtube", name: "YouTube", expectedDomain: "youtube.com"),
+        PlatformSource(id: "tiktok", name: "TikTok", expectedDomain: "tiktok.com"),
+        PlatformSource(id: "kuaishou", name: "快手", expectedDomain: "kuaishou.com"),
+        PlatformSource(id: "netease-news", name: "网易新闻", expectedDomain: "163.com"),
+        PlatformSource(id: "qq-news", name: "腾讯新闻", expectedDomain: "qq.com"),
+        PlatformSource(id: "sina-news", name: "新浪新闻", expectedDomain: "sina.com.cn"),
+        PlatformSource(id: "sohu-news", name: "搜狐新闻", expectedDomain: "sohu.com"),
+        PlatformSource(id: "xueqiu", name: "雪球", expectedDomain: "xueqiu.com"),
+        PlatformSource(id: "eastmoney", name: "东方财富", expectedDomain: "eastmoney.com"),
+        PlatformSource(id: "yiche", name: "易车", expectedDomain: "yiche.com"),
+        PlatformSource(id: "autohome", name: "汽车之家", expectedDomain: "autohome.com.cn"),
+        PlatformSource(id: "douban", name: "豆瓣", expectedDomain: "douban.com"),
+        PlatformSource(id: "acfun", name: "AcFun", expectedDomain: "acfun.cn"),
+        PlatformSource(id: "qq-video", name: "腾讯视频", expectedDomain: "qq.com"),
+        PlatformSource(id: "youku", name: "优酷", expectedDomain: "youku.com"),
+        PlatformSource(id: "google", name: "Google 热搜", expectedDomain: "google.com"),
+        PlatformSource(id: "wikipedia", name: "Wikipedia", expectedDomain: "wikipedia.org"),
+        PlatformSource(id: "techcrunch", name: "TechCrunch", expectedDomain: "techcrunch.com"),
+        PlatformSource(id: "theverge", name: "The Verge", expectedDomain: "theverge.com"),
+        PlatformSource(id: "nytimes", name: "New York Times", expectedDomain: "nytimes.com"),
+        PlatformSource(id: "bbc", name: "BBC", expectedDomain: "bbc.com")
     ]
 
     private enum CodingKeys: String, CodingKey {
@@ -273,7 +343,9 @@ struct AppSettings: Codable, Equatable, Sendable {
         schedulePreset = try container.decodeIfPresent(String.self, forKey: .schedulePreset) ?? "night_owl"
         platformsEnabled = try container.decodeIfPresent(Bool.self, forKey: .platformsEnabled) ?? true
          platformAPIURL = try container.decodeIfPresent(String.self, forKey: .platformAPIURL) ?? "https://newsnow.busiyi.world/api"
-        platformSources = try container.decodeIfPresent([PlatformSource].self, forKey: .platformSources) ?? Self.defaultPlatformSources
+         let configuredSources = try container.decodeIfPresent([PlatformSource].self, forKey: .platformSources) ?? []
+         let configuredIDs = Set(configuredSources.map(\.id))
+         platformSources = configuredSources + Self.defaultPlatformSources.filter { !configuredIDs.contains($0.id) }
         rssEnabled = try container.decodeIfPresent(Bool.self, forKey: .rssEnabled) ?? true
         rssFreshnessEnabled = try container.decodeIfPresent(Bool.self, forKey: .rssFreshnessEnabled) ?? true
         rssMaxAgeDays = try container.decodeIfPresent(Int.self, forKey: .rssMaxAgeDays) ?? 1

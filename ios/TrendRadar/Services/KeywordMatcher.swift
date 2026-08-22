@@ -40,6 +40,85 @@ struct KeywordRuleSet: Sendable, Equatable {
     }
 }
 
+struct FilterPreview: Sendable, Equatable {
+    let matches: Bool
+    let isStandalone: Bool
+    let matchedRules: [String]
+}
+
+struct FilterEngine: Sendable {
+    let rules: KeywordRuleSet
+    let standalonePlatformIDs: Set<String>
+    let standaloneFeedIDs: Set<String>
+
+    init(settings: AppSettings) {
+        rules = KeywordRuleSet(keywords: settings.keywords, globalExcluded: settings.globalFilterWords)
+        standalonePlatformIDs = Set(settings.display.standalonePlatforms)
+        standaloneFeedIDs = Set(settings.display.standaloneRSSFeeds)
+    }
+
+    func preview(_ item: IntelligenceItem) -> FilterPreview {
+        let standalone = item.sourceType == .hotlist
+            ? standalonePlatformIDs.contains(item.sourceID)
+            : standaloneFeedIDs.contains(item.sourceID)
+        if standalone {
+            return FilterPreview(matches: true, isStandalone: true, matchedRules: ["独立展示源"])
+        }
+        let matches = rules.matches(item.title)
+        let matchedRules = rules.normal.filter { item.title.localizedCaseInsensitiveContains($0) }
+            + rules.required.filter { item.title.localizedCaseInsensitiveContains($0) }
+        return FilterPreview(matches: matches, isStandalone: false, matchedRules: matchedRules)
+    }
+
+    func includes(_ item: IntelligenceItem) -> Bool {
+        preview(item).matches
+    }
+
+    func includes(_ item: NewsItem) -> Bool {
+        preview(item).matches
+    }
+
+    func preview(_ item: NewsItem) -> FilterPreview {
+        let intelligence = IntelligenceItem(
+            id: item.id,
+            sourceType: .rss,
+            sourceID: item.source,
+            sourceName: item.source,
+            title: item.title,
+            url: item.url,
+            publishedAt: item.publishedAt,
+            summary: item.summary,
+            topicKey: item.title,
+            isRead: item.isRead,
+            isFavorite: item.isFavorite
+        )
+        return preview(intelligence)
+    }
+
+    func includes(_ item: HotNewsItem) -> Bool {
+        preview(item).matches
+    }
+
+    func preview(_ item: HotNewsItem) -> FilterPreview {
+        let intelligence = IntelligenceItem(
+            id: item.id,
+            sourceType: .hotlist,
+            sourceID: item.platformID,
+            sourceName: item.platformName,
+            title: item.title,
+            url: item.url,
+            publishedAt: item.publishedAt,
+            summary: item.extraInfo,
+            topicKey: item.topicKey,
+            rank: item.rank,
+            previousRank: item.previousRank,
+            isRead: item.isRead,
+            isFavorite: item.isFavorite
+        )
+        return preview(intelligence)
+    }
+}
+
 struct KeywordGroup: Sendable, Equatable {
     let displayName: String
     let normal: [String]

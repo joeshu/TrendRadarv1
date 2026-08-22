@@ -65,6 +65,9 @@ final class ReportStore: ObservableObject {
                 }
                 let standaloneContent = aiService.standaloneContent(hotlistItems: snapshotHotlist, rssItems: snapshotRSS, settings: settings)
                 report.aiAnalysis = await aiService.reportAnalysis(hotlistItems: snapshotHotlist, rssItems: snapshotRSS, settings: settings, reportType: type.displayName, standaloneContent: standaloneContent)
+                report.aiAnalysis?.citations = report.sections.flatMap(\.items).compactMap { item in
+                    InsightCitation(itemID: item.id, title: item.title, source: item.source, url: item.url)
+                }
             }
             try await localStore.save(report)
             completedBatches.insert(resolvedBatchID)

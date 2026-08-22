@@ -3,6 +3,32 @@ import Foundation
 struct AIService: Sendable {
     private let keychain = KeychainStore()
 
+    func query(question: String, hotlistItems: [HotNewsItem], rssItems: [NewsItem], settings: AppSettings) async throws -> InsightQueryResult {
+        let sources = hotlistItems.map { "[\($0.id)] \($0.title) | \($0.url?.absoluteString ?? "")" }
+            + rssItems.map { "[\($0.id)] \($0.title) | \($0.url?.absoluteString ?? "")" }
+        let content = try await request(messages: AIPromptMessages(
+            system: "你是本地情报助手。只输出 JSON，字段为 answer 和 citation_ids。citation_ids 必须来自输入条目 ID。",
+            user: "问题：\n\(question)\n本地情报：\n\(sources.joined(separator: "\n"))"
+        ), settings: settings)
+        let normalized = normalizedJSON(content)
+        let decoded = try? JSONDecoder().decode(QueryResponse.self, from: Data(normalized.utf8))
+        let answer = decoded?.answer ?? content
+        let citationIDs = decoded?.citationIDs ?? []
+        let allItems = hotlistItems.map { (id: $0.id, title: $0.title, source: $0.platformName, url: $0.url) }
+            + rssItems.map { (id: $0.id, title: $0.title, source: $0.source, url: $0.url) }
+        let citations = citationIDs.compactMap { id in
+            allItems.first(where: { $0.id == id }).map { InsightCitation(itemID: $0.id, title: $0.title, source: $0.source, url: $0.url) }
+        }
+        return InsightQueryResult(answer: answer, citations: citations, createdAt: Date())
+    }
+
+    private struct QueryResponse: Decodable {
+        let answer: String
+        let citationIDs: [String]
+
+        enum CodingKeys: String, CodingKey { case answer, citationIDs = "citation_ids" }
+    }
+
     func summarize(_ item: NewsItem, settings: AppSettings = AppSettings()) async throws -> String {
         let baseURL = keychain.read("api-base").trimmingCharacters(in: .whitespacesAndNewlines)
         let apiKey = keychain.read("api-key")

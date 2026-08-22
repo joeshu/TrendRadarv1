@@ -29,7 +29,7 @@ final class HotNewsRecord {
         publishedAt = item.publishedAt
         extraInfo = item.extraInfo
         topicKey = item.topicKey
-        firstSeenAt = seenAt
+        firstSeenAt = item.firstSeenAt ?? seenAt
         lastSeenAt = seenAt
         isRead = item.isRead
         isFavorite = item.isFavorite
@@ -49,7 +49,7 @@ final class HotNewsRecord {
     }
 
     var asItem: HotNewsItem {
-        HotNewsItem(id: id, title: title, url: urlString.flatMap(URL.init(string:)), platformID: platformID, platformName: platformName, rank: currentRank, publishedAt: publishedAt, extraInfo: extraInfo, topicKey: topicKey, previousRank: previousRank, isRead: isRead, isFavorite: isFavorite)
+        HotNewsItem(id: id, title: title, url: urlString.flatMap(URL.init(string:)), platformID: platformID, platformName: platformName, rank: currentRank, publishedAt: publishedAt, extraInfo: extraInfo, topicKey: topicKey, firstSeenAt: firstSeenAt, previousRank: previousRank, isRead: isRead, isFavorite: isFavorite)
     }
 }
 

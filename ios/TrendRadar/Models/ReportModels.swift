@@ -122,6 +122,7 @@ struct ReportAIAnalysis: Codable, Equatable, Hashable, Sendable {
     var sentimentControversy: String? = nil
     var rssInsights: String? = nil
     var standaloneSummaries: [String: String] = [:]
+    var citations: [InsightCitation] = []
 
     var hasContent: Bool {
         let values = [content, coreTrends, signals, sentimentControversy, rssInsights, recommendation]
@@ -129,6 +130,32 @@ struct ReportAIAnalysis: Codable, Equatable, Hashable, Sendable {
             guard let value else { return false }
             return !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         } || !standaloneSummaries.isEmpty
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case enabled, model, language, content, coreTrends, signals, failureMessage
+        case sentimentPositive, sentimentNeutral, sentimentNegative, weakSignals
+        case recommendation, sentimentControversy, rssInsights, standaloneSummaries, citations
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        enabled = try container.decodeIfPresent(Bool.self, forKey: .enabled) ?? false
+        model = try container.decodeIfPresent(String.self, forKey: .model)
+        language = try container.decodeIfPresent(String.self, forKey: .language) ?? "Chinese"
+        content = try container.decodeIfPresent(String.self, forKey: .content)
+        coreTrends = try container.decodeIfPresent(String.self, forKey: .coreTrends)
+        signals = try container.decodeIfPresent(String.self, forKey: .signals)
+        failureMessage = try container.decodeIfPresent(String.self, forKey: .failureMessage)
+        sentimentPositive = try container.decodeIfPresent(Double.self, forKey: .sentimentPositive)
+        sentimentNeutral = try container.decodeIfPresent(Double.self, forKey: .sentimentNeutral)
+        sentimentNegative = try container.decodeIfPresent(Double.self, forKey: .sentimentNegative)
+        weakSignals = try container.decodeIfPresent([String].self, forKey: .weakSignals) ?? []
+        recommendation = try container.decodeIfPresent(String.self, forKey: .recommendation)
+        sentimentControversy = try container.decodeIfPresent(String.self, forKey: .sentimentControversy)
+        rssInsights = try container.decodeIfPresent(String.self, forKey: .rssInsights)
+        standaloneSummaries = try container.decodeIfPresent([String: String].self, forKey: .standaloneSummaries) ?? [:]
+        citations = try container.decodeIfPresent([InsightCitation].self, forKey: .citations) ?? []
     }
 }
 

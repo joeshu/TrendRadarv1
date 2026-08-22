@@ -27,6 +27,7 @@ final class ReportRecord {
     var aiSentimentControversy: String?
     var aiRSSInsights: String?
     var aiStandaloneSummariesJSON: Data?
+    var aiCitationsJSON: Data?
     var settingsSnapshotJSON: Data?
     var isFavorite: Bool
     var failureMessage: String?
@@ -62,6 +63,7 @@ final class ReportRecord {
         aiSentimentControversy = report.aiAnalysis?.sentimentControversy
         aiRSSInsights = report.aiAnalysis?.rssInsights
         aiStandaloneSummariesJSON = try? encoder.encode(report.aiAnalysis?.standaloneSummaries ?? [:])
+        aiCitationsJSON = try? encoder.encode(report.aiAnalysis?.citations ?? [])
         settingsSnapshotJSON = try encoder.encode(report.settingsSnapshot)
         isFavorite = report.isFavorite
         failureMessage = report.failureMessage
@@ -97,6 +99,7 @@ final class ReportRecord {
         aiSentimentControversy = report.aiAnalysis?.sentimentControversy
         aiRSSInsights = report.aiAnalysis?.rssInsights
         aiStandaloneSummariesJSON = try? encoder.encode(report.aiAnalysis?.standaloneSummaries ?? [:])
+        aiCitationsJSON = try? encoder.encode(report.aiAnalysis?.citations ?? [])
         settingsSnapshotJSON = try encoder.encode(report.settingsSnapshot)
         isFavorite = report.isFavorite
         failureMessage = report.failureMessage
@@ -146,7 +149,7 @@ final class ReportRecord {
         }
 
         let analysis = aiEnabled || aiSummary != nil
-            ? ReportAIAnalysis(enabled: aiEnabled, model: aiModel, language: aiLanguage ?? "Chinese", content: aiSummary, coreTrends: aiCoreTrends, signals: aiSignals, failureMessage: failureMessage, sentimentPositive: aiSentimentPositive, sentimentNeutral: aiSentimentNeutral, sentimentNegative: aiSentimentNegative, weakSignals: aiWeakSignalsJSON.flatMap { try? decoder.decode([String].self, from: $0) } ?? [], recommendation: aiRecommendation, sentimentControversy: aiSentimentControversy, rssInsights: aiRSSInsights, standaloneSummaries: aiStandaloneSummariesJSON.flatMap { try? decoder.decode([String: String].self, from: $0) } ?? [:])
+            ? ReportAIAnalysis(enabled: aiEnabled, model: aiModel, language: aiLanguage ?? "Chinese", content: aiSummary, coreTrends: aiCoreTrends, signals: aiSignals, failureMessage: failureMessage, sentimentPositive: aiSentimentPositive, sentimentNeutral: aiSentimentNeutral, sentimentNegative: aiSentimentNegative, weakSignals: aiWeakSignalsJSON.flatMap { try? decoder.decode([String].self, from: $0) } ?? [], recommendation: aiRecommendation, sentimentControversy: aiSentimentControversy, rssInsights: aiRSSInsights, standaloneSummaries: aiStandaloneSummariesJSON.flatMap { try? decoder.decode([String: String].self, from: $0) } ?? [:], citations: aiCitationsJSON.flatMap { try? decoder.decode([InsightCitation].self, from: $0) } ?? [])
             : nil
         return ReportDetail(
             id: uuid,

@@ -12,13 +12,14 @@ struct ReportGenerationRequest: Sendable {
 struct ReportGenerationService: Sendable {
     func generate(request: ReportGenerationRequest, items: [NewsItem], hotlistItems: [HotNewsItem] = []) -> ReportDetail {
         let groups = KeywordGroup.parse(request.settings.keywords)
+        let filterEngine = FilterEngine(settings: request.settings)
         let matchingItems = items.filter { item in
-            guard !request.settings.globalFilterWords.contains(where: { item.title.localizedCaseInsensitiveContains($0) }) else { return false }
-            return groups.isEmpty || groups.contains { $0.matches(item.title) }
+            let preview = filterEngine.preview(item)
+            return preview.matches && (preview.isStandalone || groups.isEmpty || groups.contains { $0.matches(item.title) })
         }
         let matchingHotlistItems = hotlistItems.filter { item in
-            guard !request.settings.globalFilterWords.contains(where: { item.title.localizedCaseInsensitiveContains($0) }) else { return false }
-            return groups.isEmpty || groups.contains { $0.matches(item.title) }
+            let preview = filterEngine.preview(item)
+            return preview.matches && (preview.isStandalone || groups.isEmpty || groups.contains { $0.matches(item.title) })
         }
         let sections = makeSections(items: matchingItems, hotlistItems: matchingHotlistItems, groups: groups, settings: request.settings)
         let displayedItems = sections.flatMap(\.items)

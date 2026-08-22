@@ -84,6 +84,7 @@ struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var keywordText = ""
     @State private var filterText = ""
+    @State private var keywordPreviewText = ""
     @State private var interestText = ""
     @State private var apiBase = ""
     @State private var apiKey = ""
@@ -365,6 +366,23 @@ struct SettingsView: View {
             Text("示例：AI, +发布, !广告。必须词全部命中，普通词命中任意一个，过滤词命中后排除。")
                 .font(.caption)
                 .foregroundStyle(.secondary)
+            TextField("输入测试标题，预览匹配结果", text: $keywordPreviewText, axis: .vertical)
+            if !keywordPreviewText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                let preview = FilterEngine(settings: settingsStore.settings).preview(
+                    NewsItem(id: "keyword-preview", title: keywordPreviewText, source: "preview")
+                )
+                Label(
+                    preview.matches ? "预计匹配当前情报规则" : "当前标题会被过滤",
+                    systemImage: preview.matches ? "checkmark.circle.fill" : "xmark.circle.fill"
+                )
+                .font(.caption)
+                .foregroundStyle(preview.matches ? AppTheme.green : AppTheme.red)
+                if !preview.matchedRules.isEmpty {
+                    Text("命中：" + preview.matchedRules.joined(separator: "、"))
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
             Picker("筛选方式", selection: $settingsStore.settings.ai.filterMethod) {
                 Text("关键词匹配").tag("keyword")
                 Text("AI 智能分类").tag("ai")
@@ -761,6 +779,7 @@ struct FeedEditorView: View {
     @State private var url: String
     @State private var isEnabled: Bool
     @State private var maxAgeDays: Int
+    @State private var group: String
     private let onSave: (ConfigFeed) -> Void
 
     init(feed: ConfigFeed?, onSave: @escaping (ConfigFeed) -> Void) {
@@ -769,6 +788,7 @@ struct FeedEditorView: View {
         _url = State(initialValue: feed?.url ?? "https://example.com/feed.xml")
         _isEnabled = State(initialValue: feed?.isEnabled ?? true)
         _maxAgeDays = State(initialValue: feed?.maxAgeDays ?? 0)
+        _group = State(initialValue: feed?.group ?? "未分组")
         self.onSave = onSave
     }
 
@@ -785,6 +805,7 @@ struct FeedEditorView: View {
                 }
                 Section("新鲜度") {
                     Stepper("单源最大年龄：\(maxAgeDays == 0 ? "跟随全局" : "\(maxAgeDays) 天")", value: $maxAgeDays, in: 0...30)
+                    TextField("主题分组", text: $group)
                 }
             }
             .navigationTitle("编辑 RSS")
@@ -797,7 +818,7 @@ struct FeedEditorView: View {
                         let normalizedURL = url.trimmingCharacters(in: .whitespacesAndNewlines)
                         guard !normalizedID.isEmpty, !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
                               URL(string: normalizedURL) != nil else { return }
-                        onSave(ConfigFeed(id: normalizedID, name: name, url: normalizedURL, isEnabled: isEnabled, maxAgeDays: maxAgeDays))
+                         onSave(ConfigFeed(id: normalizedID, name: name, url: normalizedURL, isEnabled: isEnabled, maxAgeDays: maxAgeDays, group: group.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "未分组" : group))
                         dismiss()
                     }
                 }

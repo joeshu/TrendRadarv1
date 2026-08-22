@@ -1,10 +1,10 @@
 import Foundation
 
 struct NewsNowService: Sendable {
-    func fetch(sourceID: String, sourceName: String, expectedDomain: String? = nil, baseURL: String, latest: Bool = false) async throws -> [HotNewsItem] {
+    func fetch(sourceID: String, sourceName: String, expectedDomain: String? = nil, baseURL: String, latest: Bool = false, timeout: TimeInterval = 20) async throws -> [HotNewsItem] {
         let endpoint = try makeURL(sourceID: sourceID, baseURL: baseURL, latest: latest)
         var request = URLRequest(url: endpoint)
-        request.timeoutInterval = 20
+        request.timeoutInterval = timeout
         request.setValue("TrendRadar/1.0", forHTTPHeaderField: "User-Agent")
         let data: Data
         let response: URLResponse
@@ -34,7 +34,7 @@ struct NewsNowService: Sendable {
     }
 
     static func topicKey(for title: String) -> String {
-        title.lowercased().unicodeScalars.filter { CharacterSet.alphanumerics.contains($0) }.map(String.init).joined()
+        TopicDeduplicator().topicKey(for: title)
     }
 
     private func makeURL(sourceID: String, baseURL: String, latest: Bool) throws -> URL {
