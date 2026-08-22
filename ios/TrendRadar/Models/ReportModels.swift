@@ -207,6 +207,30 @@ struct StructuredAIAnalysis: Codable, Equatable, Hashable, Sendable {
     var rssInsights: String
     var standaloneSummaries: [String: String]
 
+    init(
+        overview: String,
+        sentimentPositive: Double,
+        sentimentNeutral: Double,
+        sentimentNegative: Double,
+        weakSignals: [String],
+        signals: String = "",
+        recommendation: String,
+        sentimentControversy: String = "",
+        rssInsights: String = "",
+        standaloneSummaries: [String: String] = [:]
+    ) {
+        self.overview = overview
+        self.sentimentPositive = sentimentPositive
+        self.sentimentNeutral = sentimentNeutral
+        self.sentimentNegative = sentimentNegative
+        self.weakSignals = weakSignals
+        self.signals = signals
+        self.recommendation = recommendation
+        self.sentimentControversy = sentimentControversy
+        self.rssInsights = rssInsights
+        self.standaloneSummaries = standaloneSummaries
+    }
+
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         overview = try container.decodeIfPresent(String.self, forKey: .overview)
