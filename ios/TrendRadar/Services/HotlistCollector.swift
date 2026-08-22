@@ -99,7 +99,6 @@ struct HotlistCollector: Sendable {
                 topicKey: item.topicKey,
                 rank: item.rank,
                 previousRank: item.previousRank,
-                firstSeenAt: nil,
                 collectedAt: collectedAt,
                 isRead: item.isRead,
                 isFavorite: item.isFavorite

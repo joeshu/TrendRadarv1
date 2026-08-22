@@ -124,6 +124,42 @@ struct ReportAIAnalysis: Codable, Equatable, Hashable, Sendable {
     var standaloneSummaries: [String: String] = [:]
     var citations: [InsightCitation] = []
 
+    init(
+        enabled: Bool,
+        model: String?,
+        language: String,
+        content: String?,
+        coreTrends: String? = nil,
+        signals: String? = nil,
+        failureMessage: String?,
+        sentimentPositive: Double? = nil,
+        sentimentNeutral: Double? = nil,
+        sentimentNegative: Double? = nil,
+        weakSignals: [String] = [],
+        recommendation: String? = nil,
+        sentimentControversy: String? = nil,
+        rssInsights: String? = nil,
+        standaloneSummaries: [String: String] = [:],
+        citations: [InsightCitation] = []
+    ) {
+        self.enabled = enabled
+        self.model = model
+        self.language = language
+        self.content = content
+        self.coreTrends = coreTrends
+        self.signals = signals
+        self.failureMessage = failureMessage
+        self.sentimentPositive = sentimentPositive
+        self.sentimentNeutral = sentimentNeutral
+        self.sentimentNegative = sentimentNegative
+        self.weakSignals = weakSignals
+        self.recommendation = recommendation
+        self.sentimentControversy = sentimentControversy
+        self.rssInsights = rssInsights
+        self.standaloneSummaries = standaloneSummaries
+        self.citations = citations
+    }
+
     var hasContent: Bool {
         let values = [content, coreTrends, signals, sentimentControversy, rssInsights, recommendation]
         return values.contains { value in

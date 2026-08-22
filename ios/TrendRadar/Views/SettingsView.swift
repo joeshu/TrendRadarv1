@@ -107,13 +107,7 @@ struct SettingsView: View {
         NavigationStack {
             List {
                 configurationOverview
-                Section("设置") {
-                    ForEach(SettingsCategory.allCases) { category in
-                        NavigationLink(value: category) {
-                            SettingsCategoryRow(category: category)
-                        }
-                    }
-                }
+                settingsCategories
             }
             .navigationTitle("配置中心")
             .navigationBarTitleDisplayMode(.inline)
@@ -232,6 +226,16 @@ struct SettingsView: View {
                     }
                 }
                 Button("取消", role: .cancel) {}
+            }
+        }
+    }
+
+    private var settingsCategories: some View {
+        Section("设置") {
+            ForEach(SettingsCategory.allCases) { category in
+                NavigationLink(value: category) {
+                    SettingsCategoryRow(category: category)
+                }
             }
         }
     }
