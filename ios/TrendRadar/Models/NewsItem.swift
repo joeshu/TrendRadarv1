@@ -244,6 +244,15 @@ struct NotificationSettings: Codable, Equatable, Sendable {
 }
 
 struct AppSettings: Codable, Equatable, Sendable {
+    static let defaultPlatformAPIURL = "https://newsnow.vercel.app/api"
+    static let legacyPlatformAPIURL = "https://newsnow.busiyi.world/api"
+
+    static func effectivePlatformAPIURL(_ configured: String) -> String {
+        let value = configured.trimmingCharacters(in: .whitespacesAndNewlines).trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        let legacy = legacyPlatformAPIURL.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        return value.isEmpty || value == legacy ? defaultPlatformAPIURL : value
+    }
+
     var keywords: [String] = []
     var enabledFeedIDs: Set<String> = ["hn", "bbc"]
     var refreshInterval: Double = 60
@@ -252,7 +261,7 @@ struct AppSettings: Codable, Equatable, Sendable {
     var scheduleEnabled = true
     var schedulePreset = "night_owl"
     var platformsEnabled = true
-    var platformAPIURL = "https://newsnow.busiyi.world/api"
+    var platformAPIURL = AppSettings.defaultPlatformAPIURL
     var platformSources: [PlatformSource] = AppSettings.defaultPlatformSources
     var rssEnabled = true
     var rssFreshnessEnabled = true
@@ -342,7 +351,8 @@ struct AppSettings: Codable, Equatable, Sendable {
         scheduleEnabled = try container.decodeIfPresent(Bool.self, forKey: .scheduleEnabled) ?? true
         schedulePreset = try container.decodeIfPresent(String.self, forKey: .schedulePreset) ?? "night_owl"
         platformsEnabled = try container.decodeIfPresent(Bool.self, forKey: .platformsEnabled) ?? true
-         platformAPIURL = try container.decodeIfPresent(String.self, forKey: .platformAPIURL) ?? "https://newsnow.busiyi.world/api"
+         let storedPlatformAPIURL = try container.decodeIfPresent(String.self, forKey: .platformAPIURL) ?? Self.defaultPlatformAPIURL
+        platformAPIURL = storedPlatformAPIURL == Self.legacyPlatformAPIURL ? Self.defaultPlatformAPIURL : storedPlatformAPIURL
          let configuredSources = try container.decodeIfPresent([PlatformSource].self, forKey: .platformSources) ?? []
          let configuredIDs = Set(configuredSources.map(\.id))
          platformSources = configuredSources + Self.defaultPlatformSources.filter { !configuredIDs.contains($0.id) }

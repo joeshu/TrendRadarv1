@@ -99,7 +99,7 @@ final class HotNewsStore: ObservableObject {
         sourceFailures = []
         sourceFailureDetails = [:]
         defer { isRefreshing = false }
-        let baseURL = settings.platformAPIURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "https://newsnow.busiyi.world/api" : settings.platformAPIURL
+        let baseURL = AppSettings.effectivePlatformAPIURL(settings.platformAPIURL)
         do {
             guard settings.platformsEnabled else {
                 errorMessage = "热榜平台功能已关闭"

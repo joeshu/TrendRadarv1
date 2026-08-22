@@ -206,9 +206,7 @@ enum BackgroundRefreshService {
         guard settings.platformsEnabled else { return [] }
         let enabledSources = settings.platformSources.filter(\.isEnabled)
         guard !enabledSources.isEmpty else { return previous }
-        let baseURL = settings.platformAPIURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            ? "https://newsnow.busiyi.world/api"
-            : settings.platformAPIURL
+        let baseURL = AppSettings.effectivePlatformAPIURL(settings.platformAPIURL)
         let service = NewsNowService()
         var results: [(PlatformSource, [HotNewsItem])] = []
         for source in enabledSources {

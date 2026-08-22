@@ -289,6 +289,21 @@ final class NewsItemTests: XCTestCase {
         XCTAssertEqual(NewsNowService.topicKey(for: "AI Swift 5.9"), "aiswift59")
     }
 
+    func testPlatformAPIURLMigratesBlockedPublicEndpoint() {
+        XCTAssertEqual(
+            AppSettings.effectivePlatformAPIURL(AppSettings.legacyPlatformAPIURL),
+            AppSettings.defaultPlatformAPIURL
+        )
+        XCTAssertEqual(
+            AppSettings.effectivePlatformAPIURL(""),
+            AppSettings.defaultPlatformAPIURL
+        )
+        XCTAssertEqual(
+            AppSettings.effectivePlatformAPIURL("https://example.com/api"),
+            "https://example.com/api"
+        )
+    }
+
     func testNewsNowDomainValidationRequiresHTTPSAndExpectedDomain() {
         XCTAssertTrue(NewsNowService.isAllowed(url: URL(string: "https://www.zhihu.com/question/1"), expectedDomain: "zhihu.com"))
         XCTAssertFalse(NewsNowService.isAllowed(url: URL(string: "http://www.zhihu.com/question/1"), expectedDomain: "zhihu.com"))
