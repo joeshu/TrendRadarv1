@@ -5,6 +5,17 @@ import UserNotifications
 enum BackgroundRefreshService {
     static let identifier = "com.trendradar.mobile.refresh"
 
+    @discardableResult
+    static func register() -> Bool {
+        BGTaskScheduler.shared.register(forTaskWithIdentifier: identifier, using: nil) { task in
+            guard let refreshTask = task as? BGAppRefreshTask else {
+                task.setTaskCompleted(success: false)
+                return
+            }
+            Task { await run(task: refreshTask) }
+        }
+    }
+
     static func schedule(after interval: TimeInterval = 3600, enabled: Bool = true) {
         guard enabled else {
             BGTaskScheduler.shared.cancel(taskRequestWithIdentifier: identifier)

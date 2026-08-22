@@ -516,6 +516,18 @@ final class NewsItemTests: XCTestCase {
         XCTAssertTrue(text.contains("策略建议：watch"))
     }
 
+    func testHTMLReportExportEscapesContentAndKeepsLinks() {
+        let settings = AppSettings()
+        let item = NewsItem(id: "html-item", title: "A <B> & C", source: "Example", url: URL(string: "https://example.com/?a=1&b=2"))
+        let request = ReportGenerationRequest(batchID: "html-export", type: .manual, trigger: .manual, generatedAt: Date(timeIntervalSince1970: 100), settings: settings)
+        let report = ReportGenerationService().generate(request: request, items: [item])
+        let html = ReportHTMLFormatter().render(report)
+
+        XCTAssertTrue(html.contains("A &lt;B&gt; &amp; C"))
+        XCTAssertTrue(html.contains("https://example.com/?a=1&amp;b=2"))
+        XCTAssertTrue(html.contains("<meta name=\"viewport\""))
+    }
+
     func testKeywordRulesRequireRequiredWordsAndRejectExcludedWords() {
         let rules = KeywordRuleSet(keywords: ["AI, +发布, !广告"], globalExcluded: ["spam"])
 

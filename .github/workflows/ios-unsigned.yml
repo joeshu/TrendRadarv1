@@ -77,26 +77,45 @@ jobs:
           path: ios/build/xcodebuild.log
           if-no-files-found: warn
 
-      - name: Package unsigned IPA
+      - name: Package raw and ad-hoc IPA
         working-directory: ios
         run: |
           APP_PATH="build/DerivedData/Build/Products/Release-iphoneos/TrendRadar.app"
           test -d "$APP_PATH"
           test -f "$APP_PATH/Info.plist"
-          /usr/libexec/PlistBuddy -c "Print :CFBundleExecutable" "$APP_PATH/Info.plist"
-          test -x "$APP_PATH/TrendRadar"
-          mkdir -p build/Payload
-          cp -R "$APP_PATH" build/Payload/TrendRadar.app
-          cd build
-          /usr/bin/zip -qry TrendRadar-unsigned.ipa Payload
-          unzip -t TrendRadar-unsigned.ipa >/dev/null
-          unzip -Z1 TrendRadar-unsigned.ipa | grep -Fx "Payload/TrendRadar.app/Info.plist"
+          EXECUTABLE=$(/usr/libexec/PlistBuddy -c "Print :CFBundleExecutable" "$APP_PATH/Info.plist")
+          test -x "$APP_PATH/$EXECUTABLE"
 
-      - name: Upload unsigned IPA
+          rm -rf build/raw build/adhoc
+          mkdir -p build/raw/Payload build/adhoc/Payload
+          cp -R "$APP_PATH" build/raw/Payload/TrendRadar.app
+          cp -R "$APP_PATH" build/adhoc/Payload/TrendRadar.app
+
+          # A completely unsigned executable is terminated by stock iOS unless the
+          # installer re-signs it. The ad-hoc variant is suitable for environments
+          # such as TrollStore/CoreTrust bypass; AltStore-style tools should use
+          # either IPA and apply their own development signature.
+          /usr/bin/codesign --force --sign - --timestamp=none \
+            --entitlements TrendRadar/Resources/TrendRadar.entitlements \
+            build/adhoc/Payload/TrendRadar.app
+          /usr/bin/codesign --verify --deep --strict --verbose=2 build/adhoc/Payload/TrendRadar.app
+
+          (cd build/raw && /usr/bin/zip -qry ../TrendRadar-unsigned.ipa Payload)
+          (cd build/adhoc && /usr/bin/zip -qry ../TrendRadar-adhoc.ipa Payload)
+          for ipa in build/TrendRadar-unsigned.ipa build/TrendRadar-adhoc.ipa; do
+            unzip -t "$ipa" >/dev/null
+            unzip -Z1 "$ipa" | grep -Fx "Payload/TrendRadar.app/Info.plist"
+          done
+          shasum -a 256 build/TrendRadar-*.ipa | tee build/SHA256SUMS.txt
+
+      - name: Upload sideloading IPA bundle
         uses: actions/upload-artifact@v4
         with:
-          name: TrendRadar-iOS-unsigned
-          path: ios/build/TrendRadar-unsigned.ipa
+          name: TrendRadar-iOS-sideload
+          path: |
+            ios/build/TrendRadar-unsigned.ipa
+            ios/build/TrendRadar-adhoc.ipa
+            ios/build/SHA256SUMS.txt
           if-no-files-found: error
           retention-days: 14
 
@@ -105,5 +124,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: TrendRadar-iOS-packaging-debug
-          path: ios/build/TrendRadar-unsigned.ipa
+          path: |
+            ios/build/TrendRadar-unsigned.ipa
+            ios/build/TrendRadar-adhoc.ipa
           if-no-files-found: warn

@@ -48,7 +48,11 @@ final class ReportStore: ObservableObject {
     }
 
     func generate(type: ReportType, settings: AppSettings, items: [NewsItem], hotlistItems: [HotNewsItem] = [], trigger: ReportTrigger = .manual, batchID: String? = nil) async {
-        let resolvedBatchID = batchID ?? "\(type.rawValue):\((items.map(\.id) + hotlistItems.map(\.id)).sorted().joined(separator: ","))"
+        guard !items.isEmpty || !hotlistItems.isEmpty else {
+            errorMessage = "暂无可生成报告的数据，请先完成一次采集。"
+            return
+        }
+        let resolvedBatchID = batchID ?? "manual:\(UUID().uuidString)"
         guard !completedBatches.contains(resolvedBatchID) else { return }
         guard !isGenerating else { return }
         isGenerating = true

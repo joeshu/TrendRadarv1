@@ -873,7 +873,11 @@ struct ReportCenterView: View {
             }
             .sheet(isPresented: $showingReportGenerator) {
                 ReportGeneratorSheet { type in
-                    Task { await reportStore.generate(type: type, settings: settingsStore.settings, items: store.items, hotlistItems: hotNewsStore.items) }
+                    Task {
+                        await store.refresh(showError: false)
+                        await hotNewsStore.refresh(settings: settingsStore.settings, showError: false)
+                        await reportStore.generate(type: type, settings: settingsStore.settings, items: store.items, hotlistItems: hotNewsStore.items)
+                    }
                 }
             }
             .overlay {

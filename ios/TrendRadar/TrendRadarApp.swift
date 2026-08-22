@@ -1,4 +1,5 @@
 import SwiftUI
+import BackgroundTasks
 
 @main
 struct TrendRadarApp: App {
@@ -8,7 +9,7 @@ struct TrendRadarApp: App {
     @StateObject private var hotNewsStore = HotNewsStore()
 
     init() {
-        // BackgroundTasks registration is optional and can terminate unsupported hosts.
+        BackgroundRefreshService.register()
     }
 
     var body: some Scene {
@@ -22,6 +23,10 @@ struct TrendRadarApp: App {
                     await store.load()
                     store.settings = settingsStore.settings
                     await loadSecondaryStores()
+                    BackgroundRefreshService.schedule(
+                        after: settingsStore.settings.refreshInterval * 60,
+                        enabled: settingsStore.settings.scheduleEnabled
+                    )
                 }
         }
     }

@@ -14,7 +14,7 @@ struct ReportGeneratorSheet: View {
                             Text(type.displayName).tag(type)
                         }
                     }
-                    Text("报告只使用当前手机本地已经抓取的新闻内容。")
+                    Text("生成时会先在手机端采集热榜与 RSS，再按当前筛选、排序和 AI 设置形成报告。")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -167,6 +167,9 @@ struct ReportDetailView: View {
                     Menu {
                         ShareLink(item: ReportFormatter().render(report, format: .markdown)) {
                             Label("分享 Markdown", systemImage: "square.and.arrow.up")
+                        }
+                        ShareLink(item: ReportHTMLExport(report: report), preview: SharePreview(report.title, image: Image(systemName: "doc.richtext"))) {
+                            Label("导出 HTML 报告", systemImage: "doc.richtext")
                         }
                         Button { Task { await reportStore.toggleFavorite(id: report.id); await loadReport() } } label: {
                             Label(report.isFavorite ? "取消收藏" : "收藏", systemImage: report.isFavorite ? "star.slash" : "star")

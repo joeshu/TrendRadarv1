@@ -28,7 +28,13 @@ xcodebuild -project TrendRadar.xcodeproj -scheme TrendRadar -sdk iphonesimulator
 
 ## 无签名 IPA
 
-GitHub Actions 提供 `Build Unsigned TrendRadar IPA` 工作流生成无签名 IPA。无签名 IPA 只适合作为侧载工具的输入文件，安装前需要使用 SideStore、AltStore、Sideloadly 或其他兼容工具完成重新签名。
+GitHub Actions 提供 `Build Unsigned TrendRadar IPA` 工作流，并在 `TrendRadar-iOS-sideload` 产物中同时生成：
+
+- `TrendRadar-unsigned.ipa`：供 SideStore、AltStore、Sideloadly 等工具重新签名；不能直接在普通 iOS 上运行。
+- `TrendRadar-adhoc.ipa`：已做 ad-hoc 签名，供 TrollStore/CoreTrust bypass 环境使用；普通未越狱 iOS 仍需开发者签名。
+- `SHA256SUMS.txt`：用于核对下载文件完整性。
+
+如果完全无签名 IPA 被安装器原样装入，App 可能显示启动界面后立即被 iOS 完整性校验终止，这不是 SwiftUI 闪退。普通 iPhone 必须让侧载工具使用 Apple ID/开发证书重新签名。
 
 无签名构建不需要 Apple Developer 证书、Provisioning Profile 或 App Store Connect Secret。侧载工具仍需要用户自己的 Apple 账号或签名服务，并且受 iOS 侧载有效期和设备限制影响。
 
@@ -38,4 +44,10 @@ GitHub Actions 提供 `Build Unsigned TrendRadar IPA` 工作流生成无签名 I
 - `ios/project.yml`
 - `.github/workflows/ios-unsigned.yml`
 
-构建完成后，在 GitHub Actions 的 Artifacts 中下载 `TrendRadar-iOS-unsigned`。Artifact 保留 14 天。
+构建完成后，在 GitHub Actions 的 Artifacts 中下载 `TrendRadar-iOS-sideload`。Artifact 保留 14 天。
+
+## 手机端报告
+
+- 点击“报告”右上角 `+` 会先采集热榜与 RSS，再按当前设置生成本地报告。
+- 报告详情支持 Markdown 分享和完整 HTML 文件导出。
+- 开启定时调度后，App 会注册 iOS 后台刷新任务；系统唤醒时执行采集、筛选、可选 AI 分析、报告保存和本地通知。后台执行时机仍由 iOS 决定，不能保证精确到设置中的分钟。
