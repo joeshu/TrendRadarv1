@@ -24,9 +24,9 @@ struct FeedsView: View {
                 AppTheme.background.ignoresSafeArea()
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 16) {
-                         feedIntro
-                         sourceSummary
-                         feedPicker
+                        feedIntro
+                        sourceSummary
+                        feedPicker
                         if enabledFeeds.isEmpty {
                             FeatureEmptyState(icon: "antenna.radiowaves.left.and.right.slash", title: "还没有启用订阅源", message: "在设置中启用 RSS 源，再回来刷新你的信息流。")
                                 .frame(maxWidth: .infinity)
@@ -55,7 +55,7 @@ struct FeedsView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(AppTheme.background, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)
-             .toolbar {
+            .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { showingSourceManager = true } label: {
                         Image(systemName: "slider.horizontal.3")
@@ -78,7 +78,10 @@ struct FeedsView: View {
             FeedSummaryMetric(value: "\(settingsStore.settings.platformSources.filter(\.isEnabled).count)", label: "热榜平台", tint: AppTheme.pink)
             FeedSummaryMetric(value: "\(feedItems.filter { !$0.isRead }.count)", label: "待阅读", tint: AppTheme.yellow)
         }
-        .padding(.vertical, 4)
+        .padding(16)
+        .background(AppTheme.card)
+        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(AppTheme.cardBorder, lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
     private var feedIntro: some View {
@@ -90,6 +93,9 @@ struct FeedsView: View {
                 .font(AppTheme.captionFont)
                 .foregroundStyle(AppTheme.textSecondary)
         }
+        .padding(16)
+        .background(AppTheme.heroGradient)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
 
     private var feedPicker: some View {
@@ -354,9 +360,7 @@ struct HotNewsView: View {
                 AppTheme.background.ignoresSafeArea()
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 16) {
-                        Text("查看各平台当前排名，以及真实的跨平台变化。")
-                            .font(AppTheme.captionFont)
-                            .foregroundStyle(AppTheme.textSecondary)
+                        hotNewsIntro
                         hotNewsFilters
                         if !hotNewsStore.sourceFailures.isEmpty {
                             Label("部分平台暂时无法获取：\(hotNewsStore.sourceFailures.joined(separator: "、"))", systemImage: "exclamationmark.triangle")
@@ -412,6 +416,29 @@ struct HotNewsView: View {
             }
         }
     }
+
+    private var hotNewsIntro: some View {
+        HStack(spacing: 14) {
+            Image(systemName: "flame.fill")
+                .font(.system(size: 24, weight: .semibold))
+                .foregroundStyle(AppTheme.yellow)
+                .frame(width: 48, height: 48)
+                .background(AppTheme.yellow.opacity(0.14))
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            VStack(alignment: .leading, spacing: 4) {
+                Text("实时热点雷达")
+                    .font(AppTheme.headlineFont)
+                    .foregroundStyle(.white)
+                Text("跨平台排名与真实变化趋势")
+                    .font(AppTheme.captionFont)
+                    .foregroundStyle(AppTheme.textSecondary)
+            }
+            Spacer()
+        }
+        .padding(16)
+        .background(AppTheme.heroGradient)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
 }
 
 private struct HotNewsTopicCard: View {
@@ -438,6 +465,7 @@ private struct HotNewsTopicCard: View {
         }
         .padding(16)
         .background(AppTheme.card)
+        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(AppTheme.cardBorder, lineWidth: 1))
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 }
@@ -458,6 +486,9 @@ struct HotNewsTrendView: View {
                     Text(topic.platforms.joined(separator: " · "))
                         .font(AppTheme.captionFont)
                         .foregroundStyle(AppTheme.textSecondary)
+                    Text("跨平台出现 · 点击查看排名轨迹")
+                        .font(.system(size: 11, weight: .medium, design: .rounded))
+                        .foregroundStyle(AppTheme.textTertiary)
                     TrendChart(points: points)
                     ForEach(topic.items) { item in
                         HotNewsTrendRow(item: item)
@@ -466,7 +497,7 @@ struct HotNewsTrendView: View {
                 .padding(20)
             }
         }
-        .navigationTitle("排名时间线")
+            .navigationTitle("排名时间线")
         .navigationBarTitleDisplayMode(.inline)
         .task { points = await hotNewsStore.trend(for: topic.id) }
     }

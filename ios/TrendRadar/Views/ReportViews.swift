@@ -211,17 +211,32 @@ struct ReportDetailView: View {
 
     private func detailHeader(_ report: ReportDetail) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(report.type.displayName.uppercased())
-                .font(AppTheme.captionFont)
-                .tracking(1.4)
-                .foregroundStyle(AppTheme.pink)
-            Text(report.title)
-                .font(AppTheme.titleFont)
-                .foregroundStyle(.white)
-            Text("生成于 \(report.generatedAt, format: .dateTime.year().month().day().hour().minute())")
-                .font(AppTheme.captionFont)
-                .foregroundStyle(AppTheme.textTertiary)
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(report.type.displayName.uppercased())
+                        .font(AppTheme.captionFont)
+                        .tracking(1.4)
+                        .foregroundStyle(AppTheme.pink)
+                    Text(report.title)
+                        .font(AppTheme.titleFont)
+                        .foregroundStyle(.white)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text("生成于 \(report.generatedAt, format: .dateTime.year().month().day().hour().minute())")
+                        .font(AppTheme.captionFont)
+                        .foregroundStyle(AppTheme.textTertiary)
+                }
+                Spacer(minLength: 12)
+                Image(systemName: report.aiAnalysis?.hasContent == true ? "sparkles" : "doc.text")
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundStyle(report.aiAnalysis?.hasContent == true ? AppTheme.cyan : AppTheme.pink)
+                    .frame(width: 46, height: 46)
+                    .background((report.aiAnalysis?.hasContent == true ? AppTheme.cyan : AppTheme.pink).opacity(0.13))
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            }
         }
+        .padding(18)
+        .background(AppTheme.heroGradient)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 
     private func statistics(_ report: ReportDetail) -> some View {
@@ -233,6 +248,7 @@ struct ReportDetailView: View {
         }
         .padding(16)
         .background(AppTheme.card)
+        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(AppTheme.cardBorder, lineWidth: 1))
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
