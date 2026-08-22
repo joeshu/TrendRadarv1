@@ -56,9 +56,6 @@ final class ReportStore: ObservableObject {
         let request = ReportGenerationRequest(batchID: resolvedBatchID, type: type, trigger: trigger, generatedAt: Date(), settings: settings)
         do {
             var report = generator.generate(request: request, items: items, hotlistItems: hotlistItems)
-            let snapshotItems = report.sections.flatMap(\.items).map { snapshot in
-                NewsItem(id: snapshot.id, title: snapshot.title, source: snapshot.source, url: snapshot.url, publishedAt: snapshot.publishedAt, summary: snapshot.summary, isRead: snapshot.isRead, isFavorite: snapshot.isFavorite)
-            }
             if settings.aiAnalysis.enabled {
                 let snapshotHotlist = report.sections.flatMap(\.items).filter { $0.sourceType == .hotlist }.map { snapshot in
                     HotNewsItem(id: snapshot.id, title: snapshot.title, url: snapshot.url, platformID: snapshot.source, platformName: snapshot.source, rank: snapshot.rank ?? 0, publishedAt: snapshot.publishedAt, extraInfo: snapshot.summary, topicKey: snapshot.title, previousRank: nil, isRead: snapshot.isRead, isFavorite: snapshot.isFavorite)

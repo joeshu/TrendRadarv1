@@ -26,9 +26,9 @@ struct ReportFormatter {
             if let recommendation = analysis.recommendation, !recommendation.isEmpty {
                 lines.append("策略建议：\(recommendation)")
             }
-            if let summaries = analysis.standaloneSummaries, !summaries.isEmpty {
+            if !analysis.standaloneSummaries.isEmpty {
                 lines.append("独立源点速览")
-                lines.append(contentsOf: summaries.sorted { $0.key < $1.key }.map { "[\($0.key)] \($0.value)" })
+                lines.append(contentsOf: analysis.standaloneSummaries.sorted { $0.key < $1.key }.map { "[\($0.key)] \($0.value)" })
             }
         } else if let message = report.aiAnalysis?.failureMessage {
             lines.append("\nAI 洞察\n分析失败：\(message)")
