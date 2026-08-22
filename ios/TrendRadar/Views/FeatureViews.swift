@@ -597,9 +597,7 @@ struct ReportCenterView: View {
                 AppTheme.background.ignoresSafeArea()
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 16) {
-                        Text("保存采集时刻的本地快照和分析结果。")
-                            .font(AppTheme.captionFont)
-                            .foregroundStyle(AppTheme.textSecondary)
+                        reportIntro
                         reportToolbar
                         if reportStore.isLoading {
                             ProgressView("加载报告")
@@ -677,6 +675,29 @@ struct ReportCenterView: View {
             }
         }
     }
+
+    private var reportIntro: some View {
+        HStack(spacing: 14) {
+            Image(systemName: "doc.text.magnifyingglass")
+                .font(.system(size: 25, weight: .semibold))
+                .foregroundStyle(AppTheme.pink)
+                .frame(width: 48, height: 48)
+                .background(AppTheme.pink.opacity(0.14))
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            VStack(alignment: .leading, spacing: 4) {
+                Text("本地情报档案")
+                    .font(AppTheme.headlineFont)
+                    .foregroundStyle(.white)
+                Text("保存采集时刻的新闻快照和分析结果")
+                    .font(AppTheme.captionFont)
+                    .foregroundStyle(AppTheme.textSecondary)
+            }
+            Spacer()
+        }
+        .padding(16)
+        .background(AppTheme.heroGradient)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
 }
 
 private struct CompactFeedCard: View {
@@ -717,8 +738,8 @@ private struct CompactFeedCard: View {
         }
         .padding(16)
         .background(AppTheme.card)
-        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.white.opacity(0.06)))
-        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(item.isRead ? Color.white.opacity(0.05) : AppTheme.cyan.opacity(0.16), lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .contextMenu {
             Button {
                 Task { await store.toggleFavorite(item) }

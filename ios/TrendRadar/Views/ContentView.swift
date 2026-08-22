@@ -144,7 +144,18 @@ struct RadarView: View {
             }
         }
         .padding(.horizontal, 20)
-        .padding(.top, 8)
+        .padding(.vertical, 18)
+        .background(AppTheme.heroGradient)
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .overlay(alignment: .topTrailing) {
+            Circle()
+                .fill(AppTheme.cyan.opacity(0.14))
+                .frame(width: 118, height: 118)
+                .blur(radius: 2)
+                .offset(x: 34, y: -38)
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 4)
     }
 
     private var sourcePicker: some View {
@@ -265,7 +276,8 @@ private struct MetricPill: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
         .background(AppTheme.card)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(tint.opacity(0.16), lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 }
 
@@ -303,8 +315,8 @@ private struct NewsCard: View {
         .padding(.horizontal, 14)
         .padding(.vertical, 13)
         .background(AppTheme.card)
-        .overlay(RoundedRectangle(cornerRadius: 18).stroke(Color.white.opacity(0.06), lineWidth: 1))
-        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .overlay(RoundedRectangle(cornerRadius: 14).stroke(item.isRead ? Color.white.opacity(0.05) : AppTheme.cyan.opacity(0.18), lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 }
 

@@ -5,6 +5,12 @@ enum AppTheme {
     static let card = Color(red: 0.075, green: 0.105, blue: 0.17)
     static let surface = Color(red: 0.055, green: 0.080, blue: 0.13)
     static let elevated = Color(red: 0.105, green: 0.14, blue: 0.22)
+    static let heroGradient = LinearGradient(
+        colors: [Color(red: 0.08, green: 0.20, blue: 0.23), Color(red: 0.08, green: 0.10, blue: 0.18)],
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+    )
+    static let cardBorder = Color.white.opacity(0.08)
     static let cyan = Color(red: 0.25, green: 0.90, blue: 0.82)
     static let yellow = Color(red: 1.0, green: 0.78, blue: 0.30)
     static let pink = Color(red: 1.0, green: 0.42, blue: 0.58)
@@ -19,6 +25,15 @@ enum AppTheme {
     static let bodyFont = Font.system(.body, design: .default)
     static let captionFont = Font.system(.caption, design: .rounded, weight: .medium)
     static let rankFont = Font.system(.title2, design: .rounded, weight: .bold)
+
+    static func cardBackground(cornerRadius: CGFloat = 18) -> some View {
+        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+            .fill(card)
+            .overlay {
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .stroke(cardBorder, lineWidth: 1)
+            }
+    }
 }
 
 enum AppAnimation {

@@ -57,7 +57,7 @@ private struct SettingsCategoryRow: View {
     let category: SettingsCategory
 
     var body: some View {
-        HStack(spacing: 12) {
+            HStack(spacing: 12) {
             Image(systemName: category.icon)
                 .font(.headline)
                 .foregroundStyle(AppTheme.cyan)
@@ -72,6 +72,7 @@ private struct SettingsCategoryRow: View {
             }
         }
         .padding(.vertical, 5)
+        .contentShape(Rectangle())
     }
 }
 
@@ -244,7 +245,10 @@ struct SettingsView: View {
                     ConfigStatusPill(title: settingsStore.settings.ai.enabled ? "AI 已启用" : "AI 已关闭", tint: settingsStore.settings.ai.enabled ? AppTheme.pink : AppTheme.textTertiary)
                 }
             }
-            .padding(.vertical, 4)
+            .padding(16)
+            .background(AppTheme.heroGradient)
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(AppTheme.cardBorder, lineWidth: 1))
         } header: {
             Text("配置总览")
         }
