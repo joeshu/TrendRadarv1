@@ -23,7 +23,6 @@ targets:
         MARKETING_VERSION: 0.1.0
         SWIFT_EMIT_LOC_STRINGS: YES
         CODE_SIGN_ENTITLEMENTS: TrendRadar/Resources/TrendRadar.entitlements
-        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
     resources:
       - path: TrendRadar/Resources/Brand
       - path: TrendRadar/Resources/Assets.xcassets
