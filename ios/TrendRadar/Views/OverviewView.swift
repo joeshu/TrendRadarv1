@@ -6,6 +6,7 @@ struct OverviewView: View {
     @EnvironmentObject private var reportStore: ReportStore
     @EnvironmentObject private var settingsStore: SettingsStore
     @State private var showingFavorites = false
+    @State private var showingSettings = false
 
     private var unreadCount: Int { store.items.filter { !$0.isRead }.count }
     private var favoriteCount: Int { store.items.filter(\.isFavorite).count }
@@ -23,7 +24,7 @@ struct OverviewView: View {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 18) {
                         hero
-                        statusLine
+                        sourceStatus
                         metrics
                         quickActions
                         radarSummary
@@ -45,6 +46,13 @@ struct OverviewView: View {
             .toolbarColorScheme(.light, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
+                    Button { showingSettings = true } label: {
+                        Image(systemName: "bell")
+                            .foregroundStyle(AppTheme.textPrimary)
+                    }
+                    .accessibilityLabel("通知")
+                }
+                ToolbarItem(placement: .topBarTrailing) {
                     Button { showingFavorites.toggle() } label: {
                         Image(systemName: showingFavorites ? "star.fill" : "star")
                             .foregroundStyle(showingFavorites ? AppTheme.yellow : .white)
@@ -52,6 +60,7 @@ struct OverviewView: View {
                     .accessibilityLabel(showingFavorites ? "显示全部情报" : "只看收藏")
                 }
             }
+            .sheet(isPresented: $showingSettings) { SettingsView() }
             .task {
                 if store.items.isEmpty { await store.refresh(showError: false) }
                 if hotNewsStore.items.isEmpty { await hotNewsStore.refresh(settings: settingsStore.settings, showError: false) }
@@ -80,21 +89,42 @@ struct OverviewView: View {
         }
     }
 
-    private var statusLine: some View {
-        PremiumStatusLine(
-            title: store.isRefreshing || hotNewsStore.isRefreshing ? "正在同步信息源" : "信息源状态",
-            detail: store.sourceFailures.isEmpty && hotNewsStore.sourceFailures.isEmpty ? (store.lastUpdated?.relativeDescription ?? "等待首次刷新") : "部分来源异常",
-            isGood: !store.isRefreshing && store.sourceFailures.isEmpty && hotNewsStore.sourceFailures.isEmpty
-        )
-        .padding(.horizontal, 4)
+    private var sourceStatus: some View {
+        PremiumPanel(tint: AppTheme.brandCyan) {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Label("信息源状态", systemImage: "antenna.radiowaves.left.and.right")
+                        .font(AppTheme.headlineFont)
+                        .foregroundStyle(AppTheme.textPrimary)
+                    Spacer()
+                    HStack(spacing: 5) {
+                        Circle().fill(sourceStatusGood ? AppTheme.green : AppTheme.yellow).frame(width: 8, height: 8)
+                        Text(sourceStatusGood ? "运行正常" : "部分异常")
+                            .font(AppTheme.captionFont)
+                            .foregroundStyle(sourceStatusGood ? AppTheme.green : AppTheme.yellow)
+                    }
+                }
+                HStack(spacing: 8) {
+                    SourceStatusMetric(icon: "newspaper.fill", title: "RSS", value: "\(store.items.count)", tint: AppTheme.brandCyan)
+                    SourceStatusMetric(icon: "flame.fill", title: "热榜", value: "\(hotNewsStore.items.count)", tint: AppTheme.yellow)
+                    SourceStatusMetric(icon: "doc.text.fill", title: "报告", value: "\(reportStore.reports.count)", tint: AppTheme.brandIndigo)
+                    SourceStatusMetric(icon: "bell.fill", title: "未读", value: "\(unreadCount)", tint: AppTheme.brandMagenta)
+                }
+            }
+        }
     }
 
+    private var sourceStatusGood: Bool {
+        store.sourceFailures.isEmpty && hotNewsStore.sourceFailures.isEmpty && !store.isRefreshing && !hotNewsStore.isRefreshing
+    }
+
+
     private var metrics: some View {
-        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
-            PremiumMetricCard(value: "\(store.items.count)", label: "RSS 情报", icon: "newspaper.fill", tint: AppTheme.brandCyan)
-            PremiumMetricCard(value: "\(hotNewsStore.items.count)", label: "热榜条目", icon: "flame.fill", tint: AppTheme.yellow)
-            PremiumMetricCard(value: "\(enabledSourceCount)", label: "启用来源", icon: "antenna.radiowaves.left.and.right", tint: AppTheme.brandIndigo)
-            PremiumMetricCard(value: "\(unreadCount) · \(favoriteCount)", label: "未读 · 收藏", icon: "bookmark.fill", tint: AppTheme.brandMagenta)
+        HStack(spacing: 8) {
+            OverviewMetricCard(value: "\(store.items.count)", label: "今日情报", icon: "waveform.path.ecg", tint: AppTheme.brandCyan)
+            OverviewMetricCard(value: "\(favoriteCount)", label: "重要情报", icon: "eye.fill", tint: AppTheme.brandIndigo)
+            OverviewMetricCard(value: "\(hotNewsStore.items.count)", label: "实时热点", icon: "bolt.fill", tint: AppTheme.yellow)
+            OverviewMetricCard(value: "\(store.sourceFailures.count + hotNewsStore.sourceFailures.count)", label: "风险预警", icon: "shield.fill", tint: AppTheme.brandMagenta)
         }
     }
 
@@ -102,31 +132,23 @@ struct OverviewView: View {
         PremiumPanel(tint: AppTheme.brandMagenta) {
             VStack(alignment: .leading, spacing: 10) {
                 PremiumSectionHeader(eyebrow: "QUICK ACTIONS", title: "快速操作", subtitle: "从总览直接开始下一步", icon: "bolt.fill", tint: AppTheme.brandMagenta)
-                HStack(spacing: 10) {
-                    Button {
+                HStack(spacing: 8) {
+                    OverviewActionButton(title: "刷新情报", icon: "arrow.clockwise", tint: AppTheme.brandCyan) {
                         Task {
                             await hotNewsStore.refresh(settings: settingsStore.settings, latest: true, showError: true)
                             await store.refresh(showError: true, autoReport: false)
                         }
-                    } label: {
-                        Label("刷新情报", systemImage: "arrow.clockwise")
-                            .font(AppTheme.captionFont)
-                            .foregroundStyle(AppTheme.textPrimary)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 11)
-                            .background(AppTheme.brandCyan.opacity(0.18))
-                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                     }
                     NavigationLink {
                         ReportCenterView()
                     } label: {
-                        Label("查看报告", systemImage: "doc.text.magnifyingglass")
-                            .font(AppTheme.captionFont)
-                            .foregroundStyle(AppTheme.textPrimary)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 11)
-                            .background(AppTheme.brandMagenta.opacity(0.18))
-                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        OverviewActionLabel(title: "生成报告", icon: "doc.text.badge.plus", tint: AppTheme.brandIndigo)
+                    }
+                    OverviewActionButton(title: "监控设置", icon: "bell", tint: AppTheme.brandMagenta) { showingSettings = true }
+                    NavigationLink {
+                        SettingsView()
+                    } label: {
+                        OverviewActionLabel(title: "订阅管理", icon: "star", tint: AppTheme.brandCyan)
                     }
                 }
             }
@@ -181,6 +203,94 @@ struct OverviewView: View {
                 }
             }
         }
+    }
+}
+
+private struct OverviewActionButton: View {
+    let title: String
+    let icon: String
+    let tint: Color
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            OverviewActionLabel(title: title, icon: icon, tint: tint)
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+private struct OverviewActionLabel: View {
+    let title: String
+    let icon: String
+    let tint: Color
+
+    var body: some View {
+        HStack(spacing: 5) {
+            Image(systemName: icon)
+                .font(.caption.weight(.semibold))
+            Text(title)
+                .font(.system(size: 10, weight: .semibold, design: .rounded))
+                .lineLimit(1)
+        }
+        .foregroundStyle(AppTheme.textPrimary)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 11)
+        .background(tint.opacity(0.12))
+        .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
+    }
+}
+
+private struct OverviewMetricCard: View {
+    let value: String
+    let label: String
+    let icon: String
+    let tint: Color
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            Image(systemName: icon)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(tint)
+            Text(value)
+                .font(.system(size: 20, weight: .bold, design: .rounded))
+                .foregroundStyle(AppTheme.textPrimary)
+                .minimumScaleFactor(0.7)
+            Text(label)
+                .font(.system(size: 10, weight: .medium, design: .rounded))
+                .foregroundStyle(AppTheme.textSecondary)
+                .lineLimit(1)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(10)
+        .background(AppTheme.card)
+        .overlay(RoundedRectangle(cornerRadius: 13, style: .continuous).stroke(tint.opacity(0.22), lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
+    }
+}
+
+private struct SourceStatusMetric: View {
+    let icon: String
+    let title: String
+    let value: String
+    let tint: Color
+
+    var body: some View {
+        VStack(spacing: 5) {
+            Image(systemName: icon)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(tint)
+                .frame(width: 28, height: 28)
+                .background(tint.opacity(0.10))
+                .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+            Text(title)
+                .font(AppTheme.captionFont)
+                .foregroundStyle(AppTheme.textSecondary)
+            Text(value)
+                .font(.system(size: 13, weight: .bold, design: .rounded))
+                .foregroundStyle(AppTheme.textPrimary)
+        }
+        .frame(maxWidth: .infinity)
     }
 }
 
