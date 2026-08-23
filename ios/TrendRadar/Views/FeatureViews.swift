@@ -957,6 +957,7 @@ struct ReportCenterView: View {
                 .padding(12)
                 .background(AppTheme.card)
                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            }
             Menu {
                 Button("全部类型") { reportStore.selectedType = nil }
                 ForEach(ReportType.allCases, id: \.self) { type in
