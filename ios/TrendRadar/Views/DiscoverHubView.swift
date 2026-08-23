@@ -39,7 +39,7 @@ struct DiscoverHubView: View {
             .navigationTitle("发现")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(AppTheme.background, for: .navigationBar)
-            .toolbarColorScheme(.dark, for: .navigationBar)
+            .toolbarColorScheme(.light, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { showingFeeds = true } label: { Image(systemName: "slider.horizontal.3") }
@@ -90,7 +90,7 @@ struct DiscoverHubView: View {
                 PremiumPanel(tint: AppTheme.brandCyan) {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("最近报告").font(AppTheme.captionFont).foregroundStyle(AppTheme.brandCyan)
-                        Text(report.title).font(AppTheme.headlineFont).foregroundStyle(.white)
+                        Text(report.title).font(AppTheme.headlineFont).foregroundStyle(AppTheme.textPrimary)
                         Text(report.generatedAt.formatted(date: .abbreviated, time: .shortened)).font(AppTheme.captionFont).foregroundStyle(AppTheme.textTertiary)
                     }
                 }

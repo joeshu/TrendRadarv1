@@ -39,6 +39,9 @@ struct FeedsView: View {
                                 .font(AppTheme.captionFont)
                                 .foregroundStyle(AppTheme.cyan)
                         }
+                        if !store.sourceFailures.isEmpty {
+                            SourceHealthBanner(title: "部分 RSS 源暂不可用", detail: store.sourceFailures.joined(separator: "、"), tint: AppTheme.yellow)
+                        }
                         if enabledFeeds.isEmpty {
                             FeatureEmptyState(icon: "antenna.radiowaves.left.and.right.slash", title: "还没有启用订阅源", message: "在设置中启用 RSS 源，再回来刷新你的信息流。")
                                 .frame(maxWidth: .infinity)
@@ -78,7 +81,7 @@ struct FeedsView: View {
             .navigationTitle("订阅")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(AppTheme.background, for: .navigationBar)
-            .toolbarColorScheme(.dark, for: .navigationBar)
+            .toolbarColorScheme(.light, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { showingSourceManager = true } label: {
@@ -119,7 +122,7 @@ struct FeedsView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("管理信息源")
                 .font(AppTheme.headlineFont)
-                .foregroundStyle(.white)
+                .foregroundStyle(AppTheme.textPrimary)
             Text("选择来源，阅读对应的订阅内容。")
                 .font(AppTheme.captionFont)
                 .foregroundStyle(AppTheme.textSecondary)
@@ -175,7 +178,7 @@ struct SubscriptionSourceManager: View {
                                 Image(systemName: feed.isEnabled ? "checkmark.circle.fill" : "circle")
                                     .foregroundStyle(feed.isEnabled ? AppTheme.cyan : AppTheme.textTertiary)
                                 VStack(alignment: .leading, spacing: 3) {
-                                    Text(feed.name).foregroundStyle(.white)
+                                    Text(feed.name).foregroundStyle(AppTheme.textPrimary)
                                     Text(feed.url).font(AppTheme.captionFont).foregroundStyle(AppTheme.textTertiary).lineLimit(1)
                                     if let health = newsStore.feedHealth[feed.id], health.shouldShowWarning {
                                         Text("连续失败 \(health.consecutiveFailures) 次：\(health.lastError ?? "请检查来源")")
@@ -219,7 +222,7 @@ struct SubscriptionSourceManager: View {
                     editingFeed = nil
                 }
             }
-            .preferredColorScheme(.dark)
+            .preferredColorScheme(.light)
             .tint(AppTheme.cyan)
         }
     }
@@ -240,13 +243,13 @@ struct FeedReaderView: View {
                         .foregroundStyle(AppTheme.cyan)
                     Text(item.title)
                         .font(AppTheme.titleFont)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(AppTheme.textPrimary)
                     if let author = item.author, !author.isEmpty {
                         Text(author).font(AppTheme.captionFont).foregroundStyle(AppTheme.textSecondary)
                     }
                     Text(item.body ?? item.summary ?? "暂无正文缓存")
                         .font(.system(size: 18, weight: .regular, design: .serif))
-                        .foregroundStyle(.white.opacity(0.88))
+                        .foregroundStyle(AppTheme.textSecondary)
                         .lineSpacing(7)
                     if let url = item.url {
                         Link(destination: url) {
@@ -305,7 +308,7 @@ struct InsightView: View {
             .navigationTitle("洞察")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(AppTheme.background, for: .navigationBar)
-            .toolbarColorScheme(.dark, for: .navigationBar)
+            .toolbarColorScheme(.light, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { showingSettings = true } label: { Image(systemName: "slider.horizontal.3") }
@@ -331,7 +334,7 @@ struct InsightView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("今天值得关注什么")
                 .font(AppTheme.headlineFont)
-                .foregroundStyle(.white)
+                .foregroundStyle(AppTheme.textPrimary)
             Text("基于当前已抓取的新闻。")
                 .font(AppTheme.captionFont)
                 .foregroundStyle(AppTheme.textSecondary)
@@ -414,7 +417,7 @@ struct InsightView: View {
             VStack(alignment: .leading, spacing: 10) {
                 Text(settingsStore.settings.ai.enabled ? "AI 分析已启用" : "AI 分析未启用")
                     .font(AppTheme.headlineFont)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(AppTheme.textPrimary)
                 Text(settingsStore.settings.ai.enabled ? "打开新闻详情即可按需生成摘要。" : "在设置中启用 AI，并配置 API Base URL 与 Key。")
                     .font(AppTheme.bodyFont)
                     .foregroundStyle(AppTheme.textSecondary)
@@ -470,7 +473,7 @@ struct InsightView: View {
             if let result = queryResult {
                 Text(result.answer)
                     .font(AppTheme.bodyFont)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(AppTheme.textPrimary)
                 ForEach(result.citations) { citation in
                     if let url = citation.url {
                         Link("引用：\(citation.source) · \(citation.title)", destination: url)
@@ -501,7 +504,7 @@ struct InsightView: View {
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(topic.title)
                                         .font(AppTheme.headlineFont)
-                                        .foregroundStyle(.white)
+                                        .foregroundStyle(AppTheme.textPrimary)
                                         .lineLimit(2)
                     Text(topic.platforms.joined(separator: " · "))
                         .font(AppTheme.captionFont)
@@ -542,7 +545,7 @@ struct InsightView: View {
                                 Image(systemName: anomaly.isRising ? "arrow.up.right" : "arrow.down.right")
                                     .foregroundStyle(anomaly.isRising ? AppTheme.green : AppTheme.red)
                                 VStack(alignment: .leading, spacing: 3) {
-                                    Text(anomaly.title).font(AppTheme.headlineFont).foregroundStyle(.white).lineLimit(2)
+                                    Text(anomaly.title).font(AppTheme.headlineFont).foregroundStyle(AppTheme.textPrimary).lineLimit(2)
                                     Text(anomaly.platforms.joined(separator: " · ")).font(AppTheme.captionFont).foregroundStyle(AppTheme.textTertiary)
                                 }
                                 Spacer()
@@ -574,9 +577,7 @@ struct HotNewsView: View {
                         radarSummary
                         hotNewsFilters
                         if !hotNewsStore.sourceFailures.isEmpty {
-                            Label("部分平台暂时无法获取：\(hotNewsStore.sourceFailures.joined(separator: "、"))", systemImage: "exclamationmark.triangle")
-                                .font(AppTheme.captionFont)
-                                .foregroundStyle(AppTheme.yellow)
+                            SourceHealthBanner(title: "部分热榜平台暂不可用", detail: hotNewsStore.sourceFailures.joined(separator: "、"), tint: AppTheme.yellow)
                         }
                         if hotNewsStore.items.isEmpty {
                             VStack(spacing: 12) {
@@ -605,7 +606,7 @@ struct HotNewsView: View {
             .navigationTitle("热榜")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(AppTheme.background, for: .navigationBar)
-            .toolbarColorScheme(.dark, for: .navigationBar)
+            .toolbarColorScheme(.light, for: .navigationBar)
             .refreshable { await hotNewsStore.refresh(settings: settingsStore.settings) }
             .task { await hotNewsStore.refresh(settings: settingsStore.settings, showError: false) }
             .alert("热榜刷新", isPresented: Binding(get: { hotNewsStore.errorMessage != nil }, set: { if !$0 { hotNewsStore.errorMessage = nil } })) {
@@ -632,7 +633,7 @@ struct HotNewsView: View {
                 VStack(alignment: .leading, spacing: 10) {
                     Text("实时信号扫描")
                         .font(AppTheme.headlineFont)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(AppTheme.textPrimary)
                     Text(hotNewsStore.lastUpdated.map { "更新于 \($0, format: .dateTime.hour().minute())" } ?? "等待首次刷新")
                         .font(AppTheme.captionFont)
                         .foregroundStyle(AppTheme.textSecondary)
@@ -666,7 +667,7 @@ struct HotNewsView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text("实时热点雷达")
                     .font(AppTheme.headlineFont)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(AppTheme.textPrimary)
                 Text("跨平台排名与真实变化趋势")
                     .font(AppTheme.captionFont)
                     .foregroundStyle(AppTheme.textSecondary)
@@ -691,7 +692,7 @@ private struct HotNewsTopicCard: View {
             VStack(alignment: .leading, spacing: 5) {
                 Text(topic.title)
                     .font(AppTheme.headlineFont)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(AppTheme.textPrimary)
                     .lineLimit(2)
                 Text(topic.platforms.joined(separator: " · "))
                     .font(AppTheme.captionFont)
@@ -720,7 +721,7 @@ struct HotNewsTrendView: View {
                 VStack(alignment: .leading, spacing: 18) {
                     Text(topic.title)
                         .font(AppTheme.titleFont)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(AppTheme.textPrimary)
                     Text(topic.platforms.joined(separator: " · "))
                         .font(AppTheme.captionFont)
                         .foregroundStyle(AppTheme.textSecondary)
@@ -752,7 +753,7 @@ private struct HotNewsTrendRow: View {
                 .frame(width: 56, alignment: .leading)
             VStack(alignment: .leading, spacing: 4) {
                 Text(item.platformName).font(AppTheme.captionFont).foregroundStyle(AppTheme.yellow)
-                Text(item.title).font(AppTheme.headlineFont).foregroundStyle(.white).lineLimit(2)
+                Text(item.title).font(AppTheme.headlineFont).foregroundStyle(AppTheme.textPrimary).lineLimit(2)
             }
             Spacer()
         }
@@ -832,7 +833,7 @@ struct FavoritesView: View {
              .navigationTitle("收藏")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(AppTheme.background, for: .navigationBar)
-            .toolbarColorScheme(.dark, for: .navigationBar)
+            .toolbarColorScheme(.light, for: .navigationBar)
         }
     }
 
@@ -844,7 +845,7 @@ struct FavoritesView: View {
                 .foregroundStyle(AppTheme.pink)
              Text("保存真正重要的信号")
                 .font(AppTheme.titleFont)
-                .foregroundStyle(.white)
+                .foregroundStyle(AppTheme.textPrimary)
              Text("集中查看你标记的重要新闻。")
                 .font(AppTheme.bodyFont)
                 .foregroundStyle(AppTheme.textSecondary)
@@ -883,9 +884,19 @@ struct ReportCenterView: View {
                                 NavigationLink {
                                     ReportDetailView(reportID: report.id)
                                 } label: {
-                                    ReportSummaryCard(report: report)
-                                }
                                 .buttonStyle(.plain)
+                                .contextMenu {
+                                    Button {
+                                        Task { await reportStore.toggleFavorite(id: report.id) }
+                                    } label: {
+                                        Label(report.isFavorite ? "取消收藏" : "收藏", systemImage: report.isFavorite ? "star.slash" : "star")
+                                    }
+                                    Button(role: .destructive) {
+                                        Task { await reportStore.delete(id: report.id) }
+                                    } label: {
+                                        Label("删除报告", systemImage: "trash")
+                                    }
+                                }
                             }
                         }
                     }
@@ -895,7 +906,7 @@ struct ReportCenterView: View {
             .navigationTitle("报告")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(AppTheme.background, for: .navigationBar)
-            .toolbarColorScheme(.dark, for: .navigationBar)
+            .toolbarColorScheme(.light, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { showingReportGenerator = true } label: {
@@ -945,7 +956,7 @@ struct ReportCenterView: View {
                     .foregroundStyle(AppTheme.brandCyan)
                 Text("报告检索")
                     .font(AppTheme.headlineFont)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(AppTheme.textPrimary)
                 Spacer()
                 Text(reportStore.favoritesOnly ? "仅收藏" : reportStore.selectedType?.displayName ?? "全部类型")
                     .font(AppTheme.captionFont)
@@ -984,7 +995,7 @@ struct ReportCenterView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text("本地情报档案")
                     .font(AppTheme.headlineFont)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(AppTheme.textPrimary)
                 Text("保存采集时刻的新闻快照和分析结果")
                     .font(AppTheme.captionFont)
                     .foregroundStyle(AppTheme.textSecondary)
@@ -1035,7 +1046,7 @@ struct CompactFeedCard: View {
         }
         .padding(16)
         .background(AppTheme.card)
-        .overlay(RoundedRectangle(cornerRadius: 16).stroke(item.isRead ? Color.white.opacity(0.05) : AppTheme.cyan.opacity(0.16), lineWidth: 1))
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(item.isRead ? AppTheme.cardBorder : AppTheme.cyan.opacity(0.22), lineWidth: 1))
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .contextMenu {
             Button {
@@ -1153,6 +1164,28 @@ private struct FlowLayout: View {
     }
 }
 
+struct SourceHealthBanner: View {
+    let title: String
+    let detail: String
+    let tint: Color
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundStyle(tint)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title).font(AppTheme.headlineFont).foregroundStyle(AppTheme.textPrimary)
+                Text(detail).font(AppTheme.captionFont).foregroundStyle(AppTheme.textSecondary).lineLimit(3)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(12)
+        .background(tint.opacity(0.09))
+        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(tint.opacity(0.28), lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+}
+
 struct FeatureEmptyState: View {
     let icon: String
     let title: String
@@ -1174,7 +1207,7 @@ struct FeatureEmptyState: View {
                 .foregroundStyle(AppTheme.brandCyan)
             Text(title)
                 .font(AppTheme.headlineFont)
-                .foregroundStyle(.white)
+                .foregroundStyle(AppTheme.textPrimary)
             Text(message)
                 .font(AppTheme.captionFont)
                 .foregroundStyle(AppTheme.textSecondary)
@@ -1202,7 +1235,7 @@ private struct FeedInfoSheet: View {
                     .foregroundStyle(AppTheme.cyan)
                 Text("已启用 \(feedCount) 个订阅源")
                     .font(AppTheme.titleFont)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(AppTheme.textPrimary)
                 Text("RSS 与 Atom 内容会在刷新时并发抓取，并保存到本地情报库。")
                     .font(AppTheme.bodyFont)
                     .foregroundStyle(AppTheme.textSecondary)
@@ -1217,7 +1250,7 @@ private struct FeedInfoSheet: View {
                 ToolbarItem(placement: .confirmationAction) { Button("完成") { dismiss() } }
             }
         }
-        .preferredColorScheme(.dark)
+        .preferredColorScheme(.light)
         .tint(AppTheme.cyan)
     }
 }

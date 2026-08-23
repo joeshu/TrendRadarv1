@@ -50,7 +50,7 @@ struct RadarView: View {
                         } else if settingsStore.settings.display.showRSS {
                             Text(showingFavorites ? "已收藏" : "最新情报")
                                 .font(.system(size: 22, weight: .bold, design: .rounded))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(AppTheme.textPrimary)
                                 .padding(.horizontal, 20)
 
                             ForEach(filteredItems) { item in
@@ -78,7 +78,7 @@ struct RadarView: View {
                 }
             }
             .toolbarBackground(AppTheme.background, for: .navigationBar)
-            .toolbarColorScheme(.dark, for: .navigationBar)
+            .toolbarColorScheme(.light, for: .navigationBar)
             .searchable(text: $searchText, prompt: "搜索标题或来源")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
@@ -93,7 +93,7 @@ struct RadarView: View {
                         Text("TREND RADAR")
                             .font(.system(size: 13, weight: .heavy, design: .rounded))
                             .tracking(1.5)
-                            .foregroundStyle(.white)
+                            .foregroundStyle(AppTheme.textPrimary)
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
@@ -102,7 +102,7 @@ struct RadarView: View {
                         Button { showingSettings = true } label: { Label("设置", systemImage: "gearshape") }
                     } label: {
                         Image(systemName: "ellipsis.circle")
-                            .foregroundStyle(.white)
+                            .foregroundStyle(AppTheme.textPrimary)
                     }
                 }
             }
@@ -125,7 +125,7 @@ struct RadarView: View {
                 VStack(alignment: .leading, spacing: 5) {
                     Text("最新情报")
                         .font(.system(size: 26, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(AppTheme.textPrimary)
                     Text("来自你关注的信息源。")
                         .font(AppTheme.captionFont)
                         .foregroundStyle(AppTheme.textSecondary)
@@ -278,7 +278,7 @@ private struct RadarHotTopicCard: View {
             VStack(alignment: .leading, spacing: 5) {
                 Text(topic.title)
                     .font(AppTheme.headlineFont)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(AppTheme.textPrimary)
                     .lineLimit(2)
                 HStack(spacing: 6) {
                     Text("\(topic.platformCount) 个平台正在讨论")
@@ -338,7 +338,7 @@ struct ContentView: View {
                 .tabItem { Label("设置", systemImage: "gearshape.fill") }
         }
         .tint(AppTheme.brandCyan)
-        .preferredColorScheme(.dark)
+        .preferredColorScheme(.light)
     }
 }
 
@@ -350,7 +350,7 @@ private struct MetricPill: View {
     var body: some View {
         HStack(spacing: 7) {
             Text(value).font(.system(size: 17, weight: .bold, design: .rounded)).foregroundStyle(tint)
-            Text(label).font(.system(size: 12, weight: .medium, design: .rounded)).foregroundStyle(.white.opacity(0.58))
+            Text(label).font(.system(size: 12, weight: .medium, design: .rounded)).foregroundStyle(AppTheme.textSecondary)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
@@ -366,8 +366,8 @@ private struct NewsCard: View {
     var body: some View {
         HStack(alignment: .top, spacing: 13) {
             VStack(spacing: 4) {
-                Circle().fill(item.isRead ? Color.white.opacity(0.2) : AppTheme.cyan).frame(width: 8, height: 8)
-                Rectangle().fill(Color.white.opacity(0.08)).frame(width: 1, height: 48)
+                Circle().fill(item.isRead ? AppTheme.textTertiary.opacity(0.45) : AppTheme.cyan).frame(width: 8, height: 8)
+                Rectangle().fill(AppTheme.cardBorder).frame(width: 1, height: 48)
             }
             VStack(alignment: .leading, spacing: 10) {
                 HStack {
@@ -388,13 +388,13 @@ private struct NewsCard: View {
                     if item.summary != nil { Text("·"); Label("已摘要", systemImage: "sparkles") }
                 }
                 .font(.system(size: 11, weight: .medium, design: .rounded))
-                .foregroundStyle(.white.opacity(0.42))
+                .foregroundStyle(AppTheme.textTertiary)
             }
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 13)
         .background(AppTheme.card)
-        .overlay(RoundedRectangle(cornerRadius: 14).stroke(item.isRead ? Color.white.opacity(0.05) : AppTheme.cyan.opacity(0.18), lineWidth: 1))
+        .overlay(RoundedRectangle(cornerRadius: 14).stroke(item.isRead ? AppTheme.cardBorder : AppTheme.cyan.opacity(0.25), lineWidth: 1))
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 }
@@ -409,10 +409,10 @@ private struct EmptyNewsView: View {
                 .foregroundStyle(AppTheme.cyan)
             Text(isFavoriteMode ? "还没有收藏" : "等待第一批情报")
                 .font(.system(size: 18, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
+                .foregroundStyle(AppTheme.textPrimary)
             Text(isFavoriteMode ? "在新闻卡片上长按即可收藏" : "下拉刷新，开始建立你的信息雷达")
                 .font(.system(size: 13, design: .rounded))
-                .foregroundStyle(.white.opacity(0.45))
+                .foregroundStyle(AppTheme.textTertiary)
         }
     }
 }
@@ -438,7 +438,7 @@ private struct HotNewsCard: View {
                 }
                 Text(item.title)
                     .font(AppTheme.headlineFont)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(AppTheme.textPrimary)
                     .lineLimit(2)
             }
         }
@@ -465,10 +465,10 @@ struct NewsDetailView: View {
                         .foregroundStyle(AppTheme.cyan)
                     Text(item.title)
                         .font(.system(size: 29, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(AppTheme.textPrimary)
                     Text(item.publishedAt?.relativeDescription ?? "刚刚")
                         .font(.system(size: 12, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.45))
+                        .foregroundStyle(AppTheme.textTertiary)
 
                     if let summary = generatedSummary ?? item.summary, !summary.isEmpty {
                         VStack(alignment: .leading, spacing: 11) {
@@ -477,7 +477,7 @@ struct NewsDetailView: View {
                                 .foregroundStyle(AppTheme.yellow)
                             Text(summary)
                                 .font(.system(size: 17, weight: .medium, design: .rounded))
-                                .foregroundStyle(.white.opacity(0.84))
+                                .foregroundStyle(AppTheme.textSecondary)
                                 .lineSpacing(5)
                         }
                         .padding(18)
@@ -509,7 +509,7 @@ struct NewsDetailView: View {
             }
         }
         .toolbarBackground(AppTheme.background, for: .navigationBar)
-        .toolbarColorScheme(.dark, for: .navigationBar)
+        .toolbarColorScheme(.light, for: .navigationBar)
         .navigationTitle("情报详情")
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -531,10 +531,10 @@ struct OutlineButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.system(size: 13, weight: .bold, design: .rounded))
-            .foregroundStyle(.white.opacity(configuration.isPressed ? 0.55 : 0.85))
+            .foregroundStyle(AppTheme.textSecondary.opacity(configuration.isPressed ? 0.55 : 1))
             .padding(.horizontal, 15)
             .padding(.vertical, 10)
-            .overlay(Capsule().stroke(Color.white.opacity(0.2), lineWidth: 1))
+            .overlay(Capsule().stroke(AppTheme.cardBorder, lineWidth: 1))
     }
 }
 

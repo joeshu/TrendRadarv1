@@ -65,7 +65,7 @@ private struct SettingsCategoryRow: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text(category.title)
                     .font(AppTheme.headlineFont)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(AppTheme.textPrimary)
                 Text(category.subtitle)
                     .font(AppTheme.captionFont)
                     .foregroundStyle(AppTheme.textTertiary)
@@ -116,7 +116,7 @@ private struct SettingsOverviewSection: View {
                             .foregroundStyle(AppTheme.brandCyan)
                         Text("本地配置中心")
                             .font(AppTheme.titleFont)
-                            .foregroundStyle(.white)
+                            .foregroundStyle(AppTheme.textPrimary)
                         Text("管理采集、分析、报告与投递")
                             .font(AppTheme.captionFont)
                             .foregroundStyle(AppTheme.textSecondary)
@@ -282,7 +282,7 @@ struct SettingsView: View {
                     .navigationBarTitleDisplayMode(.inline)
                     .scrollContentBackground(.hidden)
                     .background(AppTheme.background)
-                    .preferredColorScheme(.dark)
+                    .preferredColorScheme(.light)
                     .tint(AppTheme.cyan)
                     .navigationDestination(for: SettingsCategory.self) { category in
                         categoryDestination(category)
@@ -300,7 +300,7 @@ struct SettingsView: View {
             .navigationBarTitleDisplayMode(.inline)
             .scrollContentBackground(.hidden)
             .background(AppTheme.background)
-            .preferredColorScheme(.dark)
+            .preferredColorScheme(.light)
             .tint(AppTheme.cyan)
         )
     }
@@ -922,7 +922,7 @@ struct FeedEditorView: View {
                     }
                 }
             }
-            .preferredColorScheme(.dark)
+            .preferredColorScheme(.light)
             .tint(AppTheme.cyan)
         }
     }

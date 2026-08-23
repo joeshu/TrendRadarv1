@@ -30,7 +30,7 @@ struct ReportGeneratorSheet: View {
                     }
                 }
             }
-            .preferredColorScheme(.dark)
+            .preferredColorScheme(.light)
             .tint(AppTheme.cyan)
         }
     }
@@ -46,7 +46,7 @@ struct ReportSummaryCard: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(report.title)
                     .font(AppTheme.headlineFont)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(AppTheme.textPrimary)
                     .lineLimit(2)
                 HStack(spacing: 6) {
                     Text(report.type.displayName)
@@ -160,7 +160,7 @@ struct ReportDetailView: View {
                                         HStack(alignment: .top, spacing: 8) {
                                             Circle().fill(AppTheme.brandCyan).frame(width: 6, height: 6).padding(.top, 6)
                                             VStack(alignment: .leading, spacing: 3) {
-                                                Text(item.title).font(AppTheme.headlineFont).foregroundStyle(.white)
+                                                Text(item.title).font(AppTheme.headlineFont).foregroundStyle(AppTheme.textPrimary)
                                                 Text(item.source).font(AppTheme.captionFont).foregroundStyle(AppTheme.textTertiary)
                                             }
                                         }
@@ -179,7 +179,7 @@ struct ReportDetailView: View {
                                         HStack(alignment: .top, spacing: 8) {
                                             Image(systemName: "xmark.circle.fill").foregroundStyle(AppTheme.yellow)
                                             VStack(alignment: .leading, spacing: 2) {
-                                                Text(failure.source).font(AppTheme.headlineFont).foregroundStyle(.white)
+                                                Text(failure.source).font(AppTheme.headlineFont).foregroundStyle(AppTheme.textPrimary)
                                                 Text(failure.message).font(AppTheme.captionFont).foregroundStyle(AppTheme.textSecondary)
                                             }
                                         }
@@ -197,7 +197,7 @@ struct ReportDetailView: View {
         .navigationTitle("报告详情")
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(AppTheme.background, for: .navigationBar)
-        .toolbarColorScheme(.dark, for: .navigationBar)
+        .toolbarColorScheme(.light, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 if let report {
@@ -259,7 +259,7 @@ struct ReportDetailView: View {
                         .foregroundStyle(AppTheme.pink)
                     Text(report.title)
                         .font(AppTheme.titleFont)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(AppTheme.textPrimary)
                         .fixedSize(horizontal: false, vertical: true)
                     Text("生成于 \(report.generatedAt, format: .dateTime.year().month().day().hour().minute())")
                         .font(AppTheme.captionFont)
@@ -307,7 +307,7 @@ struct ReportDetailView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(item.title)
                             .font(AppTheme.headlineFont)
-                            .foregroundStyle(.white)
+                            .foregroundStyle(AppTheme.textPrimary)
                         Text("\(item.source) · \(item.publishedAt?.relativeDescription ?? "刚刚")")
                             .font(AppTheme.captionFont)
                             .foregroundStyle(AppTheme.textTertiary)
@@ -329,7 +329,7 @@ struct ReportDetailView: View {
                         }
                     }
                     if item.id != section.items.last?.id {
-                        Divider().overlay(Color.white.opacity(0.08))
+                        Divider().overlay(AppTheme.cardBorder)
                     }
                 }
             }

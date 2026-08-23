@@ -12,11 +12,10 @@ struct PremiumPanel<Content: View>: View {
             .padding(16)
             .background {
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(.ultraThinMaterial)
-                    .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).fill(AppTheme.card.opacity(0.72)))
-                    .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(tint.opacity(0.20), lineWidth: 1))
+                    .fill(AppTheme.card)
+                    .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(tint.opacity(0.24), lineWidth: 1))
             }
-            .shadow(color: .black.opacity(0.20), radius: 16, y: 8)
+            .shadow(color: tint.opacity(0.08), radius: 14, y: 7)
     }
 }
 
@@ -35,7 +34,7 @@ struct PremiumSectionHeader: View {
                 .frame(width: 38, height: 38).background(tint.opacity(0.14)).clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             VStack(alignment: .leading, spacing: 4) {
                 if let eyebrow { Text(eyebrow.uppercased()).font(.system(size: 10, weight: .bold, design: .rounded)).tracking(1.2).foregroundStyle(tint) }
-                Text(title).font(AppTheme.headlineFont).foregroundStyle(.white)
+                Text(title).font(AppTheme.headlineFont).foregroundStyle(AppTheme.textPrimary)
                 if let subtitle { Text(subtitle).font(AppTheme.captionFont).foregroundStyle(AppTheme.textSecondary) }
             }
             Spacer(minLength: 0)
@@ -48,7 +47,7 @@ struct PremiumMetricCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 9) {
             Image(systemName: icon).font(.caption.weight(.bold)).foregroundStyle(tint)
-            Text(value).font(.system(size: 23, weight: .bold, design: .rounded)).foregroundStyle(.white).minimumScaleFactor(0.7)
+            Text(value).font(.system(size: 23, weight: .bold, design: .rounded)).foregroundStyle(AppTheme.textPrimary).minimumScaleFactor(0.7)
             Text(label).font(.system(size: 11, weight: .medium, design: .rounded)).foregroundStyle(AppTheme.textSecondary)
         }.frame(maxWidth: .infinity, alignment: .leading).padding(13)
             .background(AppTheme.surface).clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
@@ -78,7 +77,7 @@ struct RadarDecoration: View {
             Circle().fill(AppTheme.brandCyan.opacity(0.08)).frame(width: 54, height: 54)
             Circle().fill(AppTheme.brandCyan).frame(width: 8, height: 8).shadow(color: AppTheme.brandCyan, radius: 8)
             Rectangle().fill(LinearGradient(colors: [AppTheme.brandCyan.opacity(0.75), .clear], startPoint: .leading, endPoint: .trailing)).frame(width: 118, height: 1).offset(x: 58).rotationEffect(.degrees(rotation))
-            Text("\(count)").font(.system(size: 12, weight: .bold, design: .rounded)).foregroundStyle(.white).offset(y: 72)
+            Text("\(count)").font(.system(size: 12, weight: .bold, design: .rounded)).foregroundStyle(AppTheme.textPrimary).offset(y: 72)
         }.frame(width: 180, height: 180).onAppear { withAnimation(.linear(duration: 5).repeatForever(autoreverses: false)) { rotation = 360 } }
     }
 }

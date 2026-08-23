@@ -41,7 +41,7 @@ struct OverviewView: View {
             .navigationTitle("总览")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(AppTheme.background, for: .navigationBar)
-            .toolbarColorScheme(.dark, for: .navigationBar)
+            .toolbarColorScheme(.light, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { showingFavorites.toggle() } label: {
@@ -70,7 +70,7 @@ struct OverviewView: View {
                 LinearGradient(colors: [.clear, AppTheme.background.opacity(0.95)], startPoint: .top, endPoint: .bottom)
                 VStack(alignment: .leading, spacing: 6) {
                     Text("TREND RADAR").font(.system(size: 11, weight: .bold, design: .rounded)).tracking(2).foregroundStyle(AppTheme.brandCyan)
-                    Text("你的信息脉搏").font(.system(size: 29, weight: .bold, design: .rounded)).foregroundStyle(.white)
+                    Text("你的信息脉搏").font(.system(size: 29, weight: .bold, design: .rounded)).foregroundStyle(AppTheme.textPrimary)
                     Text(Date.now.formatted(date: .complete, time: .omitted)).font(AppTheme.captionFont).foregroundStyle(AppTheme.textSecondary)
                 }.padding(16)
             }.frame(height: 178).clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
@@ -108,7 +108,7 @@ struct OverviewView: View {
                     } label: {
                         Label("刷新情报", systemImage: "arrow.clockwise")
                             .font(AppTheme.captionFont)
-                            .foregroundStyle(.white)
+                            .foregroundStyle(AppTheme.textPrimary)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 11)
                             .background(AppTheme.brandCyan.opacity(0.18))
@@ -119,7 +119,7 @@ struct OverviewView: View {
                     } label: {
                         Label("查看报告", systemImage: "doc.text.magnifyingglass")
                             .font(AppTheme.captionFont)
-                            .foregroundStyle(.white)
+                            .foregroundStyle(AppTheme.textPrimary)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 11)
                             .background(AppTheme.brandMagenta.opacity(0.18))
@@ -140,7 +140,7 @@ struct OverviewView: View {
                         ForEach(latestTopics.prefix(3)) { topic in
                             HStack(spacing: 8) {
                                 Text("#\(topic.bestRank)").font(.system(size: 12, weight: .bold, design: .rounded)).foregroundStyle(AppTheme.yellow)
-                                Text(topic.title).font(AppTheme.captionFont).foregroundStyle(.white).lineLimit(1)
+                                Text(topic.title).font(AppTheme.captionFont).foregroundStyle(AppTheme.textPrimary).lineLimit(1)
                             }
                         }
                         if latestTopics.isEmpty { Text("暂无热榜缓存，进入热榜页刷新").font(AppTheme.captionFont).foregroundStyle(AppTheme.textSecondary) }
