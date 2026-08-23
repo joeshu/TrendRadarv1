@@ -617,9 +617,9 @@ struct HotNewsView: View {
 
     private var hotNewsOverview: some View {
         HStack(spacing: 10) {
-            PremiumMetricCard(label: "热点", value: "\(hotNewsStore.items.count)", icon: "flame.fill", tint: AppTheme.yellow)
-            PremiumMetricCard(label: "平台", value: "\(Set(hotNewsStore.items.map(\.platformID)).count)", icon: "square.grid.2x2", tint: AppTheme.brandCyan)
-            PremiumMetricCard(label: "异常", value: "\(hotNewsStore.sourceFailures.count)", icon: "exclamationmark.triangle", tint: hotNewsStore.sourceFailures.isEmpty ? AppTheme.green : AppTheme.yellow)
+            PremiumMetricCard(value: "\(hotNewsStore.items.count)", label: "热点", icon: "flame.fill", tint: AppTheme.yellow)
+            PremiumMetricCard(value: "\(Set(hotNewsStore.items.map(\.platformID)).count)", label: "平台", icon: "square.grid.2x2", tint: AppTheme.brandCyan)
+            PremiumMetricCard(value: "\(hotNewsStore.sourceFailures.count)", label: "异常", icon: "exclamationmark.triangle", tint: hotNewsStore.sourceFailures.isEmpty ? AppTheme.green : AppTheme.yellow)
         }
     }
 
