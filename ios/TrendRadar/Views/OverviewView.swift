@@ -55,7 +55,7 @@ struct OverviewView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { showingFavorites.toggle() } label: {
                         Image(systemName: showingFavorites ? "star.fill" : "star")
-                            .foregroundStyle(showingFavorites ? AppTheme.yellow : .white)
+                            .foregroundStyle(showingFavorites ? AppTheme.yellow : AppTheme.textPrimary)
                     }
                     .accessibilityLabel(showingFavorites ? "显示全部情报" : "只看收藏")
                 }
@@ -159,9 +159,11 @@ struct OverviewView: View {
         PremiumPanel(tint: AppTheme.brandCyan) {
             VStack(alignment: .leading, spacing: 14) {
                 PremiumSectionHeader(eyebrow: "LIVE SIGNALS", title: "实时热点", subtitle: "基于当前已采集的热榜数据", icon: "dot.radiowaves.left.and.right", tint: AppTheme.brandCyan)
-                HStack(spacing: 18) {
+                HStack(spacing: 12) {
                     RadarDecoration(count: hotNewsStore.topics.count)
-                    VStack(alignment: .leading, spacing: 10) {
+                        .scaleEffect(0.78)
+                        .frame(width: 145, height: 150)
+                    VStack(alignment: .leading, spacing: 8) {
                         ForEach(latestTopics.prefix(3)) { topic in
                             HStack(spacing: 8) {
                                 Text("#\(topic.bestRank)").font(.system(size: 12, weight: .bold, design: .rounded)).foregroundStyle(AppTheme.yellow)

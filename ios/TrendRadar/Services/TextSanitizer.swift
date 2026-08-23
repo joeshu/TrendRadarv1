@@ -14,8 +14,11 @@ enum TextSanitizer {
             .replacingOccurrences(of: "&#39;", with: "'")
         let stripped = decoded.replacingOccurrences(of: "</?(?:p|a|br|div|span|strong|em|b|i|ul|ol|li|img|figure|figcaption|blockquote|h[1-6])(?:\\s[^>]*)?>", with: " ", options: [.regularExpression, .caseInsensitive])
         let normalized = stripped
+            .replacingOccurrences(of: "(?i)(article\\s+url|comments?\\s+url)\\s*:\\s*https?://\\S+", with: " ", options: .regularExpression)
+            .replacingOccurrences(of: "(?i)\\b(article\\s+url|comments?\\s+url)\\s*:", with: " ", options: .regularExpression)
             .replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
             .trimmingCharacters(in: .whitespacesAndNewlines)
-        return normalized.isEmpty ? nil : normalized
+        guard !normalized.isEmpty else { return nil }
+        return normalized.count > 180 ? String(normalized.prefix(177)) + "…" : normalized
     }
 }
