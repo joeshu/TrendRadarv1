@@ -12,7 +12,7 @@ enum TextSanitizer {
             .replacingOccurrences(of: "&gt;", with: ">")
             .replacingOccurrences(of: "&quot;", with: "\"")
             .replacingOccurrences(of: "&#39;", with: "'")
-        let stripped = decoded.replacingOccurrences(of: "<[^>]+>", with: " ", options: .regularExpression)
+        let stripped = decoded.replacingOccurrences(of: "</?(?:p|a|br|div|span|strong|em|b|i|ul|ol|li|img|figure|figcaption|blockquote|h[1-6])(?:\\s[^>]*)?>", with: " ", options: [.regularExpression, .caseInsensitive])
         let normalized = stripped
             .replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
             .trimmingCharacters(in: .whitespacesAndNewlines)
