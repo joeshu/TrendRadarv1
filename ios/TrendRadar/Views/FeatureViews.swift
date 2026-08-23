@@ -867,6 +867,7 @@ struct ReportCenterView: View {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 16) {
                         reportIntro
+                        reportStatusStrip
                         reportToolbar
                         if reportStore.isLoading {
                             ProgressView("加载报告")
@@ -924,6 +925,14 @@ struct ReportCenterView: View {
                 Text(reportStore.errorMessage ?? "")
             }
             .task { await reportStore.load() }
+        }
+    }
+
+    private var reportStatusStrip: some View {
+        HStack(spacing: 8) {
+            PremiumMetricCard(value: "\(reportStore.reports.count)", label: "全部报告", icon: "doc.text", tint: AppTheme.brandCyan)
+            PremiumMetricCard(value: "\(reportStore.reports.filter(\.isFavorite).count)", label: "已收藏", icon: "star.fill", tint: AppTheme.yellow)
+            PremiumMetricCard(value: "\(reportStore.reports.filter { $0.type == .daily }.count)", label: "日报", icon: "calendar", tint: AppTheme.brandMagenta)
         }
     }
 

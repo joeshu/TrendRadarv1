@@ -7,12 +7,18 @@ struct DiscoverHubView: View {
     @EnvironmentObject private var reportStore: ReportStore
     @State private var mode = 0
     @State private var query = ""
+    @State private var selectedSource = "全部来源"
     @State private var showingFeeds = false
+
+    private var availableSources: [String] {
+        ["全部来源"] + Array(Set(store.items.map(\.source))).sorted()
+    }
 
     private var filtered: [NewsItem] {
         let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !q.isEmpty else { return Array(store.items.prefix(30)) }
-        return store.items.filter { $0.title.localizedCaseInsensitiveContains(q) || $0.source.localizedCaseInsensitiveContains(q) }
+        let sourceFiltered = selectedSource == "全部来源" ? store.items : store.items.filter { $0.source == selectedSource }
+        let result = q.isEmpty ? sourceFiltered : sourceFiltered.filter { $0.title.localizedCaseInsensitiveContains(q) || $0.source.localizedCaseInsensitiveContains(q) }
+        return Array(result.prefix(30))
     }
 
     var body: some View {
@@ -50,8 +56,17 @@ struct DiscoverHubView: View {
                 TextField("搜索标题或来源", text: $query).textFieldStyle(.plain)
                 if !query.isEmpty { Button { query = "" } label: { Image(systemName: "xmark.circle.fill") }.foregroundStyle(.secondary) }
             }.padding(13).background(AppTheme.card).clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(availableSources, id: \.self) { item in
+                        Button { selectedSource = item } label: {
+                            Text(item).font(AppTheme.captionFont).foregroundStyle(selectedSource == item ? .black : AppTheme.textSecondary).padding(.horizontal, 12).padding(.vertical, 8).background(selectedSource == item ? AppTheme.brandCyan : AppTheme.card).clipShape(Capsule())
+                        }
+                    }
+                }
+            }
             HStack(spacing: 8) {
-                PremiumMetricCard(value: "\(store.items.count)", label: "文章", icon: "newspaper", tint: AppTheme.brandCyan)
+                PremiumMetricCard(value: "\(filtered.count)", label: "当前结果", icon: "line.3.horizontal.decrease.circle", tint: AppTheme.brandMagenta)
                 PremiumMetricCard(value: "\(Set(store.items.map { $0.source }).count)", label: "来源", icon: "antenna.radiowaves.left.and.right", tint: AppTheme.brandIndigo)
             }
             if filtered.isEmpty { FeatureEmptyState(icon: "newspaper", title: "暂无订阅内容", message: "刷新 RSS 或检查订阅源配置") }

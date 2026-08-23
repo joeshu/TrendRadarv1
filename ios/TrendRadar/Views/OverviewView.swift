@@ -25,6 +25,7 @@ struct OverviewView: View {
                         hero
                         statusLine
                         metrics
+                        quickActions
                         radarSummary
                         latestSection
                     }
@@ -91,6 +92,41 @@ struct OverviewView: View {
             PremiumMetricCard(value: "\(hotNewsStore.items.count)", label: "热榜条目", icon: "flame.fill", tint: AppTheme.yellow)
             PremiumMetricCard(value: "\(enabledSourceCount)", label: "启用来源", icon: "antenna.radiowaves.left.and.right", tint: AppTheme.brandIndigo)
             PremiumMetricCard(value: "\(unreadCount) · \(favoriteCount)", label: "未读 · 收藏", icon: "bookmark.fill", tint: AppTheme.brandMagenta)
+        }
+    }
+
+    private var quickActions: some View {
+        PremiumPanel(tint: AppTheme.brandMagenta) {
+            VStack(alignment: .leading, spacing: 10) {
+                PremiumSectionHeader(eyebrow: "QUICK ACTIONS", title: "快速操作", subtitle: "从总览直接开始下一步", icon: "bolt.fill", tint: AppTheme.brandMagenta)
+                HStack(spacing: 10) {
+                    Button {
+                        Task {
+                            await hotNewsStore.refresh(settings: settingsStore.settings, latest: true, showError: true)
+                            await store.refresh(showError: true, autoReport: false)
+                        }
+                    } label: {
+                        Label("刷新情报", systemImage: "arrow.clockwise")
+                            .font(AppTheme.captionFont)
+                            .foregroundStyle(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 11)
+                            .background(AppTheme.brandCyan.opacity(0.18))
+                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    }
+                    NavigationLink {
+                        ReportCenterView()
+                    } label: {
+                        Label("查看报告", systemImage: "doc.text.magnifyingglass")
+                            .font(AppTheme.captionFont)
+                            .foregroundStyle(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 11)
+                            .background(AppTheme.brandMagenta.opacity(0.18))
+                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    }
+                }
+            }
         }
     }
 
