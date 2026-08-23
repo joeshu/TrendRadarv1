@@ -601,6 +601,7 @@ struct HotNewsView: View {
                         }
                     }
                     .padding(20)
+                    .padding(.bottom, 110)
                 }
             }
             .navigationTitle("热榜")
@@ -903,6 +904,7 @@ struct ReportCenterView: View {
                         }
                     }
                     .padding(20)
+                    .padding(.bottom, 110)
                 }
             }
             .navigationTitle("报告")
@@ -1031,8 +1033,9 @@ struct CompactFeedCard: View {
                 }
                 Text(item.title)
                     .font(AppTheme.headlineFont)
-                    .foregroundStyle(item.isRead ? AppTheme.textSecondary : .white)
+                    .foregroundStyle(AppTheme.textPrimary)
                     .multilineTextAlignment(.leading)
+                    .lineLimit(2)
                 HStack(spacing: 6) {
                     Text(item.publishedAt?.relativeDescription ?? "刚刚")
                     Text("·")

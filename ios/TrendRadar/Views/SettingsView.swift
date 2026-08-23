@@ -71,6 +71,7 @@ private struct SettingsCategoryRow: View {
                     .foregroundStyle(AppTheme.textTertiary)
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.vertical, 10)
         .padding(.horizontal, 12)
         .background(AppTheme.card.opacity(0.72))
@@ -85,13 +86,22 @@ private struct SettingsCategoryRow: View {
 
 private struct SettingsCategoriesSection: View {
     var body: some View {
-        Section("设置") {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("设置")
+                .font(AppTheme.headlineFont)
+                .foregroundStyle(AppTheme.textPrimary)
+                .padding(.horizontal, 16)
             ForEach(SettingsCategory.allCases) { category in
                 NavigationLink(value: category) {
                     SettingsCategoryRow(category: category)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
+                .buttonStyle(.plain)
+                .padding(.horizontal, 16)
             }
         }
+        .padding(.top, 4)
+        .padding(.bottom, 18)
     }
 }
 

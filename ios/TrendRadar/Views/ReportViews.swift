@@ -24,10 +24,7 @@ struct ReportGeneratorSheet: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("生成") {
-                        onGenerate(selectedType)
-                        dismiss()
-                    }
+                    Button("生成") { onGenerate(selectedType); dismiss() }
                 }
             }
             .preferredColorScheme(.light)
@@ -44,24 +41,14 @@ struct ReportSummaryCard: View {
             Image(systemName: report.isFavorite ? "star.fill" : "doc.text")
                 .foregroundStyle(report.isFavorite ? AppTheme.yellow : AppTheme.pink)
             VStack(alignment: .leading, spacing: 4) {
-                Text(report.title)
-                    .font(AppTheme.headlineFont)
-                    .foregroundStyle(AppTheme.textPrimary)
-                    .lineLimit(2)
+                Text(report.title).font(AppTheme.headlineFont).foregroundStyle(AppTheme.textPrimary).lineLimit(2)
                 HStack(spacing: 6) {
-                    Text(report.type.displayName)
-                    Text("·")
-                    Text("\(report.newsCount) 条情报")
-                    Text("·")
-                    Text(report.generatedAt, style: .relative)
+                    Text(report.type.displayName); Text("·"); Text("\(report.newsCount) 条情报"); Text("·"); Text(report.generatedAt, style: .relative)
                 }
-                    .font(AppTheme.captionFont)
-                    .foregroundStyle(AppTheme.textTertiary)
+                .font(AppTheme.captionFont).foregroundStyle(AppTheme.textTertiary)
             }
             Spacer()
-            Image(systemName: "chevron.right")
-                .font(.caption.weight(.bold))
-                .foregroundStyle(AppTheme.textTertiary)
+            Image(systemName: "chevron.right").font(.caption.weight(.bold)).foregroundStyle(AppTheme.textTertiary)
         }
         .padding(12)
         .background(AppTheme.card)
@@ -69,11 +56,9 @@ struct ReportSummaryCard: View {
             Text(report.hasAIAnalysis ? "已分析" : "本地快照")
                 .font(.system(size: 10, weight: .bold, design: .rounded))
                 .foregroundStyle(report.hasAIAnalysis ? AppTheme.cyan : AppTheme.textTertiary)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 5)
+                .padding(.horizontal, 8).padding(.vertical, 5)
                 .background((report.hasAIAnalysis ? AppTheme.cyan : AppTheme.textTertiary).opacity(0.12))
-                .clipShape(Capsule())
-                .padding(10)
+                .clipShape(Capsule()).padding(10)
         }
         .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(AppTheme.cardBorder, lineWidth: 1))
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
@@ -93,12 +78,8 @@ struct ReportDetailView: View {
             if let report {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 16) {
-                        PremiumPanel(tint: AppTheme.brandCyan) {
-                            detailHeader(report)
-                        }
-                        PremiumPanel(tint: AppTheme.brandIndigo) {
-                            statistics(report)
-                        }
+                        PremiumPanel(tint: AppTheme.brandCyan) { detailHeader(report) }
+                        PremiumPanel(tint: AppTheme.brandIndigo) { statistics(report) }
                         if let analysis = report.aiAnalysis, analysis.hasContent {
                             PremiumPanel(tint: AppTheme.brandMagenta) {
                                 VStack(alignment: .leading, spacing: 12) {
@@ -107,50 +88,28 @@ struct ReportDetailView: View {
                                     analysisBlock(title: "舆论风向争议", content: analysis.sentimentControversy)
                                     analysisBlock(title: "异动与弱信号", content: analysis.signals ?? analysis.weakSignals.joined(separator: "\n"))
                                     analysisBlock(title: "RSS 深度洞察", content: analysis.rssInsights)
-                                    if let positive = analysis.sentimentPositive,
-                                       let neutral = analysis.sentimentNeutral,
-                                       let negative = analysis.sentimentNegative {
+                                    if let positive = analysis.sentimentPositive, let neutral = analysis.sentimentNeutral, let negative = analysis.sentimentNegative {
                                         HStack(spacing: 8) {
                                             SentimentPill(label: "正面", value: positive, tint: AppTheme.green)
                                             SentimentPill(label: "中性", value: neutral, tint: AppTheme.yellow)
                                             SentimentPill(label: "负面", value: negative, tint: AppTheme.red)
                                         }
                                     }
-                                    if analysis.signals == nil && !analysis.weakSignals.isEmpty {
-                                        Text("弱信号：" + analysis.weakSignals.joined(separator: "、"))
-                                            .font(AppTheme.captionFont)
-                                            .foregroundStyle(AppTheme.textSecondary)
-                                    }
                                     if let recommendation = analysis.recommendation, !recommendation.isEmpty {
-                                        VStack(alignment: .leading, spacing: 4) {
-                                            Text("研判策略建议")
-                                                .font(AppTheme.headlineFont)
-                                                .foregroundStyle(AppTheme.cyan)
-                                            Text(recommendation)
-                                                .font(AppTheme.captionFont)
-                                                .foregroundStyle(AppTheme.textSecondary)
-                                        }
+                                        analysisBlock(title: "研判策略建议", content: recommendation)
                                     }
                                     if !analysis.standaloneSummaries.isEmpty {
                                         VStack(alignment: .leading, spacing: 8) {
-                                            Text("独立源点速览")
-                                                .font(AppTheme.headlineFont)
-                                                .foregroundStyle(AppTheme.cyan)
+                                            Text("独立源点速览").font(AppTheme.headlineFont).foregroundStyle(AppTheme.cyan)
                                             ForEach(analysis.standaloneSummaries.keys.sorted(), id: \.self) { source in
-                                                if let summary = analysis.standaloneSummaries[source], !summary.isEmpty {
-                                                    Text("[\(source)] \(summary)")
-                                                        .font(AppTheme.captionFont)
-                                                        .foregroundStyle(AppTheme.textSecondary)
-                                                }
+                                                if let summary = analysis.standaloneSummaries[source], !summary.isEmpty { Text("[\(source)] \(summary)").font(AppTheme.captionFont).foregroundStyle(AppTheme.textSecondary) }
                                             }
                                         }
                                     }
                                 }
                             }
                         } else if let message = report.aiAnalysis?.failureMessage {
-                            InsightPanel(title: "AI 洞察", icon: "exclamationmark.triangle", tint: AppTheme.yellow) {
-                                Text(message).font(AppTheme.captionFont).foregroundStyle(AppTheme.textSecondary)
-                            }
+                            InsightPanel(title: "AI 洞察", icon: "exclamationmark.triangle", tint: AppTheme.yellow) { Text(message).font(AppTheme.captionFont).foregroundStyle(AppTheme.textSecondary) }
                         }
                         if !report.newItems.isEmpty {
                             PremiumPanel(tint: AppTheme.brandCyan) {
@@ -168,9 +127,7 @@ struct ReportDetailView: View {
                                 }
                             }
                         }
-                        ForEach(report.sections) { section in
-                            sectionView(section)
-                        }
+                        ForEach(report.sections) { section in sectionView(section) }
                         if let diagnostics = report.diagnostics, !diagnostics.failures.isEmpty {
                             PremiumPanel(tint: AppTheme.yellow) {
                                 VStack(alignment: .leading, spacing: 10) {
@@ -188,7 +145,9 @@ struct ReportDetailView: View {
                             }
                         }
                     }
-                    .padding(20)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 10)
+                    .padding(.bottom, 120)
                 }
             } else {
                 FeatureEmptyState(icon: "doc.text.magnifyingglass", title: "报告不可用", message: "这份报告可能已被删除。")
@@ -202,49 +161,28 @@ struct ReportDetailView: View {
             ToolbarItem(placement: .topBarTrailing) {
                 if let report {
                     Menu {
-                        ShareLink(item: ReportFormatter().render(report, format: .markdown)) {
-                            Label("分享 Markdown", systemImage: "square.and.arrow.up")
-                        }
-                        ShareLink(item: ReportHTMLExport(report: report), preview: SharePreview(report.title, image: Image(systemName: "doc.richtext"))) {
-                            Label("导出 HTML 报告", systemImage: "doc.richtext")
-                        }
-                        Button { Task { await reportStore.toggleFavorite(id: report.id); await loadReport() } } label: {
-                            Label(report.isFavorite ? "取消收藏" : "收藏", systemImage: report.isFavorite ? "star.slash" : "star")
-                        }
-                        Button(role: .destructive) { showingDeleteConfirmation = true } label: {
-                            Label("删除报告", systemImage: "trash")
-                        }
-                    } label: {
-                        Image(systemName: "ellipsis.circle")
-                    }
+                        ShareLink(item: ReportFormatter().render(report, format: .markdown)) { Label("分享 Markdown", systemImage: "square.and.arrow.up") }
+                        ShareLink(item: ReportHTMLExport(report: report), preview: SharePreview(report.title, image: Image(systemName: "doc.richtext"))) { Label("导出 HTML 报告", systemImage: "doc.richtext") }
+                        Button { Task { await reportStore.toggleFavorite(id: report.id); await loadReport() } } label: { Label(report.isFavorite ? "取消收藏" : "收藏", systemImage: report.isFavorite ? "star.slash" : "star") }
+                        Button(role: .destructive) { showingDeleteConfirmation = true } label: { Label("删除报告", systemImage: "trash") }
+                    } label: { Image(systemName: "ellipsis.circle") }
                 }
             }
         }
         .confirmationDialog("删除这份报告？", isPresented: $showingDeleteConfirmation, titleVisibility: .visible) {
-            Button("删除", role: .destructive) {
-                Task {
-                    await reportStore.delete(id: reportID)
-                    dismiss()
-                }
-            }
+            Button("删除", role: .destructive) { Task { await reportStore.delete(id: reportID); dismiss() } }
         }
         .task { await loadReport() }
     }
 
-    private func loadReport() async {
-        report = await reportStore.detail(id: reportID)
-    }
+    private func loadReport() async { report = await reportStore.detail(id: reportID) }
 
     @ViewBuilder
     private func analysisBlock(title: String, content: String?) -> some View {
-        if let content, !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+        if let content, let clean = TextSanitizer.plainText(content), !clean.isEmpty {
             VStack(alignment: .leading, spacing: 4) {
-                Text(title)
-                    .font(AppTheme.headlineFont)
-                    .foregroundStyle(AppTheme.cyan)
-                Text(content)
-                    .font(AppTheme.bodyFont)
-                    .foregroundStyle(AppTheme.textSecondary)
+                Text(title).font(AppTheme.headlineFont).foregroundStyle(AppTheme.cyan)
+                Text(clean).font(AppTheme.bodyFont).foregroundStyle(AppTheme.textSecondary)
             }
         }
     }
@@ -253,17 +191,9 @@ struct ReportDetailView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text(report.type.displayName.uppercased())
-                        .font(AppTheme.captionFont)
-                        .tracking(1.4)
-                        .foregroundStyle(AppTheme.pink)
-                    Text(report.title)
-                        .font(AppTheme.titleFont)
-                        .foregroundStyle(AppTheme.textPrimary)
-                        .fixedSize(horizontal: false, vertical: true)
-                    Text("生成于 \(report.generatedAt, format: .dateTime.year().month().day().hour().minute())")
-                        .font(AppTheme.captionFont)
-                        .foregroundStyle(AppTheme.textTertiary)
+                    Text(report.type.displayName.uppercased()).font(AppTheme.captionFont).tracking(1.4).foregroundStyle(AppTheme.pink)
+                    Text(report.title).font(AppTheme.titleFont).foregroundStyle(AppTheme.textPrimary).fixedSize(horizontal: false, vertical: true)
+                    Text("生成于 \(report.generatedAt, format: .dateTime.year().month().day().hour().minute())").font(AppTheme.captionFont).foregroundStyle(AppTheme.textTertiary)
                 }
                 Spacer(minLength: 12)
                 Image(systemName: report.aiAnalysis?.hasContent == true ? "sparkles" : "doc.text")
@@ -276,7 +206,7 @@ struct ReportDetailView: View {
         }
         .padding(18)
         .background(AppTheme.heroGradient)
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
 
     private func statistics(_ report: ReportDetail) -> some View {
@@ -294,8 +224,7 @@ struct ReportDetailView: View {
                 InsightMetric(value: "\(report.statistics.rssSourceCount)", label: "RSS 来源", tint: AppTheme.green)
             }
         }
-        .padding(16)
-        .background(AppTheme.card)
+        .padding(16).background(AppTheme.card)
         .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(AppTheme.cardBorder, lineWidth: 1))
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
@@ -305,59 +234,31 @@ struct ReportDetailView: View {
             VStack(alignment: .leading, spacing: 12) {
                 ForEach(section.items) { item in
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(item.title)
-                            .font(AppTheme.headlineFont)
-                            .foregroundStyle(AppTheme.textPrimary)
-                        Text("\(item.source) · \(item.publishedAt?.relativeDescription ?? "刚刚")")
-                            .font(AppTheme.captionFont)
-                            .foregroundStyle(AppTheme.textTertiary)
-                        if let rank = item.rank {
-                            Text(rank <= reportRankThreshold ? "高热度排名：第\(rank)" : "排名：第\(rank)")
-                                .font(AppTheme.captionFont)
-                                .foregroundStyle(rank <= reportRankThreshold ? AppTheme.pink : AppTheme.textTertiary)
-                        }
-                        if let summary = item.summary, !summary.isEmpty {
-                            Text(summary)
-                                .font(AppTheme.captionFont)
-                                .foregroundStyle(AppTheme.textSecondary)
-                                .lineLimit(2)
-                        }
-                        if let url = item.url {
-                            Link("打开原文", destination: url)
-                                .font(AppTheme.captionFont)
-                                .foregroundStyle(AppTheme.cyan)
-                        }
+                        Text(item.title).font(AppTheme.headlineFont).foregroundStyle(AppTheme.textPrimary)
+                        Text("\(item.source) · \(item.publishedAt?.relativeDescription ?? "刚刚")").font(AppTheme.captionFont).foregroundStyle(AppTheme.textTertiary)
+                        if let rank = item.rank { Text(rank <= reportRankThreshold ? "高热度排名：第\(rank)" : "排名：第\(rank)").font(AppTheme.captionFont).foregroundStyle(rank <= reportRankThreshold ? AppTheme.pink : AppTheme.textTertiary) }
+                        if let summary = TextSanitizer.plainText(item.summary), !summary.isEmpty { Text(summary).font(AppTheme.captionFont).foregroundStyle(AppTheme.textSecondary).lineLimit(2) }
+                        if let url = item.url { Link("打开原文", destination: url).font(AppTheme.captionFont).foregroundStyle(AppTheme.cyan) }
                     }
-                    if item.id != section.items.last?.id {
-                        Divider().overlay(AppTheme.cardBorder)
-                    }
+                    if item.id != section.items.last?.id { Divider().overlay(AppTheme.cardBorder) }
                 }
             }
         }
     }
 
-    private var reportRankThreshold: Int {
-        report?.settingsSnapshot.rankThreshold ?? 5
-    }
+    private var reportRankThreshold: Int { report?.settingsSnapshot.rankThreshold ?? 5 }
 }
 
 private struct SentimentPill: View {
     let label: String
     let value: Double
     let tint: Color
-
     var body: some View {
         VStack(spacing: 3) {
-            Text("\(Int(value * 100))%")
-                .font(AppTheme.headlineFont)
-                .foregroundStyle(tint)
-            Text(label)
-                .font(AppTheme.captionFont)
-                .foregroundStyle(AppTheme.textTertiary)
+            Text("\(Int(value * 100))%").font(AppTheme.headlineFont).foregroundStyle(tint)
+            Text(label).font(AppTheme.captionFont).foregroundStyle(AppTheme.textTertiary)
         }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 8)
-        .background(tint.opacity(0.1))
-        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .frame(maxWidth: .infinity).padding(.vertical, 8)
+        .background(tint.opacity(0.1)).clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 }

@@ -27,7 +27,12 @@ struct NewsCrawler: Sendable {
         let parser = RSSParser(feed: feed)
         parser.parse(data)
         if let error = parser.error { throw error }
-        return parser.items
+        return parser.items.map { item in
+            var cleaned = item
+            cleaned.summary = TextSanitizer.plainText(item.summary)
+            cleaned.body = TextSanitizer.plainText(item.body)
+            return cleaned
+        }
     }
 }
 

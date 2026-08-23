@@ -31,6 +31,7 @@ struct OverviewView: View {
                     }
                     .padding(.horizontal, 16)
                     .padding(.vertical, 12)
+                    .padding(.bottom, 110)
                 }
                 .refreshable {
                     await store.refresh(showError: false)
@@ -183,7 +184,17 @@ private struct OverviewNewsRow: View {
                     Spacer()
                     if item.isFavorite { Image(systemName: "star.fill").font(.caption).foregroundStyle(AppTheme.yellow) }
                 }
-                Text(item.title).font(.system(size: 15, weight: item.isRead ? .regular : .semibold, design: .rounded)).foregroundStyle(item.isRead ? AppTheme.textSecondary : .white).lineLimit(2)
+                Text(item.title)
+                    .font(.system(size: 15, weight: item.isRead ? .regular : .semibold, design: .rounded))
+                    .foregroundStyle(item.isRead ? AppTheme.textSecondary : AppTheme.textPrimary)
+                    .multilineTextAlignment(.leading)
+                    .lineLimit(2)
+                if let summary = TextSanitizer.plainText(item.summary), !summary.isEmpty {
+                    Text(summary)
+                        .font(AppTheme.captionFont)
+                        .foregroundStyle(AppTheme.textSecondary)
+                        .lineLimit(2)
+                }
                 Text(item.publishedAt?.relativeDescription ?? "刚刚").font(AppTheme.captionFont).foregroundStyle(AppTheme.textTertiary)
             }
         }.padding(14).background(AppTheme.card).clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous)).overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(AppTheme.cardBorder, lineWidth: 1))

@@ -174,7 +174,7 @@ struct RadarView: View {
                     Button { selectedSource = source } label: {
                         Text(source)
                             .font(.system(size: 13, weight: .semibold, design: .rounded))
-                            .foregroundStyle(selectedSource == source ? AppTheme.background : .white.opacity(0.72))
+                            .foregroundStyle(selectedSource == source ? AppTheme.background : AppTheme.textSecondary)
                             .padding(.horizontal, 15)
                             .padding(.vertical, 9)
                             .background(selectedSource == source ? AppTheme.cyan : AppTheme.card)
@@ -380,7 +380,7 @@ private struct NewsCard: View {
                 }
                 Text(item.title)
                     .font(.system(size: 16, weight: item.isRead ? .regular : .semibold, design: .rounded))
-                    .foregroundStyle(item.isRead ? .white.opacity(0.58) : .white)
+                    .foregroundStyle(item.isRead ? AppTheme.textSecondary : AppTheme.textPrimary)
                     .multilineTextAlignment(.leading)
                     .lineLimit(2)
                 HStack(spacing: 7) {
