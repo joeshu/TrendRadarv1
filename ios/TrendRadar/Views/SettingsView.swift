@@ -71,7 +71,14 @@ private struct SettingsCategoryRow: View {
                     .foregroundStyle(AppTheme.textTertiary)
             }
         }
-        .padding(.vertical, 5)
+        .padding(.vertical, 10)
+        .padding(.horizontal, 12)
+        .background(AppTheme.card.opacity(0.72))
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(AppTheme.cardBorder, lineWidth: 1)
+        }
         .contentShape(Rectangle())
     }
 }

@@ -864,6 +864,8 @@ struct ReportCenterView: View {
         NavigationStack {
             ZStack {
                 AppTheme.background.ignoresSafeArea()
+                LinearGradient(colors: [AppTheme.brandIndigo.opacity(0.12), .clear], startPoint: .topLeading, endPoint: .center)
+                    .ignoresSafeArea()
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 16) {
                         reportIntro
@@ -937,8 +939,20 @@ struct ReportCenterView: View {
     }
 
     private var reportToolbar: some View {
-        HStack(spacing: 8) {
-            TextField("搜索报告", text: $reportStore.searchText)
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                Image(systemName: "line.3.horizontal.decrease.circle.fill")
+                    .foregroundStyle(AppTheme.brandCyan)
+                Text("报告检索")
+                    .font(AppTheme.headlineFont)
+                    .foregroundStyle(.white)
+                Spacer()
+                Text(reportStore.favoritesOnly ? "仅收藏" : reportStore.selectedType?.displayName ?? "全部类型")
+                    .font(AppTheme.captionFont)
+                    .foregroundStyle(AppTheme.textSecondary)
+            }
+            HStack(spacing: 8) {
+                TextField("搜索报告标题", text: $reportStore.searchText)
                 .textFieldStyle(.plain)
                 .padding(12)
                 .background(AppTheme.card)
