@@ -57,20 +57,27 @@ private struct SettingsCategoryRow: View {
     let category: SettingsCategory
 
     var body: some View {
-            HStack(spacing: 12) {
-            Image(systemName: category.icon)
-                .font(.headline)
-                .foregroundStyle(AppTheme.cyan)
-                .frame(width: 28)
-            VStack(alignment: .leading, spacing: 3) {
-                Text(category.title)
-                    .font(AppTheme.headlineFont)
-                    .foregroundStyle(AppTheme.textPrimary)
-                Text(category.subtitle)
-                    .font(AppTheme.captionFont)
-                    .foregroundStyle(AppTheme.textTertiary)
-            }
-        }
+                HStack(spacing: 12) {
+                    Image(systemName: category.icon)
+                        .font(.headline)
+                        .foregroundStyle(AppTheme.cyan)
+                        .frame(width: 28)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(category.title)
+                            .font(AppTheme.headlineFont)
+                            .foregroundStyle(AppTheme.textPrimary)
+                        Text(category.subtitle)
+                            .font(AppTheme.captionFont)
+                            .foregroundStyle(AppTheme.textTertiary)
+                    }
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(AppTheme.textTertiary)
+                        .frame(width: 28, height: 28)
+                        .background(AppTheme.surface)
+                        .clipShape(Circle())
+                }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.vertical, 10)
         .padding(.horizontal, 12)

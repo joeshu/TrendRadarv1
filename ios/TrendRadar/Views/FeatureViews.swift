@@ -580,15 +580,36 @@ struct HotNewsView: View {
                             SourceHealthBanner(title: "部分热榜平台暂不可用", detail: hotNewsStore.sourceFailures.joined(separator: "、"), tint: AppTheme.yellow)
                         }
                         if hotNewsStore.items.isEmpty {
-                            VStack(spacing: 12) {
-                                FeatureEmptyState(icon: "flame", title: "暂无热榜数据", message: "检查平台开关和 API 地址后重试。")
-                                Button("立即刷新") {
+                            VStack(spacing: 10) {
+                                HStack(spacing: 12) {
+                                    Image(systemName: "flame.slash")
+                                        .font(.system(size: 22, weight: .semibold))
+                                        .foregroundStyle(AppTheme.yellow)
+                                        .frame(width: 44, height: 44)
+                                        .background(AppTheme.yellow.opacity(0.12))
+                                        .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
+                                    VStack(alignment: .leading, spacing: 3) {
+                                        Text("暂无热榜缓存")
+                                            .font(AppTheme.headlineFont)
+                                            .foregroundStyle(AppTheme.textPrimary)
+                                        Text("进入热榜页刷新后，这里会显示实时信号")
+                                            .font(AppTheme.captionFont)
+                                            .foregroundStyle(AppTheme.textSecondary)
+                                    }
+                                    Spacer(minLength: 0)
+                                }
+                                Button {
                                     Task { await hotNewsStore.refresh(settings: settingsStore.settings, latest: true) }
+                                } label: {
+                                    Label("立即刷新", systemImage: "arrow.clockwise")
+                                        .frame(maxWidth: .infinity)
                                 }
                                 .buttonStyle(AccentButtonStyle())
                             }
-                            .frame(maxWidth: .infinity)
-                            .padding(.top, 32)
+                            .padding(16)
+                            .background(AppTheme.card)
+                            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(AppTheme.cardBorder, lineWidth: 1))
+                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                         } else {
                             ForEach(hotNewsStore.topics) { topic in
                                 NavigationLink {
@@ -967,23 +988,39 @@ struct ReportCenterView: View {
                     .foregroundStyle(AppTheme.textSecondary)
             }
             HStack(spacing: 8) {
-                TextField("搜索报告标题", text: $reportStore.searchText)
-                .textFieldStyle(.plain)
-                .padding(12)
+                HStack(spacing: 8) {
+                    Image(systemName: "magnifyingglass")
+                        .foregroundStyle(AppTheme.brandCyan)
+                    TextField("搜索报告标题", text: $reportStore.searchText)
+                        .textFieldStyle(.plain)
+                    if !reportStore.searchText.isEmpty {
+                        Button { reportStore.searchText = "" } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundStyle(AppTheme.textTertiary)
+                        }
+                    }
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 11)
                 .background(AppTheme.card)
+                .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(AppTheme.cardBorder, lineWidth: 1))
                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                Menu {
+                    Button("全部类型") { reportStore.selectedType = nil }
+                    ForEach(ReportType.allCases, id: \.self) { type in
+                        Button(type.displayName) { reportStore.selectedType = type }
+                    }
+                    Divider()
+                    Toggle("仅收藏", isOn: $reportStore.favoritesOnly)
+                } label: {
+                    Image(systemName: reportStore.selectedType == nil && !reportStore.favoritesOnly ? "line.3.horizontal.decrease.circle" : "line.3.horizontal.decrease.circle.fill")
+                        .font(.title3)
+                        .foregroundStyle(AppTheme.cyan)
+                        .frame(width: 42, height: 42)
+                        .background(AppTheme.card)
+                        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(AppTheme.cardBorder, lineWidth: 1))
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 }
-            Menu {
-                Button("全部类型") { reportStore.selectedType = nil }
-                ForEach(ReportType.allCases, id: \.self) { type in
-                    Button(type.displayName) { reportStore.selectedType = type }
-                }
-                Divider()
-                Toggle("仅收藏", isOn: $reportStore.favoritesOnly)
-            } label: {
-                Image(systemName: reportStore.selectedType == nil && !reportStore.favoritesOnly ? "line.3.horizontal.decrease.circle" : "line.3.horizontal.decrease.circle.fill")
-                    .font(.title3)
-                    .foregroundStyle(AppTheme.cyan)
             }
         }
     }
