@@ -152,8 +152,40 @@ struct ReportDetailView: View {
                                 Text(message).font(AppTheme.captionFont).foregroundStyle(AppTheme.textSecondary)
                             }
                         }
+                        if !report.newItems.isEmpty {
+                            PremiumPanel(tint: AppTheme.brandCyan) {
+                                VStack(alignment: .leading, spacing: 10) {
+                                    PremiumSectionHeader(eyebrow: "NEW SIGNALS", title: "新增热点", subtitle: "本批次首次出现的内容", icon: "sparkles", tint: AppTheme.brandCyan)
+                                    ForEach(report.newItems.prefix(8)) { item in
+                                        HStack(alignment: .top, spacing: 8) {
+                                            Circle().fill(AppTheme.brandCyan).frame(width: 6, height: 6).padding(.top, 6)
+                                            VStack(alignment: .leading, spacing: 3) {
+                                                Text(item.title).font(AppTheme.headlineFont).foregroundStyle(.white)
+                                                Text(item.source).font(AppTheme.captionFont).foregroundStyle(AppTheme.textTertiary)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
                         ForEach(report.sections) { section in
                             sectionView(section)
+                        }
+                        if let diagnostics = report.diagnostics, !diagnostics.failures.isEmpty {
+                            PremiumPanel(tint: AppTheme.yellow) {
+                                VStack(alignment: .leading, spacing: 10) {
+                                    PremiumSectionHeader(eyebrow: "SOURCE HEALTH", title: "采集异常", subtitle: "部分来源未能完成刷新", icon: "exclamationmark.triangle", tint: AppTheme.yellow)
+                                    ForEach(diagnostics.failures) { failure in
+                                        HStack(alignment: .top, spacing: 8) {
+                                            Image(systemName: "xmark.circle.fill").foregroundStyle(AppTheme.yellow)
+                                            VStack(alignment: .leading, spacing: 2) {
+                                                Text(failure.source).font(AppTheme.headlineFont).foregroundStyle(.white)
+                                                Text(failure.message).font(AppTheme.captionFont).foregroundStyle(AppTheme.textSecondary)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                     .padding(20)

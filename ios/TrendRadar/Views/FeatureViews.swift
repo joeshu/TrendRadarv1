@@ -571,6 +571,7 @@ struct HotNewsView: View {
                     LazyVStack(alignment: .leading, spacing: 16) {
                         PremiumSectionHeader(eyebrow: "LIVE RADAR", title: "热榜雷达", subtitle: "跨平台排名与真实变化趋势", icon: "dot.radiowaves.left.and.right", tint: AppTheme.brandCyan)
                         hotNewsOverview
+                        radarSummary
                         hotNewsFilters
                         if !hotNewsStore.sourceFailures.isEmpty {
                             Label("部分平台暂时无法获取：\(hotNewsStore.sourceFailures.joined(separator: "、"))", systemImage: "exclamationmark.triangle")
@@ -620,6 +621,25 @@ struct HotNewsView: View {
             PremiumMetricCard(value: "\(hotNewsStore.items.count)", label: "热点", icon: "flame.fill", tint: AppTheme.yellow)
             PremiumMetricCard(value: "\(Set(hotNewsStore.items.map(\.platformID)).count)", label: "平台", icon: "square.grid.2x2", tint: AppTheme.brandCyan)
             PremiumMetricCard(value: "\(hotNewsStore.sourceFailures.count)", label: "异常", icon: "exclamationmark.triangle", tint: hotNewsStore.sourceFailures.isEmpty ? AppTheme.green : AppTheme.yellow)
+        }
+    }
+
+    private var radarSummary: some View {
+        PremiumPanel(tint: AppTheme.brandCyan) {
+            HStack(spacing: 18) {
+                RadarDecoration(count: hotNewsStore.items.count)
+                    .frame(width: 150, height: 170)
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("实时信号扫描")
+                        .font(AppTheme.headlineFont)
+                        .foregroundStyle(.white)
+                    Text(hotNewsStore.lastUpdated.map { "更新于 \($0, format: .dateTime.hour().minute())" } ?? "等待首次刷新")
+                        .font(AppTheme.captionFont)
+                        .foregroundStyle(AppTheme.textSecondary)
+                    PremiumStatusLine(title: "数据平台", detail: "\(Set(hotNewsStore.items.map(\.platformID)).count) 个", isGood: !hotNewsStore.items.isEmpty)
+                    PremiumStatusLine(title: "排名轨迹", detail: hotNewsStore.items.contains { $0.previousRank != nil } ? "可用" : "积累中", isGood: hotNewsStore.items.contains { $0.previousRank != nil })
+                }
+            }
         }
     }
 
