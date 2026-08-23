@@ -74,7 +74,9 @@ struct OverviewView: View {
                     Text("你的信息脉搏").font(.system(size: 29, weight: .bold, design: .rounded)).foregroundStyle(AppTheme.textPrimary)
                     Text(Date.now.formatted(date: .complete, time: .omitted)).font(AppTheme.captionFont).foregroundStyle(AppTheme.textSecondary)
                 }.padding(16)
-                .frame(height: 148).clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            }
+            .frame(height: 148)
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         }
     }
 
