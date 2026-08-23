@@ -953,7 +953,7 @@ struct ReportCenterView: View {
     }
 }
 
-private struct CompactFeedCard: View {
+struct CompactFeedCard: View {
     let item: NewsItem
     @EnvironmentObject private var store: NewsStore
 
