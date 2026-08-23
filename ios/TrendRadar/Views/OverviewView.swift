@@ -189,28 +189,30 @@ private struct OverviewHeroCard: View {
     var body: some View {
         OverviewCard(tint: AppTheme.brandCyan) {
             ZStack(alignment: .leading) {
-                LinearGradient(colors: [Color.white, Color(red: 0.90, green: 0.96, blue: 1)], startPoint: .leading, endPoint: .trailing)
-                HStack {
-                    VStack(alignment: .leading, spacing: 7) {
+                LinearGradient(colors: [Color.white, Color(red: 0.89, green: 0.96, blue: 1)], startPoint: .leading, endPoint: .trailing)
+                HStack(spacing: 0) {
+                    VStack(alignment: .leading, spacing: 12) {
                         Text("TREND RADAR")
                             .font(.system(size: 12, weight: .heavy, design: .rounded))
                             .tracking(2.1)
                             .foregroundStyle(AppTheme.brandCyan)
-                        Text("你的信息脉搏")
+                        Text("你的\n信息脉搏")
                             .font(.system(size: 28, weight: .bold, design: .rounded))
                             .foregroundStyle(AppTheme.textPrimary)
+                            .lineSpacing(2)
                         Text(date.formatted(date: .complete, time: .omitted))
                             .font(AppTheme.captionFont)
                             .foregroundStyle(AppTheme.textSecondary)
                     }
-                    Spacer()
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     CompactRadar(count: 0)
                         .frame(width: 140, height: 126)
                         .opacity(0.72)
+                        .layoutPriority(1)
                 }
-                .padding(.horizontal, 16)
+                .padding(.horizontal, 20)
             }
-            .frame(height: 150)
+            .frame(height: 190)
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
     }
