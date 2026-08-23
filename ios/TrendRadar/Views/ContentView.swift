@@ -8,6 +8,7 @@ struct RadarView: View {
     @State private var selectedSource = "全部"
     @State private var showingFavorites = false
     @State private var showingSettings = false
+    @State private var showingFeeds = false
 
     private var sourceNames: [String] {
         let configured = settingsStore.settings.customFeeds.filter(\.isEnabled).map(\.name)
@@ -327,10 +328,8 @@ struct ContentView: View {
         TabView {
             OverviewView()
                 .tabItem { Label("总览", systemImage: "square.grid.2x2.fill") }
-            RadarView()
-                .tabItem { Label("发现", systemImage: "dot.radiowaves.left.and.right") }
-            FeedsView()
-                .tabItem { Label("订阅", systemImage: "newspaper") }
+            DiscoverHubView()
+                .tabItem { Label("发现", systemImage: "sparkles") }
             HotNewsView()
                 .tabItem { Label("热榜", systemImage: "flame.fill") }
             ReportCenterView()
