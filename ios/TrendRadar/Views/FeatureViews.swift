@@ -884,6 +884,8 @@ struct ReportCenterView: View {
                                 NavigationLink {
                                     ReportDetailView(reportID: report.id)
                                 } label: {
+                                    ReportSummaryCard(report: report)
+                                }
                                 .buttonStyle(.plain)
                                 .contextMenu {
                                     Button {
