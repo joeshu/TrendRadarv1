@@ -354,6 +354,7 @@ struct InsightView: View {
                         hotNewsInsightCard
                         anomalyCard
                         aiCard
+                        latestAIReportCard
                         queryCard
                     }
                     .padding(.horizontal, 16)
@@ -495,6 +496,64 @@ struct InsightView: View {
                         .foregroundStyle(AppTheme.textTertiary)
                 }
             }
+        }
+    }
+
+    private var latestAIReportCard: some View {
+        InsightPanel(title: "AI 分析报告", icon: "doc.text.magnifyingglass", tint: AppTheme.brandIndigo) {
+            if let analysis = latestAnalysis, analysis.hasContent {
+                VStack(alignment: .leading, spacing: 14) {
+                    if let content = analysis.coreTrends ?? analysis.content, !content.isEmpty {
+                        insightReportBlock(title: "核心热点态势", content: content)
+                    }
+                    if let content = analysis.sentimentControversy, !content.isEmpty {
+                        insightReportBlock(title: "舆论风向争议", content: content)
+                    }
+                    if let content = analysis.signals, !content.isEmpty {
+                        insightReportBlock(title: "异动与弱信号", content: content)
+                    }
+                    if let content = analysis.rssInsights, !content.isEmpty {
+                        insightReportBlock(title: "RSS 深度洞察", content: content)
+                    }
+                    if let content = analysis.recommendation, !content.isEmpty {
+                        insightReportBlock(title: "研判策略建议", content: content)
+                    }
+                    if !analysis.standaloneSummaries.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("独立源点速览")
+                                .font(AppTheme.headlineFont)
+                                .foregroundStyle(AppTheme.brandIndigo)
+                            ForEach(analysis.standaloneSummaries.keys.sorted(), id: \\.self) { source in
+                                if let content = analysis.standaloneSummaries[source], !content.isEmpty {
+                                    insightReportBlock(title: source, content: content)
+                                }
+                            }
+                        }
+                    }
+                    NavigationLink {
+                        if let report = reportStore.reports.first {
+                            ReportDetailView(reportID: report.id)
+                        }
+                    } label: {
+                        Label("查看完整报告", systemImage: "arrow.up.right")
+                    }
+                    .buttonStyle(OutlineButtonStyle())
+                }
+            } else {
+                Text("生成报告后，完整 AI 分析会直接显示在这里。")
+                    .font(AppTheme.bodyFont)
+                    .foregroundStyle(AppTheme.textSecondary)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func insightReportBlock(title: String, content: String) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text(title)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(AppTheme.brandCyan)
+            ReportRichText(content: content)
         }
     }
 
