@@ -38,7 +38,7 @@ struct OverviewView: View {
                 }
                 .refreshable { await refresh() }
             }
-            .navigationTitle("")
+            .navigationTitle("今日")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(AppTheme.background, for: .navigationBar)
             .navigationDestination(for: HotNewsTopic.self) { HotNewsTrendView(topic: $0) }
@@ -63,20 +63,12 @@ struct OverviewView: View {
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            IntelligencePageHeader(
-                eyebrow: Date.now.formatted(.dateTime.month(.wide).day().weekday(.wide)),
-                title: "今日",
-                subtitle: "聚合本机订阅、热榜与分析结果",
-                icon: "sun.max.fill"
-            )
-            Label(isRefreshing ? "正在刷新本机数据" : lastUpdated.map { "更新于 \($0.formatted(date: .omitted, time: .shortened))" } ?? "等待首次刷新", systemImage: isRefreshing ? "arrow.triangle.2.circlepath" : "clock")
-                .font(.caption)
-                .foregroundStyle(AppTheme.textSecondary)
-                .padding(.horizontal, 10)
-                .frame(minHeight: 32)
-                .background(AppTheme.surface.opacity(0.72), in: Capsule())
-        }
+        Label(isRefreshing ? "正在刷新本机数据" : lastUpdated.map { "更新于 \($0.formatted(date: .omitted, time: .shortened))" } ?? "等待首次刷新", systemImage: isRefreshing ? "arrow.triangle.2.circlepath" : "clock")
+            .font(AppTheme.captionFont)
+            .foregroundStyle(AppTheme.textSecondary)
+            .padding(.horizontal, 10)
+            .frame(minHeight: 30)
+            .background(AppTheme.surface.opacity(0.72), in: Capsule())
     }
 
     private var briefing: some View {

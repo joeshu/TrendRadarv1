@@ -29,8 +29,6 @@ struct FeedsView: View {
                 IntelligenceScreenBackground()
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 16) {
-                        IntelligencePageHeader(eyebrow: "SUBSCRIPTION INBOX", title: "订阅", subtitle: "管理信息源，阅读最新内容", icon: "newspaper.fill")
-                        feedIntro
                         sourceSummary
                         inboxFilter
                         feedPicker
@@ -85,11 +83,12 @@ struct FeedsView: View {
                             }
                         }
                     }
-                    .padding(20)
+                    .padding(.horizontal, 14)
+                    .padding(.top, 8)
                 }
                 .refreshable { await store.refresh() }
             }
-            .navigationTitle("")
+            .navigationTitle("订阅")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(AppTheme.background, for: .navigationBar)
             .toolbar {
@@ -483,7 +482,6 @@ struct InsightView: View {
                 IntelligenceScreenBackground()
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 16) {
-                        insightHeader
                         insightWindowPicker
                         signalCard
                         sentimentCard
@@ -499,7 +497,7 @@ struct InsightView: View {
                     .padding(.bottom, 28)
                 }
             }
-            .navigationTitle("")
+            .navigationTitle("洞察")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(AppTheme.background, for: .navigationBar)
             .toolbar {
@@ -893,9 +891,7 @@ struct HotNewsView: View {
                 IntelligenceScreenBackground()
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 16) {
-                        IntelligencePageHeader(eyebrow: "LIVE RADAR", title: "雷达", subtitle: "跨平台排名与真实变化趋势", icon: "dot.radiowaves.left.and.right")
                         hotNewsOverview
-                        radarSummary
                         radarStateFilters
                         hotNewsFilters
                         if !hotNewsStore.sourceFailures.isEmpty {
@@ -946,11 +942,12 @@ struct HotNewsView: View {
                             }
                         }
                     }
-                    .padding(20)
+                    .padding(.horizontal, 14)
+                    .padding(.top, 8)
                     .padding(.bottom, 28)
                 }
             }
-            .navigationTitle("")
+            .navigationTitle("雷达")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(AppTheme.background, for: .navigationBar)
             .navigationDestination(for: HotNewsTopic.self) { topic in
@@ -1089,8 +1086,8 @@ private struct HotNewsTopicCard: View {
                     .foregroundStyle(AppTheme.textTertiary)
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
+        .padding(.horizontal, 13)
+        .padding(.vertical, 10)
         .intelligenceCard(tint: trendTint, cornerRadius: 16)
     }
 }
@@ -1303,7 +1300,6 @@ struct FavoritesView: View {
                 IntelligenceScreenBackground()
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 16) {
-                        archiveHeader
                         archiveFilter
                          if archiveStore.filteredItems.isEmpty {
                              FeatureEmptyState(icon: "archivebox", title: "资料库还是空的", message: "收藏趋势或报告，或在订阅中归档文章，它们会安全保存在这里。")
@@ -1329,7 +1325,7 @@ struct FavoritesView: View {
                     .padding(.bottom, 28)
                 }
             }
-             .navigationTitle("")
+             .navigationTitle("资料库")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(AppTheme.background, for: .navigationBar)
             .toolbar {
@@ -1646,7 +1642,7 @@ struct CompactFeedCard: View {
                 .fill(item.isRead ? AppTheme.textTertiary : AppTheme.cyan)
                 .frame(width: 8, height: 8)
                 .padding(.top, 6)
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 5) {
                 HStack {
                     Text(item.source.uppercased())
                         .font(AppTheme.captionFont)
@@ -1678,7 +1674,7 @@ struct CompactFeedCard: View {
                 .foregroundStyle(AppTheme.textTertiary)
             }
         }
-        .padding(16)
+        .padding(12)
         .intelligenceCard(tint: item.isRead ? AppTheme.textTertiary : AppTheme.cyan, cornerRadius: 16)
         .contextMenu {
             Button {
@@ -1724,13 +1720,13 @@ struct InsightPanel<Content: View>: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 10) {
             Label(title, systemImage: icon)
                 .font(AppTheme.headlineFont)
                 .foregroundStyle(tint)
             content
         }
-        .padding(18)
+        .padding(13)
         .frame(maxWidth: .infinity, alignment: .leading)
         .intelligenceCard(tint: tint, cornerRadius: 18)
     }
