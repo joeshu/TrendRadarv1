@@ -324,22 +324,50 @@ private struct RadarHotTopicCard: View {
 }
 
 struct ContentView: View {
+    @EnvironmentObject private var store: NewsStore
+    @EnvironmentObject private var settingsStore: SettingsStore
+    @EnvironmentObject private var reportStore: ReportStore
+    @EnvironmentObject private var hotNewsStore: HotNewsStore
+    @EnvironmentObject private var bootstrapper: AppBootstrapper
+
     var body: some View {
         TabView {
             OverviewView()
-                .tabItem { Label("总览", systemImage: "square.grid.2x2.fill") }
-            DiscoverHubView()
-                .tabItem { Label("发现", systemImage: "sparkles") }
+                .tabItem { Label("今日", systemImage: "sun.max.fill") }
             HotNewsView()
-                .tabItem { Label("热榜", systemImage: "flame.fill") }
-            ReportCenterView()
-                .tabItem { Label("报告", systemImage: "doc.text.magnifyingglass") }
-            SettingsView()
-                .tabItem { Label("设置", systemImage: "gearshape.fill") }
+                .tabItem { Label("雷达", systemImage: "waveform.path.ecg") }
+            FeedsView()
+                .tabItem { Label("订阅", systemImage: "newspaper.fill") }
+            InsightView()
+                .tabItem { Label("洞察", systemImage: "sparkles") }
+            FavoritesView()
+                .tabItem { Label("资料库", systemImage: "archivebox.fill") }
         }
         .tint(AppTheme.brandCyan)
         .toolbarBackground(.ultraThinMaterial, for: .tabBar)
-        .preferredColorScheme(.light)
+        .safeAreaInset(edge: .top, spacing: 0) {
+            if bootstrapper.startupState.status != .normal {
+                RecoveryBanner(
+                    message: bootstrapper.startupState.lastFailureMessage ?? "部分服务暂不可用，当前显示本地缓存。",
+                    isRetrying: bootstrapper.isStarting,
+                    retry: retryStartup,
+                    dismiss: bootstrapper.clearRecovery
+                )
+                .padding(.horizontal, 16)
+                .padding(.top, 8)
+            }
+        }
+    }
+
+    private func retryStartup() {
+        Task {
+            await bootstrapper.retry(
+                newsStore: store,
+                settingsStore: settingsStore,
+                reportStore: reportStore,
+                hotNewsStore: hotNewsStore
+            )
+        }
     }
 }
 
