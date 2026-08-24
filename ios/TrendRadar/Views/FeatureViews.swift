@@ -369,7 +369,7 @@ private struct SourceBrandIcon: View {
     }
 }
 
-
+struct FeedReaderView: View {
     let item: NewsItem
     @EnvironmentObject private var store: NewsStore
     @EnvironmentObject private var settingsStore: SettingsStore
