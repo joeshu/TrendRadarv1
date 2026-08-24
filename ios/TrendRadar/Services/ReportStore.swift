@@ -9,6 +9,7 @@ final class ReportStore: ObservableObject {
     @Published var favoritesOnly = false
     @Published private(set) var isLoading = false
     @Published private(set) var isGenerating = false
+    @Published private(set) var latestAIAnalysis: ReportAIAnalysis?
     @Published var errorMessage: String?
 
     private let localStore = LocalStore.shared
@@ -70,6 +71,7 @@ final class ReportStore: ObservableObject {
                 }
                 let standaloneContent = aiService.standaloneContent(hotlistItems: snapshotHotlist, rssItems: snapshotRSS, settings: settings)
                 report.aiAnalysis = await aiService.reportAnalysis(hotlistItems: snapshotHotlist, rssItems: snapshotRSS, settings: settings, reportType: type.displayName, standaloneContent: standaloneContent)
+                latestAIAnalysis = report.aiAnalysis
                 report.aiAnalysis?.citations = report.sections.flatMap(\.items).compactMap { item in
                     InsightCitation(itemID: item.id, title: item.title, source: item.source, url: item.url)
                 }

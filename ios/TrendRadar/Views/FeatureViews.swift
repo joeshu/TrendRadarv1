@@ -501,14 +501,14 @@ struct InsightView: View {
 
     private var latestAIReportCard: some View {
         InsightPanel(title: "AI 分析报告", icon: "doc.text.magnifyingglass", tint: AppTheme.brandIndigo) {
-            if let analysis = latestAnalysis, let failure = analysis.failureMessage, !failure.isEmpty {
+            if let analysis = (reportStore.latestAIAnalysis ?? latestAnalysis), let failure = analysis.failureMessage, !failure.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("本次 AI 分析未生成").font(AppTheme.headlineFont).foregroundStyle(AppTheme.red)
                     Text(failure).font(AppTheme.bodyFont).foregroundStyle(AppTheme.textSecondary)
                     Text("请检查 AI 开关、API Base URL、API Key、模型名称和提示词文件。")
                         .font(AppTheme.captionFont).foregroundStyle(AppTheme.textTertiary)
                 }
-            } else if let analysis = latestAnalysis, analysis.hasContent {
+            } else if let analysis = (reportStore.latestAIAnalysis ?? latestAnalysis), analysis.hasContent {
                 VStack(alignment: .leading, spacing: 14) {
                     if let content = analysis.coreTrends ?? analysis.content, !content.isEmpty {
                         insightReportBlock(title: "核心热点态势", content: content)
