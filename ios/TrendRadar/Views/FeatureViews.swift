@@ -119,9 +119,7 @@ struct FeedsView: View {
             FeedSummaryMetric(value: "\(feedItems.filter { !$0.isRead }.count)", label: "待阅读", tint: AppTheme.yellow)
         }
         .padding(16)
-        .background(AppTheme.card)
-        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(AppTheme.cardBorder, lineWidth: 1))
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .intelligenceCard(tint: AppTheme.brandCyan, cornerRadius: 16)
     }
 
     private var feedIntro: some View {
@@ -261,9 +259,7 @@ struct SubscriptionSourceManager: View {
                     sourceRow(feed: feed, isLast: index == feeds.count - 1)
                 }
             }
-            .background(AppTheme.card)
-            .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(AppTheme.cardBorder, lineWidth: 1))
-            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .intelligenceCard(tint: AppTheme.brandCyan, cornerRadius: 20)
         }
     }
 
@@ -286,9 +282,7 @@ struct SubscriptionSourceManager: View {
                     if index < platforms.count - 1 { Divider().padding(.leading, 72) }
                 }
             }
-            .background(AppTheme.card)
-            .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(AppTheme.cardBorder, lineWidth: 1))
-            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .intelligenceCard(tint: AppTheme.brandIndigo, cornerRadius: 20)
         }
     }
 
@@ -415,8 +409,21 @@ struct InsightView: View {
             .toolbarBackground(AppTheme.background, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    NavigationLink {
+                        ReportCenterView()
+                    } label: {
+                        Image(systemName: "doc.text.magnifyingglass")
+                            .frame(width: 44, height: 44)
+                    }
+                    .accessibilityLabel("报告中心")
+                }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button { showingSettings = true } label: { Image(systemName: "slider.horizontal.3") }
+                    Button { showingSettings = true } label: {
+                        Image(systemName: "slider.horizontal.3")
+                            .frame(width: 44, height: 44)
+                    }
+                    .accessibilityLabel("洞察设置")
                 }
             }
             .sheet(isPresented: $showingSettings) { SettingsView() }
@@ -812,9 +819,7 @@ struct HotNewsView: View {
                                 .buttonStyle(AccentButtonStyle())
                             }
                             .padding(16)
-                            .background(AppTheme.card)
-                            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(AppTheme.cardBorder, lineWidth: 1))
-                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                            .intelligenceCard(tint: AppTheme.yellow, cornerRadius: 16)
                         } else {
                             if hotNewsStore.radarTopics.isEmpty {
                                 FeatureEmptyState(icon: "line.3.horizontal.decrease.circle", title: "没有符合条件的趋势", message: "切换筛选条件，或刷新以获取新的真实排名快照。")
@@ -1060,7 +1065,7 @@ struct HotNewsTrendView: View {
             }
         }
         .padding(16)
-        .background(AppTheme.card, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .intelligenceCard(tint: AppTheme.brandIndigo, cornerRadius: 16)
     }
 }
 
@@ -1080,8 +1085,7 @@ private struct HotNewsTrendRow: View {
             Spacer()
         }
         .padding(12)
-        .background(AppTheme.card)
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .intelligenceCard(tint: item.trend == .up ? AppTheme.green : AppTheme.brandIndigo, cornerRadius: 14)
     }
 }
 
@@ -1265,8 +1269,7 @@ private struct ArchiveResourceRow: View {
             Image(systemName: "chevron.right").foregroundStyle(AppTheme.textTertiary).accessibilityHidden(true)
         }
         .padding(14)
-        .background(AppTheme.card, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(AppTheme.cardBorder, lineWidth: 1))
+        .intelligenceCard(tint: AppTheme.cyan, cornerRadius: 16)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(resource.kind.title)，\(resource.title)，来源 \(resource.source)")
     }
@@ -1374,8 +1377,7 @@ struct ReportCenterView: View {
                 if reportStore.isGenerating {
                     ProgressView("正在生成报告")
                         .padding(20)
-                        .background(AppTheme.card)
-                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        .intelligenceCard(tint: AppTheme.brandCyan, cornerRadius: 14)
                 }
             }
             .alert("报告操作", isPresented: Binding(get: { reportStore.errorMessage != nil }, set: { if !$0 { reportStore.errorMessage = nil } })) {
@@ -1423,9 +1425,7 @@ struct ReportCenterView: View {
                 }
                 .padding(.horizontal, 12)
                 .padding(.vertical, 11)
-                .background(AppTheme.card)
-                .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(AppTheme.cardBorder, lineWidth: 1))
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .intelligenceCard(tint: AppTheme.brandCyan, cornerRadius: 12)
                 Menu {
                     Button("全部类型") { reportStore.selectedType = nil }
                     ForEach(ReportType.allCases, id: \.self) { type in
@@ -1438,9 +1438,7 @@ struct ReportCenterView: View {
                         .font(.title3)
                         .foregroundStyle(AppTheme.cyan)
                         .frame(width: 42, height: 42)
-                        .background(AppTheme.card)
-                        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(AppTheme.cardBorder, lineWidth: 1))
-                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .intelligenceCard(tint: AppTheme.brandCyan, cornerRadius: 12)
                 }
             }
         }

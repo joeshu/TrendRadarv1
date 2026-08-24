@@ -298,12 +298,10 @@ private struct RadarHotTopicCard: View {
                 .foregroundStyle(AppTheme.textTertiary)
         }
         .padding(14)
-        .background(AppTheme.card)
-        .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(topic.strongestTrend == .new ? AppTheme.yellow.opacity(0.7) : AppTheme.cardBorder, lineWidth: 1)
+        .intelligenceCard(
+            tint: topic.strongestTrend == .new ? AppTheme.yellow : AppTheme.brandCyan,
+            cornerRadius: 16
         )
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .contextMenu {
             Button(action: onFavorite) {
                 Label(isFavorite ? "取消收藏" : "收藏主题", systemImage: isFavorite ? "star.slash" : "star")
@@ -385,9 +383,7 @@ private struct MetricPill: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
-        .background(AppTheme.card)
-        .overlay(RoundedRectangle(cornerRadius: 12).stroke(tint.opacity(0.16), lineWidth: 1))
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .intelligenceCard(tint: tint, cornerRadius: 12)
     }
 }
 
@@ -424,9 +420,7 @@ private struct NewsCard: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 13)
-        .background(AppTheme.card)
-        .overlay(RoundedRectangle(cornerRadius: 14).stroke(item.isRead ? AppTheme.cardBorder : AppTheme.cyan.opacity(0.25), lineWidth: 1))
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .intelligenceCard(tint: item.isRead ? AppTheme.brandIndigo : AppTheme.cyan, cornerRadius: 14)
     }
 }
 
@@ -474,8 +468,7 @@ private struct HotNewsCard: View {
             }
         }
         .padding(14)
-        .background(AppTheme.card)
-        .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
+        .intelligenceCard(tint: item.trend == .up ? AppTheme.green : AppTheme.yellow, cornerRadius: 15)
     }
 }
 

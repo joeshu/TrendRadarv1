@@ -57,7 +57,9 @@ struct DiscoverHubView: View {
                 Image(systemName: "magnifyingglass").foregroundStyle(AppTheme.brandCyan)
                 TextField("搜索标题或来源", text: $query).textFieldStyle(.plain)
                 if !query.isEmpty { Button { query = "" } label: { Image(systemName: "xmark.circle.fill") }.foregroundStyle(.secondary) }
-            }.padding(13).background(AppTheme.card).clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
+            }
+            .padding(13)
+            .intelligenceCard(tint: AppTheme.brandCyan, cornerRadius: 15)
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
                     ForEach(availableSources, id: \.self) { item in

@@ -270,9 +270,8 @@ struct ReportDetailView: View {
                 InsightMetric(value: "\(report.statistics.rssSourceCount)", label: "RSS 来源", tint: AppTheme.green)
             }
         }
-        .padding(16).background(AppTheme.card)
-        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(AppTheme.cardBorder, lineWidth: 1))
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .padding(16)
+        .intelligenceCard(tint: AppTheme.brandIndigo, cornerRadius: 16)
     }
 
     private func evidencePanel(_ report: ReportDetail) -> some View {

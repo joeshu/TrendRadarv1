@@ -334,7 +334,11 @@ struct SettingsView: View {
         AnyView(
             Form {
                 categoryContent(category)
+                    .listRowBackground(AppTheme.card.opacity(0.82))
             }
+            .environment(\.defaultMinListRowHeight, 52)
+            .listSectionSpacing(18)
+            .contentMargins(.horizontal, 16, for: .scrollContent)
             .navigationTitle(category.title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(AppTheme.background, for: .navigationBar)
@@ -1034,9 +1038,7 @@ struct FeedEditorView: View {
             content()
         }
         .padding(16)
-        .background(AppTheme.card)
-        .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(AppTheme.cardBorder, lineWidth: 1))
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .intelligenceCard(tint: AppTheme.brandCyan, cornerRadius: 20)
     }
 
     private func editorField(_ title: String, text: Binding<String>, systemImage: String, autocorrect: Bool = true) -> some View {

@@ -112,6 +112,7 @@ struct IntelligenceFilterChip: View {
 }
 
 struct IntelligencePageHeader: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let eyebrow: String
     let title: String
     let subtitle: String
@@ -136,21 +137,27 @@ struct IntelligencePageHeader: View {
                 Text(title)
                     .font(.system(size: 28, weight: .bold))
                     .foregroundStyle(AppTheme.textPrimary)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.74)
                 Text(subtitle)
                     .font(AppTheme.captionFont)
                     .foregroundStyle(AppTheme.textSecondary)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? 3 : 2)
             }
             Spacer()
-            Image(systemName: icon)
-                .font(.system(size: 29, weight: .medium))
-                .foregroundStyle(AppTheme.accentGradient)
-                .frame(width: 54, height: 54)
-                .background(AppTheme.surface.opacity(0.76))
-                .clipShape(RoundedRectangle(cornerRadius: 17, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 17, style: .continuous).stroke(AppTheme.cardBorder.opacity(0.55), lineWidth: 1))
+            if !dynamicTypeSize.isAccessibilitySize {
+                Image(systemName: icon)
+                    .font(.system(size: 29, weight: .medium))
+                    .foregroundStyle(AppTheme.accentGradient)
+                    .frame(width: 54, height: 54)
+                    .background(AppTheme.surface.opacity(0.76))
+                    .clipShape(RoundedRectangle(cornerRadius: 17, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 17, style: .continuous).stroke(AppTheme.cardBorder.opacity(0.55), lineWidth: 1))
+                    .accessibilityHidden(true)
+            }
         }
         .padding(assetName == nil ? 0 : 18)
-        .frame(minHeight: assetName == nil ? nil : 158, alignment: .bottom)
+        .frame(minHeight: assetName == nil ? nil : (dynamicTypeSize.isAccessibilitySize ? 188 : 158), alignment: .bottom)
         .background {
             if let assetName {
                 Image(assetName)
