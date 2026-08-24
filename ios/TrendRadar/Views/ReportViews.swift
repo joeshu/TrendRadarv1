@@ -226,10 +226,16 @@ struct ReportDetailView: View {
 
     @ViewBuilder
     private func analysisBlock(title: String, content: String?) -> some View {
-        if let content, let clean = TextSanitizer.plainText(content), !clean.isEmpty {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(title).font(AppTheme.headlineFont).foregroundStyle(AppTheme.cyan)
-                Text(clean).font(AppTheme.bodyFont).foregroundStyle(AppTheme.textSecondary)
+        if let content {
+            let clean = content
+                .replacingOccurrences(of: "\\r\\n", with: "\\n")
+                .replacingOccurrences(of: "\\r", with: "\\n")
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            if !clean.isEmpty {
+                VStack(alignment: .leading, spacing: 7) {
+                    Text(title).font(AppTheme.headlineFont).foregroundStyle(AppTheme.cyan)
+                    ReportRichText(content: clean)
+                }
             }
         }
     }
