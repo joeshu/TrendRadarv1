@@ -472,13 +472,14 @@ struct InsightView: View {
     private var aiCard: some View {
         InsightPanel(title: "AI 洞察", icon: "sparkles", tint: AppTheme.cyan) {
             VStack(alignment: .leading, spacing: 10) {
-                Text(settingsStore.settings.ai.enabled ? "AI 分析已启用" : "AI 分析未启用")
+                let aiReady = settingsStore.settings.ai.enabled && settingsStore.settings.aiAnalysis.enabled
+                Text(aiReady ? "AI 分析已启用" : "AI 分析未启用")
                     .font(AppTheme.headlineFont)
                     .foregroundStyle(AppTheme.textPrimary)
-                Text(settingsStore.settings.ai.enabled ? "打开新闻详情即可按需生成摘要。" : "在设置中启用 AI，并配置 API Base URL 与 Key。")
+                Text(aiReady ? "生成后，完整报告会显示在本页下方。" : "请同时启用 AI 分析与结构化报告分析，并配置 API Base URL、Key 和模型。")
                     .font(AppTheme.bodyFont)
                     .foregroundStyle(AppTheme.textSecondary)
-                if settingsStore.settings.ai.enabled {
+                if aiReady {
                     Button {
                         isGenerating = true
                         Task {
