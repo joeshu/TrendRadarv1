@@ -157,6 +157,7 @@ struct ReportDetailView: View {
     @State private var queryText = ""
     @State private var queryResult: InsightQueryResult?
     @State private var isQuerying = false
+    @State private var isLoading = true
 
     var body: some View {
         ZStack {
@@ -252,8 +253,12 @@ struct ReportDetailView: View {
                     .padding(.top, 10)
                     .padding(.bottom, 120)
                 }
+            } else if isLoading {
+                FeatureLoadingState(title: "正在加载报告", message: "读取本机快照与分析结果")
+                    .padding(16)
             } else {
                 FeatureEmptyState(icon: "doc.text.magnifyingglass", title: "报告不可用", message: "这份报告可能已被删除。")
+                    .padding(16)
             }
         }
         .navigationTitle("报告详情")
@@ -282,7 +287,11 @@ struct ReportDetailView: View {
         .task { await loadReport() }
     }
 
-    private func loadReport() async { report = await reportStore.detail(id: reportID) }
+    private func loadReport() async {
+        isLoading = true
+        report = await reportStore.detail(id: reportID)
+        isLoading = false
+    }
 
     private func reportQueryPanel(_ report: ReportDetail) -> some View {
         InsightPanel(title: "向报告追问", icon: "bubble.left.and.text.bubble.right", tint: AppTheme.brandCyan) {

@@ -39,11 +39,15 @@ struct FeedsView: View {
                             SourceHealthBanner(title: "部分 RSS 源暂不可用", detail: store.sourceFailures.joined(separator: "、"), tint: AppTheme.yellow)
                         }
                         if enabledFeeds.isEmpty {
-                            FeatureEmptyState(icon: "antenna.radiowaves.left.and.right.slash", title: "还没有启用订阅源", message: "在设置中启用 RSS 源，再回来刷新你的信息流。")
+                            FeatureEmptyState(icon: "antenna.radiowaves.left.and.right.slash", title: "还没有启用订阅源", message: "在来源管理中启用 RSS 源，再回来刷新你的信息流。", actionTitle: "管理订阅源") {
+                                showingSourceManager = true
+                            }
                                 .frame(maxWidth: .infinity)
                                 .padding(.top, 32)
                         } else if feedItems.isEmpty {
-                            FeatureEmptyState(icon: "newspaper", title: "暂无订阅内容", message: "启用 RSS 源后，下拉刷新获取订阅文章。")
+                            FeatureEmptyState(icon: "newspaper", title: "暂无订阅内容", message: "刷新已启用的 RSS 源，获取最新订阅文章。", actionTitle: "立即刷新") {
+                                Task { await store.refresh() }
+                            }
                                 .frame(maxWidth: .infinity)
                                 .padding(.top, 32)
                         } else {
@@ -909,7 +913,9 @@ struct HotNewsView: View {
                             .intelligenceCard(tint: AppTheme.yellow, cornerRadius: 16)
                         } else {
                             if hotNewsStore.radarTopics.isEmpty {
-                                FeatureEmptyState(icon: "line.3.horizontal.decrease.circle", title: "没有符合条件的趋势", message: "切换筛选条件，或刷新以获取新的真实排名快照。")
+                                FeatureEmptyState(icon: "line.3.horizontal.decrease.circle", title: "没有符合条件的趋势", message: "恢复全部筛选，查看当前真实排名快照。", actionTitle: "恢复全部筛选") {
+                                    withAnimation(AppAnimation.standard) { hotNewsStore.selectedRadarFilter = .all }
+                                }
                                     .frame(maxWidth: .infinity)
                                     .padding(.top, 24)
                             }
@@ -932,6 +938,7 @@ struct HotNewsView: View {
                 HotNewsTrendView(topic: topic)
             }
             .refreshable { await hotNewsStore.refresh(settings: settingsStore.settings) }
+            .sensoryFeedback(.selection, trigger: hotNewsStore.selectedRadarFilter)
             .task { await hotNewsStore.refresh(settings: settingsStore.settings, showError: false) }
             .alert("热榜刷新", isPresented: Binding(get: { hotNewsStore.errorMessage != nil }, set: { if !$0 { hotNewsStore.errorMessage = nil } })) {
                 Button("确定", role: .cancel) { hotNewsStore.errorMessage = nil }
@@ -1450,10 +1457,11 @@ struct ReportCenterView: View {
                         reportStatusStrip
                         reportToolbar
                         if reportStore.isLoading {
-                            ProgressView("加载报告")
-                                .tint(AppTheme.cyan)
+                            FeatureLoadingState(title: "正在加载报告", message: "同步本机报告索引与快照")
                         } else if reportStore.filteredReports.isEmpty {
-                            FeatureEmptyState(icon: "doc.text.magnifyingglass", title: "暂无报告", message: "生成一份报告后，它会固定保存当时的新闻快照。")
+                            FeatureEmptyState(icon: "doc.text.magnifyingglass", title: "暂无报告", message: "生成一份报告后，它会固定保存当时的新闻快照。", actionTitle: "生成第一份报告") {
+                                showingReportGenerator = true
+                            }
                                 .frame(maxWidth: .infinity)
                                 .padding(.top, 32)
                         } else {
@@ -1515,11 +1523,17 @@ struct ReportCenterView: View {
             }
             .overlay {
                 if reportStore.isGenerating {
-                    ProgressView("正在生成报告")
-                        .padding(20)
-                        .intelligenceCard(tint: AppTheme.brandCyan, cornerRadius: 14)
+                    ZStack {
+                        Color.black.opacity(0.28).ignoresSafeArea()
+                        FeatureLoadingState(title: "正在生成报告", message: "采集、筛选、分析并保存本机快照")
+                            .frame(maxWidth: 320)
+                            .padding(24)
+                    }
+                    .transition(.opacity)
                 }
             }
+            .animation(AppAnimation.standard, value: reportStore.isGenerating)
+            .sensoryFeedback(.success, trigger: reportStore.reports.count)
             .alert("报告操作", isPresented: Binding(get: { reportStore.errorMessage != nil }, set: { if !$0 { reportStore.errorMessage = nil } })) {
                 Button("确定", role: .cancel) { reportStore.errorMessage = nil }
             } message: {
@@ -1778,9 +1792,20 @@ struct SourceHealthBanner: View {
 
 struct FeatureEmptyState: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let icon: String
     let title: String
     let message: String
+    let actionTitle: String?
+    let action: (() -> Void)?
+
+    init(icon: String, title: String, message: String, actionTitle: String? = nil, action: (() -> Void)? = nil) {
+        self.icon = icon
+        self.title = title
+        self.message = message
+        self.actionTitle = actionTitle
+        self.action = action
+    }
 
     var body: some View {
         VStack(spacing: 12) {
@@ -1806,8 +1831,39 @@ struct FeatureEmptyState: View {
                 .font(AppTheme.bodyFont)
                 .foregroundStyle(AppTheme.textSecondary)
                 .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+            if let actionTitle, let action {
+                Button(action: action) {
+                    Label(actionTitle, systemImage: "arrow.clockwise")
+                        .frame(maxWidth: dynamicTypeSize.isAccessibilitySize ? .infinity : 240)
+                }
+                .buttonStyle(AccentButtonStyle())
+            }
         }
         .padding(26)
+        .frame(maxWidth: .infinity)
+        .intelligenceCard(tint: AppTheme.brandCyan, cornerRadius: 22)
+        .transition(reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.97)))
+    }
+}
+
+struct FeatureLoadingState: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    let title: String
+    let message: String
+
+    var body: some View {
+        VStack(spacing: 14) {
+            ProgressView().controlSize(.large).tint(AppTheme.brandCyan)
+            Text(title).font(AppTheme.sectionTitleFont).foregroundStyle(AppTheme.textPrimary)
+            Text(message).font(AppTheme.captionFont).foregroundStyle(AppTheme.textSecondary).multilineTextAlignment(.center)
+        }
+        .padding(26)
+        .frame(maxWidth: .infinity)
+        .intelligenceCard(tint: AppTheme.brandCyan, cornerRadius: 22)
+        .transition(reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.98)))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(title)，\(message)")
     }
 }
 

@@ -330,20 +330,27 @@ struct ContentView: View {
     @EnvironmentObject private var reportStore: ReportStore
     @EnvironmentObject private var hotNewsStore: HotNewsStore
     @EnvironmentObject private var bootstrapper: AppBootstrapper
+    @State private var selectedTab: AppTab = .today
 
     var body: some View {
-        TabView {
+        TabView(selection: $selectedTab) {
             OverviewView()
                 .tabItem { Label("今日", systemImage: "sun.max.fill") }
+                .tag(AppTab.today)
             HotNewsView()
                 .tabItem { Label("雷达", systemImage: "waveform.path.ecg") }
+                .tag(AppTab.radar)
             FeedsView()
                 .tabItem { Label("订阅", systemImage: "newspaper.fill") }
+                .tag(AppTab.feeds)
             InsightView()
                 .tabItem { Label("洞察", systemImage: "sparkles") }
+                .tag(AppTab.insight)
             FavoritesView()
                 .tabItem { Label("资料库", systemImage: "archivebox.fill") }
+                .tag(AppTab.library)
         }
+        .sensoryFeedback(.selection, trigger: selectedTab)
         .tint(AppTheme.electricBlue)
         .toolbarBackground(AppTheme.card.opacity(0.94), for: .tabBar)
         .toolbarBackground(.visible, for: .tabBar)
@@ -373,19 +380,30 @@ struct ContentView: View {
     }
 }
 
+private enum AppTab: Hashable { case today, radar, feeds, insight, library }
+
 private struct MetricPill: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let value: String
     let label: String
     let tint: Color
 
     var body: some View {
-        HStack(spacing: 7) {
-            Text(value).font(AppTheme.numericFont).foregroundStyle(tint)
-            Text(label).font(AppTheme.metadataFont).foregroundStyle(AppTheme.textSecondary)
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 3) { metricContent }
+            } else {
+                HStack(spacing: 7) { metricContent }
+            }
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
         .intelligenceCard(tint: tint, cornerRadius: 12)
+    }
+
+    @ViewBuilder private var metricContent: some View {
+        Text(value).font(AppTheme.numericFont).foregroundStyle(tint)
+        Text(label).font(AppTheme.metadataFont).foregroundStyle(AppTheme.textSecondary)
     }
 }
 
