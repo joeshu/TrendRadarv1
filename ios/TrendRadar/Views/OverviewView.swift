@@ -24,7 +24,7 @@ struct OverviewView: View {
             ZStack {
                 AppTheme.background.ignoresSafeArea()
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 14) {
+                    VStack(alignment: .leading, spacing: settingsStore.settings.display.cardSpacing) {
                         OverviewHeroCard(date: Date())
                         sourceHealthCard
                         metricsRow
@@ -37,6 +37,11 @@ struct OverviewView: View {
                     .padding(.bottom, 118)
                 }
                 .refreshable { await refreshAll() }
+                .dynamicTypeSize(.small ... .xxxLarge)
+                .scaleEffect(
+                    settingsStore.settings.display.uiScale * settingsStore.settings.display.fontScale,
+                    anchor: .top
+                )
             }
             .navigationTitle("总览")
             .navigationBarTitleDisplayMode(.inline)

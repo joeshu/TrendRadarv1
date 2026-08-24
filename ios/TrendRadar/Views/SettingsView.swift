@@ -524,6 +524,46 @@ struct SettingsView: View {
             Toggle("RSS 区域", isOn: $settingsStore.settings.display.showRSS)
             Toggle("独立展示区", isOn: $settingsStore.settings.display.showStandalone)
             Toggle("AI 分析区域", isOn: $settingsStore.settings.display.showAIAnalysis)
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text("字体大小")
+                    Spacer()
+                    Text(fontScaleLabel)
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                }
+                Slider(value: $settingsStore.settings.display.fontScale, in: 0.85...1.30, step: 0.05)
+                Text("调整总览页标题、正文、数字和辅助文字。")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text("界面 UI 大小")
+                    Spacer()
+                    Text(uiScaleLabel)
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                }
+                Slider(value: $settingsStore.settings.display.uiScale, in: 0.90...1.15, step: 0.05)
+                Text("调整卡片、图标、按钮和整体留白。")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text("卡片间距")
+                    Spacer()
+                    Text("\(Int(settingsStore.settings.display.cardSpacing)) pt")
+                        .foregroundStyle(.secondary)
+                }
+                Slider(value: $settingsStore.settings.display.cardSpacing, in: 8...24, step: 1)
+            }
+            Button("恢复默认界面大小") {
+                settingsStore.settings.display.fontScale = 1.0
+                settingsStore.settings.display.uiScale = 1.0
+                settingsStore.settings.display.cardSpacing = 14.0
+            }
             DisclosureGroup("独立展示区高级设置") {
                 TextField("区域顺序，使用逗号分隔", text: Binding(
                     get: { settingsStore.settings.display.regionOrder.joined(separator: ", ") },
@@ -681,6 +721,14 @@ struct SettingsView: View {
             Text("S3/R2、账号同步和服务端推送属于可选远程能力。纯本地模式保持独立运行。")
                 .font(.caption).foregroundStyle(.secondary)
         }
+    }
+
+    private var fontScaleLabel: String {
+        String(format: "%.0f%%", settingsStore.settings.display.fontScale * 100)
+    }
+
+    private var uiScaleLabel: String {
+        String(format: "%.0f%%", settingsStore.settings.display.uiScale * 100)
     }
 
     private var advancedSection: some View {

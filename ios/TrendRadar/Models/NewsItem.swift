@@ -114,10 +114,40 @@ struct DisplaySettings: Codable, Equatable, Sendable {
     var showRSS = true
     var showStandalone = false
     var showAIAnalysis = true
+    /// 总览字体倍率，保留连续值便于细调。
+    var fontScale = 1.0
+    /// 总览 UI 整体倍率，控制卡片、图标和留白。
+    var uiScale = 1.0
+    /// 总览卡片之间的垂直间距。
+    var cardSpacing = 14.0
     var regionOrder: [String] = ["new_items", "hotlist", "rss", "standalone", "ai_analysis"]
     var standalonePlatforms: [String] = ["zhihu", "wallstreetcn-hot"]
     var standaloneRSSFeeds: [String] = []
     var standaloneMaxItems = 20
+
+    private enum CodingKeys: String, CodingKey {
+        case showHotlist, showNewItems, showRSS, showStandalone, showAIAnalysis
+        case fontScale, uiScale, cardSpacing, regionOrder, standalonePlatforms
+        case standaloneRSSFeeds, standaloneMaxItems
+    }
+
+    init() {}
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        showHotlist = try c.decodeIfPresent(Bool.self, forKey: .showHotlist) ?? true
+        showNewItems = try c.decodeIfPresent(Bool.self, forKey: .showNewItems) ?? false
+        showRSS = try c.decodeIfPresent(Bool.self, forKey: .showRSS) ?? true
+        showStandalone = try c.decodeIfPresent(Bool.self, forKey: .showStandalone) ?? false
+        showAIAnalysis = try c.decodeIfPresent(Bool.self, forKey: .showAIAnalysis) ?? true
+        fontScale = min(max(try c.decodeIfPresent(Double.self, forKey: .fontScale) ?? 1.0, 0.85), 1.30)
+        uiScale = min(max(try c.decodeIfPresent(Double.self, forKey: .uiScale) ?? 1.0, 0.90), 1.15)
+        cardSpacing = min(max(try c.decodeIfPresent(Double.self, forKey: .cardSpacing) ?? 14.0, 8), 24)
+        regionOrder = try c.decodeIfPresent([String].self, forKey: .regionOrder) ?? ["new_items", "hotlist", "rss", "standalone", "ai_analysis"]
+        standalonePlatforms = try c.decodeIfPresent([String].self, forKey: .standalonePlatforms) ?? ["zhihu", "wallstreetcn-hot"]
+        standaloneRSSFeeds = try c.decodeIfPresent([String].self, forKey: .standaloneRSSFeeds) ?? []
+        standaloneMaxItems = try c.decodeIfPresent(Int.self, forKey: .standaloneMaxItems) ?? 20
+    }
 }
 
 struct AISettings: Codable, Equatable, Sendable {
