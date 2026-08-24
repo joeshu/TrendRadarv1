@@ -104,6 +104,10 @@ final class ReportStore: ObservableObject {
                 }
             }
             try await localStore.save(report)
+            // AI 分析与报告使用同一份不可变快照归档，避免资料库被实时数据覆盖。
+            if report.aiAnalysis?.hasContent == true {
+                try? await localStore.saveArchive(ArchiveResource(aiBrief: report))
+            }
             latestGeneratedReportID = report.id
             latestAIAnalysis = report.aiAnalysis
             completedBatches.insert(resolvedBatchID)
@@ -151,6 +155,9 @@ final class ReportStore: ObservableObject {
         report.aiAnalysis?.citations = snapshots.map { InsightCitation(itemID: $0.id, title: $0.title, source: $0.source, url: $0.url) }
         do {
             try await localStore.save(report)
+            if report.aiAnalysis?.hasContent == true {
+                try? await localStore.saveArchive(ArchiveResource(aiBrief: report))
+            }
             latestAIAnalysis = report.aiAnalysis
             await load()
         } catch {

@@ -5,12 +5,14 @@ enum ArchiveResourceKind: String, Codable, CaseIterable, Sendable {
     case hotlist
     case rss
     case report
+    case aiBrief
 
     var title: String {
         switch self {
         case .hotlist: return "趋势"
         case .rss: return "新闻"
         case .report: return "报告"
+        case .aiBrief: return "AI 简报"
         }
     }
 
@@ -19,6 +21,7 @@ enum ArchiveResourceKind: String, Codable, CaseIterable, Sendable {
         case .hotlist: return "waveform.path.ecg"
         case .rss: return "newspaper"
         case .report: return "doc.text"
+        case .aiBrief: return "sparkles"
         }
     }
 }
@@ -75,5 +78,17 @@ struct ArchiveResource: Codable, Equatable, Hashable, Identifiable, Sendable {
 
     init(report: ReportSummary) {
         self.init(resourceID: report.id.uuidString, kind: .report, title: report.title, source: report.type.displayName, summary: "\(report.newsCount) 条情报 · \(report.sourceCount) 个来源", capturedAt: report.generatedAt, isFavorite: report.isFavorite)
+    }
+
+    init(aiBrief report: ReportDetail) {
+        let analysis = report.aiAnalysis
+        let body = [
+            "核心热点态势\n\(analysis?.coreTrends ?? analysis?.content ?? "未生成")",
+            "舆论风向争议\n\(analysis?.sentimentControversy ?? "未生成")",
+            "异动与弱信号\n\(analysis?.signals ?? "未生成")",
+            "RSS 深度洞察\n\(analysis?.rssInsights ?? "未生成")",
+            "研判策略建议\n\(analysis?.recommendation ?? "未生成")"
+        ].joined(separator: "\n\n")
+        self.init(resourceID: report.id.uuidString, kind: .aiBrief, title: "AI 分析简报 · \(report.title)", source: analysis?.model ?? "AI", summary: "\(report.statistics.newsCount) 条情报 · \(report.topicStats.count) 个主题 · 结构化简报", body: body, capturedAt: report.generatedAt, isFavorite: report.isFavorite, snapshotVersion: "ai-brief-v1")
     }
 }

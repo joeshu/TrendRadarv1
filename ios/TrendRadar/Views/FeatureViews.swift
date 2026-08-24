@@ -1441,6 +1441,9 @@ struct FavoritesView: View {
         case .report:
             if let id = UUID(uuidString: resource.resourceID), reportStore.reports.contains(where: { $0.id == id }) { ReportDetailView(reportID: id) }
             else { ArchiveSnapshotView(resource: resource) }
+        case .aiBrief:
+            if let id = UUID(uuidString: resource.resourceID), reportStore.reports.contains(where: { $0.id == id }) { ReportDetailView(reportID: id) }
+            else { ArchiveSnapshotView(resource: resource) }
         }
     }
 }
