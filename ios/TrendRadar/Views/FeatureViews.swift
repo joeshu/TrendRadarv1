@@ -354,7 +354,9 @@ struct InsightView: View {
                         aiCard
                         queryCard
                     }
-                    .padding(20)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 12)
+                    .padding(.bottom, 120)
                 }
             }
             .navigationTitle("洞察")
@@ -820,14 +822,17 @@ struct HotNewsTrendView: View {
                         .font(AppTheme.captionFont)
                         .foregroundStyle(AppTheme.textSecondary)
                     Text("跨平台出现 · 点击查看排名轨迹")
-                        .font(.system(size: 11, weight: .medium, design: .rounded))
+                        .font(.system(size: 11, weight: .medium, design: .default))
                         .foregroundStyle(AppTheme.textTertiary)
                     TrendChart(points: points)
                     ForEach(topic.items) { item in
                         HotNewsTrendRow(item: item)
                     }
                 }
-                .padding(20)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 12)
+                    .padding(.bottom, 120)
+                }
             }
         }
             .navigationTitle("排名时间线")
@@ -921,7 +926,9 @@ struct FavoritesView: View {
                             }
                         }
                     }
-                    .padding(20)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 12)
+                    .padding(.bottom, 120)
                 }
             }
              .navigationTitle("收藏")
