@@ -1002,7 +1002,8 @@ struct ReportCenterView: View {
                             }
                         }
                     }
-                    .padding(20)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 12)
                     .padding(.bottom, 150)
                 }
             }
