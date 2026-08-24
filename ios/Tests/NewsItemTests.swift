@@ -314,6 +314,19 @@ final class NewsItemTests: XCTestCase {
         XCTAssertFalse(RadarFilter.new.includes(HotNewsTopic(id: "rising", title: rising.title, items: [rising]), now: now))
     }
 
+    func testTodayDigestSelectsOnlyObservedAndFollowedTopics() {
+        let rising = HotNewsItem(id: "rising", title: "升温", url: nil, platformID: "weibo", platformName: "微博", rank: 1, publishedAt: nil, extraInfo: nil, topicKey: "rising", previousRank: 6, isRead: false, isFavorite: false)
+        let followed = HotNewsItem(id: "followed", title: "关注", url: nil, platformID: "zhihu", platformName: "知乎", rank: 2, publishedAt: nil, extraInfo: nil, topicKey: "followed", previousRank: 2, isRead: false, isFavorite: true)
+        let news = [NewsItem(id: "one", title: "情报", source: "Feed"), NewsItem(id: "two", title: "已读", source: "Feed", isRead: true)]
+        let digest = TodayDigestBuilder.build(news: news, topics: [HotNewsTopic(id: "rising", title: rising.title, items: [rising]), HotNewsTopic(id: "followed", title: followed.title, items: [followed])], failureCount: 1)
+
+        XCTAssertEqual(digest.topTopics.count, 2)
+        XCTAssertEqual(digest.risingTopics.map(\.id), ["rising"])
+        XCTAssertEqual(digest.followedTopics.map(\.id), ["followed"])
+        XCTAssertEqual(digest.unreadCount, 1)
+        XCTAssertTrue(digest.briefing.contains("1 个来源"))
+    }
+
     func testSourceHealthStorePersistsFailureAndRecovery() async throws {
         let suiteName = "SourceHealthStoreTests.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
