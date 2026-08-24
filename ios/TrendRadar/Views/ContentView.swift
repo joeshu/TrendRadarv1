@@ -111,6 +111,7 @@ struct RadarView: View {
             }
             .sheet(isPresented: $showingSettings) { SettingsView() }
             .alert("提示", isPresented: Binding(get: { store.errorMessage != nil }, set: { if !$0 { store.errorMessage = nil } })) {
+                Button("重试刷新") { Task { await store.refresh() } }
                 Button("确定", role: .cancel) { store.errorMessage = nil }
             } message: { Text(store.errorMessage ?? "") }
         }
@@ -507,6 +508,7 @@ struct NewsDetailView: View {
     @State private var translatedTitle: String?
     @State private var isTranslating = false
     @State private var isFavorite = false
+    @State private var actionFeedback: ActionFeedback?
 
     private var intelligenceTags: [String] {
         let text = [item.title, item.summary ?? "", item.body ?? ""].joined(separator: " ")
@@ -578,22 +580,39 @@ struct NewsDetailView: View {
             translatedTitle = current?.translatedTitle ?? item.translatedTitle
             isFavorite = current?.isFavorite ?? item.isFavorite
         }
+        .overlay(alignment: .top) {
+            if let actionFeedback {
+                ActionFeedbackBanner(feedback: actionFeedback) { self.actionFeedback = nil }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 8)
+            }
+        }
+        .animation(AppAnimation.standard, value: actionFeedback)
+        .sensoryFeedback(.success, trigger: actionFeedback?.kind == .success)
+        .sensoryFeedback(.error, trigger: actionFeedback?.kind == .failure)
     }
 
     @ViewBuilder
     private var detailActions: some View {
         Button {
-                            isSummarizing = true
-                            Task {
-                                await store.summarize(item)
-                                generatedSummary = store.items.first(where: { $0.id == item.id })?.summary
-                                isSummarizing = false
-                            }
+            isSummarizing = true
+            actionFeedback = .progress("正在生成本机情报摘要")
+            store.errorMessage = nil
+            Task {
+                await store.summarize(item)
+                generatedSummary = store.items.first(where: { $0.id == item.id })?.summary
+                isSummarizing = false
+                actionFeedback = store.errorMessage.map { .failure($0) } ?? .success("摘要已生成并保存到本机")
+            }
         } label: { Label(isSummarizing ? "分析中" : "生成摘要", systemImage: "sparkles") }
         .buttonStyle(AccentButtonStyle())
         .disabled(isSummarizing)
         Button {
-            Task { await store.toggleFavorite(item); isFavorite.toggle() }
+            Task {
+                await store.toggleFavorite(item)
+                isFavorite.toggle()
+                actionFeedback = .success(isFavorite ? "已加入资料库" : "已取消收藏")
+            }
         } label: { Label(isFavorite ? "已收藏" : "收藏", systemImage: isFavorite ? "star.fill" : "star") }
             .buttonStyle(OutlineButtonStyle())
         ShareLink(item: item.url?.absoluteString ?? item.title, subject: Text(item.title), message: Text(item.summary ?? item.title)) {
@@ -602,9 +621,14 @@ struct NewsDetailView: View {
         if settingsStore.settings.aiTranslation.enabled && settingsStore.settings.aiTranslation.translateRSS {
             Button {
                 isTranslating = true
+                actionFeedback = .progress("正在翻译标题")
+                store.errorMessage = nil
                 Task {
                     translatedTitle = await store.translateTitle(item)
                     isTranslating = false
+                    actionFeedback = translatedTitle == nil
+                        ? .failure(store.errorMessage ?? "标题翻译失败，请检查 AI 设置")
+                        : .success("译文已保存到本机")
                 }
             } label: {
                 Label(isTranslating ? "翻译中" : (translatedTitle == nil && item.translatedTitle == nil ? "翻译标题" : "重新翻译"), systemImage: "character.book.closed")

@@ -27,6 +27,64 @@ struct StatusBadge: View {
     }
 }
 
+struct ActionFeedback: Equatable {
+    enum Kind: Equatable { case progress, success, failure }
+    let kind: Kind
+    let message: String
+
+    static func progress(_ message: String) -> Self { .init(kind: .progress, message: message) }
+    static func success(_ message: String) -> Self { .init(kind: .success, message: message) }
+    static func failure(_ message: String) -> Self { .init(kind: .failure, message: message) }
+}
+
+struct ActionFeedbackBanner: View {
+    let feedback: ActionFeedback
+    var dismiss: (() -> Void)?
+
+    private var tint: Color {
+        switch feedback.kind {
+        case .progress: AppTheme.brandCyan
+        case .success: AppTheme.green
+        case .failure: AppTheme.red
+        }
+    }
+
+    private var icon: String {
+        switch feedback.kind {
+        case .progress: "arrow.triangle.2.circlepath"
+        case .success: "checkmark.circle.fill"
+        case .failure: "exclamationmark.triangle.fill"
+        }
+    }
+
+    var body: some View {
+        HStack(spacing: 10) {
+            if feedback.kind == .progress {
+                ProgressView().tint(tint)
+            } else {
+                Image(systemName: icon).foregroundStyle(tint)
+            }
+            Text(feedback.message)
+                .font(AppTheme.captionFont.weight(.semibold))
+                .foregroundStyle(AppTheme.textPrimary)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 8)
+            if let dismiss, feedback.kind != .progress {
+                Button(action: dismiss) { Image(systemName: "xmark") }
+                    .foregroundStyle(AppTheme.textSecondary)
+                    .accessibilityLabel("关闭提示")
+            }
+        }
+        .padding(13)
+        .background(AppTheme.elevated, in: RoundedRectangle(cornerRadius: 15, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 15, style: .continuous).stroke(tint.opacity(0.45), lineWidth: 1))
+        .shadow(color: tint.opacity(0.14), radius: 14, y: 6)
+        .transition(.move(edge: .top).combined(with: .opacity))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(feedback.message)
+    }
+}
+
 struct RecoveryBanner: View {
     let message: String
     let isRetrying: Bool

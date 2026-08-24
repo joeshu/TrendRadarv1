@@ -158,6 +158,7 @@ struct ReportDetailView: View {
     @State private var queryResult: InsightQueryResult?
     @State private var isQuerying = false
     @State private var isLoading = true
+    @State private var actionFeedback: ActionFeedback?
 
     var body: some View {
         ZStack {
@@ -285,6 +286,16 @@ struct ReportDetailView: View {
             Button("删除", role: .destructive) { Task { await reportStore.delete(id: reportID); dismiss() } }
         }
         .task { await loadReport() }
+        .overlay(alignment: .top) {
+            if let actionFeedback {
+                ActionFeedbackBanner(feedback: actionFeedback) { self.actionFeedback = nil }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 8)
+            }
+        }
+        .animation(AppAnimation.standard, value: actionFeedback)
+        .sensoryFeedback(.success, trigger: actionFeedback?.kind == .success)
+        .sensoryFeedback(.error, trigger: actionFeedback?.kind == .failure)
     }
 
     private func loadReport() async {
@@ -302,10 +313,15 @@ struct ReportDetailView: View {
                     let question = queryText.trimmingCharacters(in: .whitespacesAndNewlines)
                     guard !question.isEmpty else { return }
                     isQuerying = true
+                    actionFeedback = .progress("正在检索报告证据并生成回答")
                     Task {
                         defer { isQuerying = false }
-                        do { queryResult = try await AIService().query(question: question, report: report, settings: settingsStore.settings) }
-                        catch { queryResult = InsightQueryResult(answer: "追问失败：\(error.localizedDescription)", citations: [], createdAt: Date()) }
+                        do {
+                            queryResult = try await AIService().query(question: question, report: report, settings: settingsStore.settings)
+                            actionFeedback = .success("回答已生成，并校验了报告引用")
+                        } catch {
+                            actionFeedback = .failure("追问失败：\(error.localizedDescription)")
+                        }
                     }
                 } label: { Label(isQuerying ? "分析中" : "基于本报告回答", systemImage: "sparkles") }
                     .buttonStyle(OutlineButtonStyle()).disabled(isQuerying || queryText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)

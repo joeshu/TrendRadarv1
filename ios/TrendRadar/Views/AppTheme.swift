@@ -30,6 +30,8 @@ enum AppTheme {
     static let textPrimary = adaptive(light: UIColor(red: 0.055, green: 0.09, blue: 0.15, alpha: 1), dark: UIColor(red: 0.93, green: 0.96, blue: 0.99, alpha: 1))
     static let textSecondary = adaptive(light: UIColor(red: 0.23, green: 0.31, blue: 0.40, alpha: 1), dark: UIColor(red: 0.72, green: 0.78, blue: 0.86, alpha: 1))
     static let textTertiary = adaptive(light: UIColor(red: 0.43, green: 0.51, blue: 0.60, alpha: 1), dark: UIColor(red: 0.57, green: 0.65, blue: 0.75, alpha: 1))
+    static let readerSurface = adaptive(light: UIColor(red: 0.98, green: 0.94, blue: 0.84, alpha: 1), dark: UIColor(red: 0.20, green: 0.17, blue: 0.12, alpha: 1))
+    static let readerText = adaptive(light: UIColor(red: 0.19, green: 0.15, blue: 0.10, alpha: 1), dark: UIColor(red: 0.92, green: 0.86, blue: 0.73, alpha: 1))
 
     // Product typography: Chinese uses the native system sans-serif; rounded is reserved for brand eyebrow labels.
     static let pageTitleFont = Font.largeTitle.bold()

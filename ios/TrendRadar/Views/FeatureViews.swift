@@ -390,13 +390,13 @@ struct FeedReaderView: View {
                         ForEach(Array(paragraphs.enumerated()), id: \.offset) { index, paragraph in
                             Text(paragraph)
                                 .font(.system(size: 17 * readerFontScale, design: readerSepia ? .serif : .default))
-                                .foregroundStyle(AppTheme.textSecondary)
+                                .foregroundStyle(readerSepia ? AppTheme.readerText : AppTheme.textSecondary)
                                 .lineSpacing(readerLineSpacing)
                                 .onAppear { readingProgress = max(readingProgress, Double(index + 1) / Double(max(1, paragraphs.count))) }
                         }
                     }
                     .padding(18)
-                    .background(readerSepia ? Color(red: 0.20, green: 0.17, blue: 0.12).opacity(0.55) : Color.clear)
+                    .background(readerSepia ? AppTheme.readerSurface : Color.clear)
                     .intelligenceCard(tint: AppTheme.brandIndigo, cornerRadius: 18)
                     ViewThatFits(in: .horizontal) {
                         HStack(spacing: 10) { readerActions }
@@ -468,6 +468,7 @@ struct InsightView: View {
     @State private var isQuerying = false
     @State private var isGenerating = false
     @State private var latestAnalysis: ReportAIAnalysis?
+    @State private var actionFeedback: ActionFeedback?
 
     private var keywordMatches: [NewsItem] {
         let filterEngine = FilterEngine(settings: settingsStore.settings)
@@ -522,6 +523,16 @@ struct InsightView: View {
                 await reportStore.load()
                 await loadLatestAnalysis()
             }
+            .overlay(alignment: .top) {
+                if let actionFeedback {
+                    ActionFeedbackBanner(feedback: actionFeedback) { self.actionFeedback = nil }
+                        .padding(.horizontal, 16)
+                        .padding(.top, 8)
+                }
+            }
+            .animation(AppAnimation.standard, value: actionFeedback)
+            .sensoryFeedback(.success, trigger: actionFeedback?.kind == .success)
+            .sensoryFeedback(.error, trigger: actionFeedback?.kind == .failure)
         }
     }
 
@@ -643,10 +654,12 @@ struct InsightView: View {
     private func generateCurrentAIReport() {
         guard !isGenerating else { return }
         guard !windowItems.isEmpty || !windowHotlistItems.isEmpty else {
-            reportStore.errorMessage = "当前时间范围没有可分析的数据，请先刷新热榜或 RSS。"
+            actionFeedback = .failure("当前范围没有可分析的数据，请先刷新热榜或 RSS")
             return
         }
         isGenerating = true
+        actionFeedback = .progress("正在生成结构化 AI 洞察报告")
+        reportStore.errorMessage = nil
         Task {
             defer { isGenerating = false }
             await reportStore.generate(
@@ -658,6 +671,7 @@ struct InsightView: View {
             )
             await reportStore.refreshLatestAIAnalysis()
             await loadLatestAnalysis()
+            actionFeedback = reportStore.errorMessage.map { .failure($0) } ?? .success("AI 洞察报告已生成并保存")
         }
     }
 
@@ -759,12 +773,14 @@ struct InsightView: View {
                 let question = queryText.trimmingCharacters(in: .whitespacesAndNewlines)
                 guard !question.isEmpty else { return }
                 isQuerying = true
+                actionFeedback = .progress("正在查询本机情报与引用来源")
                 Task {
                     defer { isQuerying = false }
                     do {
                         queryResult = try await AIService().query(question: question, hotlistItems: windowHotlistItems, rssItems: windowItems, settings: settingsStore.settings)
+                        actionFeedback = .success("查询完成，引用来源已关联")
                     } catch {
-                        queryResult = InsightQueryResult(answer: "查询失败：\(error.localizedDescription)", citations: [], createdAt: Date())
+                        actionFeedback = .failure("查询失败：\(error.localizedDescription)")
                     }
                 }
             } label: {
@@ -941,6 +957,7 @@ struct HotNewsView: View {
             .sensoryFeedback(.selection, trigger: hotNewsStore.selectedRadarFilter)
             .task { await hotNewsStore.refresh(settings: settingsStore.settings, showError: false) }
             .alert("热榜刷新", isPresented: Binding(get: { hotNewsStore.errorMessage != nil }, set: { if !$0 { hotNewsStore.errorMessage = nil } })) {
+                Button("重试刷新") { Task { await hotNewsStore.refresh(settings: settingsStore.settings) } }
                 Button("确定", role: .cancel) { hotNewsStore.errorMessage = nil }
             } message: {
                 Text(hotNewsStore.errorMessage ?? "")
@@ -1535,6 +1552,7 @@ struct ReportCenterView: View {
             .animation(AppAnimation.standard, value: reportStore.isGenerating)
             .sensoryFeedback(.success, trigger: reportStore.reports.count)
             .alert("报告操作", isPresented: Binding(get: { reportStore.errorMessage != nil }, set: { if !$0 { reportStore.errorMessage = nil } })) {
+                Button("重新加载") { Task { await reportStore.load() } }
                 Button("确定", role: .cancel) { reportStore.errorMessage = nil }
             } message: {
                 Text(reportStore.errorMessage ?? "")
