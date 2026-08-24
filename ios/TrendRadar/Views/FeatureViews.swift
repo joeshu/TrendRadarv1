@@ -292,6 +292,7 @@ struct SubscriptionSourceManager: View {
             VStack(spacing: 0) {
                 ForEach(Array(platforms.enumerated()), id: \.element.id) { index, source in
                     HStack(spacing: 12) {
+                        SourceBrandIcon(name: source.name, tint: AppTheme.brandIndigo)
                         Toggle("", isOn: Binding(get: { source.isEnabled }, set: { value in
                             if let i = settingsStore.settings.platformSources.firstIndex(where: { $0.id == source.id }) { settingsStore.settings.platformSources[i].isEnabled = value }
                         }))
@@ -314,6 +315,7 @@ struct SubscriptionSourceManager: View {
             showingFeedEditor = true
         } label: {
             HStack(spacing: 12) {
+                SourceBrandIcon(name: feed.name, tint: AppTheme.brandCyan)
                 Toggle("", isOn: Binding(get: { feed.isEnabled }, set: { value in
                     if let i = settingsStore.settings.customFeeds.firstIndex(where: { $0.id == feed.id }) { settingsStore.settings.customFeeds[i].isEnabled = value }
                 }))
@@ -341,7 +343,33 @@ struct SubscriptionSourceManager: View {
     }
 }
 
-struct FeedReaderView: View {
+private struct SourceBrandIcon: View {
+    let name: String
+    let tint: Color
+
+    private var symbol: String {
+        let value = name.lowercased()
+        if value.contains("tech") || value.contains("科技") { return "cpu" }
+        if value.contains("news") || value.contains("新闻") { return "newspaper.fill" }
+        if value.contains("github") || value.contains("代码") { return "chevron.left.forwardslash.chevron.right" }
+        if value.contains("知乎") || value.contains("zhihu") { return "bubble.left.and.bubble.right.fill" }
+        if value.contains("微博") || value.contains("weibo") { return "bubble.left.fill" }
+        if value.contains("抖音") || value.contains("douyin") { return "music.note" }
+        return "antenna.radiowaves.left.and.right"
+    }
+
+    var body: some View {
+        Image(systemName: symbol)
+            .font(.system(size: 16, weight: .semibold))
+            .foregroundStyle(tint)
+            .frame(width: 38, height: 38)
+            .background(tint.opacity(0.13), in: RoundedRectangle(cornerRadius: 11, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 11, style: .continuous).stroke(tint.opacity(0.24), lineWidth: 1))
+            .accessibilityLabel("来源 \(name)")
+    }
+}
+
+
     let item: NewsItem
     @EnvironmentObject private var store: NewsStore
     @EnvironmentObject private var settingsStore: SettingsStore
@@ -1317,6 +1345,7 @@ struct FavoritesView: View {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 16) {
                         PageVisualBanner(assetName: "TrendRadar-LibraryHero", height: 118)
+                        archiveMetrics
                         archiveFilter
                          if archiveStore.filteredItems.isEmpty {
                              FeatureEmptyState(icon: "archivebox", title: "资料库还是空的", message: "收藏趋势或报告，或在订阅中归档文章，它们会安全保存在这里。")
@@ -1364,6 +1393,14 @@ struct FavoritesView: View {
                 Button("确定", role: .cancel) { archiveStore.errorMessage = nil }
             } message: { Text(archiveStore.errorMessage ?? "") }
             .sheet(isPresented: $showingSettings) { SettingsView() }
+        }
+    }
+
+    private var archiveMetrics: some View {
+        HStack(spacing: 8) {
+            PremiumMetricCard(value: "\(archiveStore.items.count)", label: "全部资料", icon: "archivebox.fill", tint: AppTheme.brandCyan)
+            PremiumMetricCard(value: "\(archiveStore.items.filter { $0.kind == .rss }.count)", label: "新闻", icon: "newspaper.fill", tint: AppTheme.green)
+            PremiumMetricCard(value: "\(archiveStore.items.filter { $0.kind == .report }.count)", label: "报告", icon: "doc.text.fill", tint: AppTheme.brandMagenta)
         }
     }
 
