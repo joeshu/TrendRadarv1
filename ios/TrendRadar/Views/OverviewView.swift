@@ -69,13 +69,13 @@ struct OverviewView: View {
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
                     Label("信息源状态", systemImage: "antenna.radiowaves.left.and.right")
-                        .font(AppTheme.headlineFont)
+                        .font(.system(size: 18, weight: .semibold, design: .default))
                         .foregroundStyle(AppTheme.textPrimary)
                     Spacer()
                     HStack(spacing: 5) {
                         Circle().fill(failureCount == 0 ? AppTheme.green : AppTheme.yellow).frame(width: 8, height: 8)
                         Text(failureCount == 0 ? "运行正常" : "部分异常")
-                            .font(AppTheme.captionFont)
+                            .font(.system(size: 12, weight: .regular, design: .default))
                             .foregroundStyle(failureCount == 0 ? AppTheme.green : AppTheme.yellow)
                     }
                 }
@@ -125,18 +125,18 @@ struct OverviewView: View {
                             HStack(spacing: 6) {
                                 Circle().fill(topicColor(topic.bestRank)).frame(width: 7, height: 7)
                                 Text(topic.title)
-                                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                                    .font(.system(size: 12, weight: .semibold, design: .default))
                                     .foregroundStyle(AppTheme.textPrimary)
                                     .lineLimit(1)
                                 Spacer(minLength: 0)
                                 Text("\(topic.bestRank)")
-                                    .font(AppTheme.captionFont)
+                                    .font(.system(size: 12, weight: .regular, design: .default))
                                     .foregroundStyle(AppTheme.textSecondary)
                             }
                         }
                         if latestTopics.isEmpty {
                             Text("暂无热榜缓存，进入热榜页刷新")
-                                .font(AppTheme.captionFont)
+                                .font(.system(size: 12, weight: .regular, design: .default))
                                 .foregroundStyle(AppTheme.textSecondary)
                         }
                     }
@@ -153,7 +153,7 @@ struct OverviewView: View {
                     OverviewSectionTitle(title: showingFavorites ? "收藏情报" : "最新情报", subtitle: "点击查看详情", icon: showingFavorites ? "star.fill" : "rectangle.text.magnifyingglass", tint: AppTheme.brandCyan)
                     Spacer()
                     Text("查看全部")
-                        .font(AppTheme.captionFont)
+                        .font(.system(size: 12, weight: .regular, design: .default))
                         .foregroundStyle(AppTheme.textSecondary)
                 }
                 if latestNews.isEmpty {
@@ -193,15 +193,15 @@ private struct OverviewHeroCard: View {
                 HStack(spacing: 0) {
                     VStack(alignment: .leading, spacing: 12) {
                         Text("TREND RADAR")
-                            .font(.system(size: 12, weight: .heavy, design: .rounded))
+                            .font(.system(size: 12, weight: .bold, design: .rounded))
                             .tracking(2.1)
                             .foregroundStyle(AppTheme.brandCyan)
                         Text("你的\n信息脉搏")
-                            .font(.system(size: 28, weight: .bold, design: .rounded))
+                            .font(.system(size: 28, weight: .semibold, design: .default))
                             .foregroundStyle(AppTheme.textPrimary)
                             .lineSpacing(2)
                         Text(date.formatted(date: .complete, time: .omitted))
-                            .font(AppTheme.captionFont)
+                            .font(.system(size: 12, weight: .regular, design: .default))
                             .foregroundStyle(AppTheme.textSecondary)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -247,9 +247,9 @@ private struct OverviewSectionTitle: View {
                 .background(tint.opacity(0.12))
                 .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
             VStack(alignment: .leading, spacing: 2) {
-                if let eyebrow { Text(eyebrow).font(.system(size: 10, weight: .heavy, design: .rounded)).tracking(1.8).foregroundStyle(tint) }
-                Text(title).font(AppTheme.headlineFont).foregroundStyle(AppTheme.textPrimary)
-                if let subtitle { Text(subtitle).font(AppTheme.captionFont).foregroundStyle(AppTheme.textSecondary) }
+                if let eyebrow { Text(eyebrow).font(.system(size: 10, weight: .heavy, design: .default)).tracking(1.8).foregroundStyle(tint) }
+                Text(title).font(.system(size: 18, weight: .semibold, design: .default)).foregroundStyle(AppTheme.textPrimary)
+                if let subtitle { Text(subtitle).font(.system(size: 12, weight: .regular, design: .default)).foregroundStyle(AppTheme.textSecondary) }
             }
         }
     }
@@ -260,8 +260,8 @@ private struct SourceHealthItem: View {
     var body: some View {
         VStack(spacing: 4) {
             Image(systemName: icon).font(.caption.weight(.semibold)).foregroundStyle(tint).frame(width: 29, height: 29).background(tint.opacity(0.11)).clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
-            Text(title).font(.system(size: 10, weight: .semibold, design: .rounded)).foregroundStyle(AppTheme.textSecondary)
-            Text(value).font(.system(size: 13, weight: .bold, design: .rounded)).foregroundStyle(AppTheme.textPrimary)
+            Text(title).font(.system(size: 10, weight: .semibold, design: .default)).foregroundStyle(AppTheme.textSecondary)
+            Text(value).font(.system(size: 13, weight: .bold, design: .default)).foregroundStyle(AppTheme.textPrimary)
         }.frame(maxWidth: .infinity)
     }
 }
@@ -271,8 +271,8 @@ private struct OverviewMetric: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Image(systemName: icon).font(.caption.weight(.semibold)).foregroundStyle(tint)
-            Text(value).font(.system(size: 20, weight: .bold, design: .rounded)).foregroundStyle(AppTheme.textPrimary).minimumScaleFactor(0.65)
-            Text(label).font(.system(size: 10, weight: .medium, design: .rounded)).foregroundStyle(AppTheme.textSecondary).lineLimit(1)
+            Text(value).font(.system(size: 21, weight: .bold, design: .default)).foregroundStyle(AppTheme.textPrimary).minimumScaleFactor(0.65)
+            Text(label).font(.system(size: 10, weight: .medium, design: .default)).foregroundStyle(AppTheme.textSecondary).lineLimit(1)
         }.frame(maxWidth: .infinity, alignment: .leading).padding(10).background(Color.white).overlay(RoundedRectangle(cornerRadius: 13, style: .continuous).stroke(tint.opacity(0.22), lineWidth: 1)).clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
     }
 }
@@ -285,7 +285,7 @@ private struct OverviewAction: View {
 private struct OverviewActionLabel: View {
     let title: String; let icon: String; let tint: Color
     var body: some View {
-        HStack(spacing: 4) { Image(systemName: icon).font(.caption.weight(.semibold)); Text(title).font(.system(size: 10, weight: .semibold, design: .rounded)).lineLimit(1) }
+        HStack(spacing: 4) { Image(systemName: icon).font(.caption.weight(.semibold)); Text(title).font(.system(size: 10, weight: .semibold, design: .default)).lineLimit(1) }
             .foregroundStyle(AppTheme.textPrimary).frame(maxWidth: .infinity).padding(.vertical, 11).background(tint.opacity(0.12)).clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
     }
 }
@@ -300,7 +300,7 @@ private struct CompactRadar: View {
             Circle().fill(AppTheme.brandCyan.opacity(0.10)).frame(width: 36, height: 36)
             Circle().fill(AppTheme.brandCyan).frame(width: 8, height: 8)
             Rectangle().fill(AppTheme.brandCyan.opacity(0.55)).frame(width: 110, height: 1).offset(x: 54).rotationEffect(.degrees(-24))
-            Text("\(count)").font(.system(size: 12, weight: .bold, design: .rounded)).foregroundStyle(AppTheme.textPrimary).offset(y: 57)
+            Text("\(count)").font(.system(size: 12, weight: .bold, design: .default)).foregroundStyle(AppTheme.textPrimary).offset(y: 57)
         }.frame(width: 132, height: 132)
     }
 }
@@ -312,13 +312,13 @@ private struct OverviewIntelRow: View {
             RoundedRectangle(cornerRadius: 3).fill(item.isRead ? AppTheme.textTertiary : AppTheme.brandCyan).frame(width: 4, height: 65)
             VStack(alignment: .leading, spacing: 5) {
                 HStack {
-                    Text(item.source).font(.system(size: 11, weight: .bold, design: .rounded)).tracking(0.5).foregroundStyle(AppTheme.brandCyan)
+                    Text(item.source).font(.system(size: 11, weight: .bold, design: .default)).tracking(0.5).foregroundStyle(AppTheme.brandCyan)
                     Spacer()
                     if item.isFavorite { Image(systemName: "bookmark.fill").font(.caption).foregroundStyle(AppTheme.yellow) }
                 }
-                Text(item.title).font(.system(size: 15, weight: item.isRead ? .regular : .semibold, design: .rounded)).foregroundStyle(item.isRead ? AppTheme.textSecondary : AppTheme.textPrimary).lineLimit(2)
-                if let summary = TextSanitizer.plainText(item.summary), !summary.isEmpty { Text(summary).font(AppTheme.captionFont).foregroundStyle(AppTheme.textSecondary).lineLimit(1) }
-                Text(item.publishedAt?.relativeDescription ?? "刚刚").font(AppTheme.captionFont).foregroundStyle(AppTheme.textTertiary)
+                Text(item.title).font(.system(size: 15, weight: item.isRead ? .regular : .semibold, design: .default)).foregroundStyle(item.isRead ? AppTheme.textSecondary : AppTheme.textPrimary).lineLimit(2)
+                if let summary = TextSanitizer.plainText(item.summary), !summary.isEmpty { Text(summary).font(.system(size: 12, weight: .regular, design: .default)).foregroundStyle(AppTheme.textSecondary).lineLimit(1) }
+                Text(item.publishedAt?.relativeDescription ?? "刚刚").font(.system(size: 12, weight: .regular, design: .default)).foregroundStyle(AppTheme.textTertiary)
             }
         }
         .padding(.vertical, 11)
