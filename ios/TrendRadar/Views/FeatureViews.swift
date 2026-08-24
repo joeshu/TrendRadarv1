@@ -247,7 +247,7 @@ struct SubscriptionSourceManager: View {
                     editingFeed = nil
                 }
             }
-            .preferredColorScheme(.light)
+            .preferredColorScheme(.dark)
             .tint(AppTheme.cyan)
         }
     }
@@ -339,10 +339,17 @@ struct FeedReaderView: View {
                     if let author = item.author, !author.isEmpty {
                         Text(author).font(AppTheme.captionFont).foregroundStyle(AppTheme.textSecondary)
                     }
-                    Text(item.body ?? item.summary ?? "暂无正文缓存")
-                        .font(.system(size: 18, weight: .regular, design: .serif))
-                        .foregroundStyle(AppTheme.textSecondary)
-                        .lineSpacing(7)
+                    VStack(alignment: .leading, spacing: 12) {
+                        Label("离线正文", systemImage: "doc.text")
+                            .font(AppTheme.captionFont.weight(.semibold))
+                            .foregroundStyle(AppTheme.electricBlue)
+                        Text(item.body ?? item.summary ?? "暂无正文缓存")
+                            .font(.system(size: 18, weight: .regular, design: .serif))
+                            .foregroundStyle(AppTheme.textSecondary)
+                            .lineSpacing(7)
+                    }
+                    .padding(18)
+                    .intelligenceCard(tint: AppTheme.brandIndigo, cornerRadius: 18)
                     if let url = item.url {
                         Link(destination: url) {
                             Label("阅读原文", systemImage: "arrow.up.right")
@@ -988,7 +995,11 @@ struct HotNewsTrendView: View {
                         .foregroundStyle(AppTheme.textTertiary)
                     trendMetrics
                     TrendChart(snapshots: snapshots)
+                        .padding(16)
+                        .intelligenceCard(tint: AppTheme.electricBlue, cornerRadius: 18)
                     sourceDistribution
+                        .padding(16)
+                        .intelligenceCard(tint: AppTheme.brandIndigo, cornerRadius: 18)
                     ForEach(topic.items) { item in
                         HotNewsTrendRow(item: item)
                     }
@@ -1675,7 +1686,7 @@ private struct FeedInfoSheet: View {
                 ToolbarItem(placement: .confirmationAction) { Button("完成") { dismiss() } }
             }
         }
-        .preferredColorScheme(.light)
+        .preferredColorScheme(.dark)
         .tint(AppTheme.cyan)
     }
 }

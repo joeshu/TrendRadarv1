@@ -320,8 +320,8 @@ struct SettingsView: View {
                     .navigationTitle("配置中心")
                     .navigationBarTitleDisplayMode(.inline)
                     .scrollContentBackground(.hidden)
-                    .background(AppTheme.background)
-                    .preferredColorScheme(.light)
+                    .background(IntelligenceScreenBackground())
+                    .preferredColorScheme(.dark)
                     .tint(AppTheme.cyan)
                     .navigationDestination(for: SettingsCategory.self) { category in
                         categoryDestination(category)
@@ -340,8 +340,8 @@ struct SettingsView: View {
             .toolbarBackground(AppTheme.background, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)
             .scrollContentBackground(.hidden)
-            .background(AppTheme.background)
-            .preferredColorScheme(.light)
+            .background(IntelligenceScreenBackground())
+            .preferredColorScheme(.dark)
             .tint(AppTheme.cyan)
         )
     }
@@ -1020,7 +1020,7 @@ struct FeedEditorView: View {
                     }
                 }
             }
-            .preferredColorScheme(.light)
+            .preferredColorScheme(.dark)
             .tint(AppTheme.cyan)
         }
     }

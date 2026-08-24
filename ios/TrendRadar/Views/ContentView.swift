@@ -511,9 +511,7 @@ struct NewsDetailView: View {
                                 .lineSpacing(6)
                         }
                         .padding(18)
-                        .background(AppTheme.card)
-                        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(AppTheme.cardBorder, lineWidth: 1))
-                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                        .intelligenceCard(tint: AppTheme.yellow, cornerRadius: 18)
                     }
                     HStack(spacing: 10) {
                         Button {

@@ -11,15 +11,12 @@ struct ReportGeneratorSheet: View {
                 IntelligenceScreenBackground()
                 ScrollView {
                     VStack(alignment: .leading, spacing: 18) {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("生成一份新的趋势报告")
-                                .font(.system(size: 24, weight: .bold))
-                                .foregroundStyle(AppTheme.textPrimary)
-                            Text("先采集当前热榜与 RSS，再按配置生成可保存的新闻快照。")
-                                .font(AppTheme.bodyFont)
-                                .foregroundStyle(AppTheme.textSecondary)
-                        }
-                        .padding(.horizontal, 4)
+                        IntelligencePageHeader(
+                            eyebrow: "NEW REPORT",
+                            title: "生成一份新的趋势报告",
+                            subtitle: "先采集当前热榜与 RSS，再生成可保存的新闻快照",
+                            icon: "doc.badge.plus"
+                        )
                         VStack(alignment: .leading, spacing: 14) {
                             Label("报告类型", systemImage: "doc.text.magnifyingglass")
                                 .font(.system(size: 17, weight: .semibold))
@@ -35,9 +32,7 @@ struct ReportGeneratorSheet: View {
                                 .foregroundStyle(AppTheme.textSecondary)
                         }
                         .padding(18)
-                        .background(AppTheme.card)
-                        .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(AppTheme.cardBorder, lineWidth: 1))
-                        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                        .intelligenceCard(tint: AppTheme.brandIndigo, cornerRadius: 20)
                     }
                     .padding(16)
                     .padding(.bottom, 30)
@@ -51,7 +46,7 @@ struct ReportGeneratorSheet: View {
                     Button("生成") { onGenerate(selectedType); dismiss() }
                 }
             }
-            .preferredColorScheme(.light)
+            .preferredColorScheme(.dark)
             .tint(AppTheme.cyan)
         }
     }
@@ -81,7 +76,7 @@ struct ReportSummaryCard: View {
             Image(systemName: "chevron.right").font(.caption.weight(.bold)).foregroundStyle(AppTheme.textTertiary)
         }
         .padding(12)
-        .background(AppTheme.card)
+        .intelligenceCard(tint: report.isFavorite ? AppTheme.yellow : AppTheme.brandCyan, cornerRadius: 14)
         .overlay(alignment: .topTrailing) {
             Text(report.hasAIAnalysis ? "已分析" : "本地快照")
                 .font(.system(size: 10, weight: .bold, design: .rounded))
@@ -90,8 +85,6 @@ struct ReportSummaryCard: View {
                 .background((report.hasAIAnalysis ? AppTheme.cyan : AppTheme.textTertiary).opacity(0.12))
                 .clipShape(Capsule()).padding(10)
         }
-        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(AppTheme.cardBorder, lineWidth: 1))
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 }
 
@@ -181,12 +174,9 @@ struct ReportDetailView: View {
                             Label("导出报告", systemImage: "square.and.arrow.up")
                                 .font(.system(size: 17, weight: .semibold))
                                 .frame(maxWidth: .infinity)
-                                .padding(.vertical, 14)
-                                .foregroundStyle(.white)
-                                .background(AppTheme.brandIndigo)
-                                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                                .frame(minHeight: 50)
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(AccentButtonStyle())
                         .contextMenu {
                             ShareLink(item: ReportFormatter().render(report, format: .markdown)) {
                                 Label("分享 Markdown", systemImage: "doc.text")

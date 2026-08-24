@@ -37,9 +37,7 @@ struct ReportOutputPreviewView: View {
                 }
                 .padding(16)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                .background(AppTheme.card)
-                .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(AppTheme.cardBorder, lineWidth: 1))
-                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                .intelligenceCard(tint: AppTheme.brandIndigo, cornerRadius: 20)
                 .padding(.horizontal, 16)
                 .padding(.bottom, 16)
             }
