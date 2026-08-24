@@ -27,7 +27,6 @@ struct ReportRichText: View {
                 rendered.font = .subheadline
                 rendered.foregroundColor = AppTheme.textPrimary
             }
-            applyInlineStyles(to: &rendered, source: line)
             output.append(rendered)
             if index < lines.count - 1 {
                 output.append(AttributedString("\\n"))
@@ -36,20 +35,4 @@ struct ReportRichText: View {
         return output
     }
 
-    private func applyInlineStyles(to value: inout AttributedString, source: String) {
-        for marker in ["「", "」"] {
-            var searchStart = source.startIndex
-            while let range = source.range(of: marker, range: searchStart..<source.endIndex) {
-                let start = source.distance(from: source.startIndex, to: range.lowerBound)
-                let end = source.distance(from: source.startIndex, to: range.upperBound)
-                if start < value.characters.count, end <= value.characters.count {
-                    let a = value.index(value.startIndex, offsetBy: start)
-                    let b = value.index(value.startIndex, offsetBy: end)
-                    value[a..<b].foregroundColor = AppTheme.brandIndigo
-                    value[a..<b].font = .subheadline
-                }
-                searchStart = range.upperBound
-            }
-        }
-    }
 }
