@@ -42,6 +42,18 @@ final class ReportStore: ObservableObject {
     func clearCache() async throws {
         try await localStore.clearAll()
         reports = []
+        latestAIAnalysis = nil
+    }
+
+    func refreshLatestAIAnalysis() async {
+        if reports.isEmpty {
+            reports = await localStore.loadReportSummaries()
+        }
+        guard let latest = reports.first else {
+            latestAIAnalysis = nil
+            return
+        }
+        latestAIAnalysis = await localStore.loadReport(id: latest.id)?.aiAnalysis
     }
 
     func applyRetentionPolicy(days: Int) async {

@@ -481,14 +481,9 @@ struct InsightView: View {
                     .foregroundStyle(AppTheme.textSecondary)
                 if aiReady {
                     Button {
-                        isGenerating = true
-                        Task {
-                            await reportStore.generate(type: reportType, settings: settingsStore.settings, items: windowItems, hotlistItems: windowHotlistItems, diagnostics: reportStore.diagnostics(news: store, hotNews: hotNewsStore))
-                            await loadLatestAnalysis()
-                            isGenerating = false
-                        }
+                        generateCurrentAIReport()
                     } label: {
-                        Label(isGenerating ? "正在生成" : "生成 \(selectedWindow.title) 报告", systemImage: "doc.text.magnifyingglass")
+                        Label(isGenerating ? "正在生成并分析" : "生成并展示 \(selectedWindow.title) 报告", systemImage: "doc.text.magnifyingglass")
                     }
                     .buttonStyle(AccentButtonStyle())
                     .disabled(isGenerating)
@@ -497,6 +492,27 @@ struct InsightView: View {
                         .foregroundStyle(AppTheme.textTertiary)
                 }
             }
+        }
+    }
+
+    private func generateCurrentAIReport() {
+        guard !isGenerating else { return }
+        guard !windowItems.isEmpty || !windowHotlistItems.isEmpty else {
+            reportStore.errorMessage = "当前时间范围没有可分析的数据，请先刷新热榜或 RSS。"
+            return
+        }
+        isGenerating = true
+        Task {
+            defer { isGenerating = false }
+            await reportStore.generate(
+                type: reportType,
+                settings: settingsStore.settings,
+                items: windowItems,
+                hotlistItems: windowHotlistItems,
+                diagnostics: reportStore.diagnostics(news: store, hotNews: hotNewsStore)
+            )
+            await reportStore.refreshLatestAIAnalysis()
+            await loadLatestAnalysis()
         }
     }
 
