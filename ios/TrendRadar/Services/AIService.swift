@@ -81,10 +81,14 @@ struct AIService: Sendable {
         guard let data = normalizedJSON(content).data(using: .utf8), let values = try? JSONDecoder().decode([BatchTranslation].self, from: data) else {
             throw AIError.invalidAnalysis
         }
-        return values.compactMap { value in
-            guard value.index > 0, value.index <= pending.count, !value.translation.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
-            return (pending[value.index - 1].id, value.translation.trimmingCharacters(in: .whitespacesAndNewlines))
-        }.reduce(into: [:]) { $0[$1.0] = $1.1 }
+        var result: [String: String] = [:]
+        for value in values {
+            guard value.index > 0, value.index <= pending.count else { continue }
+            let translation = value.translation.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !translation.isEmpty else { continue }
+            result[pending[value.index - 1].id] = translation
+        }
+        return result
     }
 
     func translateTitle(_ title: String, settings: AppSettings = AppSettings()) async throws -> String {
