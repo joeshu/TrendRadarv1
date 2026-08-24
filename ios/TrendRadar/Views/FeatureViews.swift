@@ -564,9 +564,27 @@ struct InsightView: View {
                     .buttonStyle(OutlineButtonStyle())
                 }
             } else {
-                Text("生成报告后，完整 AI 分析会直接显示在这里。")
-                    .font(AppTheme.bodyFont)
-                    .foregroundStyle(AppTheme.textSecondary)
+                VStack(alignment: .leading, spacing: 10) {
+                    if let latest = reportStore.reports.first {
+                        Text("最近报告尚未生成 AI 分析")
+                            .font(AppTheme.bodyFont)
+                            .foregroundStyle(AppTheme.textPrimary)
+                        Text("报告已保存，但 AI 分析需要单独执行。点击下方按钮即可为这份报告补生成。")
+                            .font(AppTheme.captionFont)
+                            .foregroundStyle(AppTheme.textSecondary)
+                        Button {
+                            Task { await reportStore.generateAIAnalysis(for: latest.id, settings: settingsStore.settings) }
+                        } label: {
+                            Label(reportStore.isGenerating ? "正在生成 AI 分析" : "为最近报告生成 AI 分析", systemImage: "sparkles")
+                        }
+                        .buttonStyle(AccentButtonStyle())
+                        .disabled(reportStore.isGenerating)
+                    } else {
+                        Text("当前还没有保存的报告。请先生成一份报告。")
+                            .font(AppTheme.bodyFont)
+                            .foregroundStyle(AppTheme.textSecondary)
+                    }
+                }
             }
         }
     }
