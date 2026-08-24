@@ -60,9 +60,9 @@ enum AppTheme {
 
     static let screenGradient = LinearGradient(
         colors: [
-            adaptive(light: UIColor(red: 0.94, green: 0.97, blue: 0.995, alpha: 1), dark: UIColor(red: 0.018, green: 0.035, blue: 0.065, alpha: 1)),
-            adaptive(light: UIColor(red: 0.97, green: 0.98, blue: 1.0, alpha: 1), dark: UIColor(red: 0.025, green: 0.055, blue: 0.10, alpha: 1)),
-            adaptive(light: UIColor(red: 0.965, green: 0.945, blue: 0.99, alpha: 1), dark: UIColor(red: 0.055, green: 0.035, blue: 0.105, alpha: 1))
+            adaptive(light: UIColor(red: 0.94, green: 0.97, blue: 0.995, alpha: 1), dark: UIColor(red: 0.008, green: 0.018, blue: 0.040, alpha: 1)),
+            adaptive(light: UIColor(red: 0.97, green: 0.98, blue: 1.0, alpha: 1), dark: UIColor(red: 0.012, green: 0.038, blue: 0.075, alpha: 1)),
+            adaptive(light: UIColor(red: 0.965, green: 0.945, blue: 0.99, alpha: 1), dark: UIColor(red: 0.040, green: 0.018, blue: 0.085, alpha: 1))
         ],
         startPoint: .topLeading,
         endPoint: .bottomTrailing

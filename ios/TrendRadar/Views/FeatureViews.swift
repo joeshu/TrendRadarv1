@@ -29,6 +29,7 @@ struct FeedsView: View {
                 IntelligenceScreenBackground()
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 16) {
+                        PageVisualBanner(assetName: "TrendRadar-SubscriptionHero", height: 118)
                         sourceSummary
                         inboxFilter
                         feedPicker
@@ -481,6 +482,7 @@ struct InsightView: View {
                 IntelligenceScreenBackground()
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 16) {
+                        PageVisualBanner(assetName: "TrendRadar-InsightHero", height: 118)
                         insightWindowPicker
                         signalCard
                         sentimentCard
@@ -901,6 +903,7 @@ struct HotNewsView: View {
                 IntelligenceScreenBackground()
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 16) {
+                        PageVisualBanner(assetName: "TrendRadar-RadarHero", height: 118)
                         hotNewsOverview
                         radarStateFilters
                         hotNewsFilters
@@ -1310,6 +1313,7 @@ struct FavoritesView: View {
                 IntelligenceScreenBackground()
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 16) {
+                        PageVisualBanner(assetName: "TrendRadar-LibraryHero", height: 118)
                         archiveFilter
                          if archiveStore.filteredItems.isEmpty {
                              FeatureEmptyState(icon: "archivebox", title: "资料库还是空的", message: "收藏趋势或报告，或在订阅中归档文章，它们会安全保存在这里。")
@@ -1479,6 +1483,7 @@ struct ReportCenterView: View {
                     .ignoresSafeArea()
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 16) {
+                        PageVisualBanner(assetName: "TrendRadar-ReportsHero", height: 118)
                         reportIntro
                         reportStatusStrip
                         reportToolbar

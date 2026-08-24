@@ -20,6 +20,7 @@ struct OverviewView: View {
             IntelligencePage {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: settingsStore.settings.display.cardSpacing) {
+                        PageVisualBanner(assetName: "TrendRadar-TodayHero", height: 118)
                         header
                         briefing
                         metrics
