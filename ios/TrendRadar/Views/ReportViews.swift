@@ -53,6 +53,7 @@ struct ReportGeneratorSheet: View {
 }
 
 struct ReportSummaryCard: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let report: ReportSummary
 
     var body: some View {
@@ -66,7 +67,7 @@ struct ReportSummaryCard: View {
             }
             .frame(width: 44, height: 44)
             VStack(alignment: .leading, spacing: 5) {
-                Text(report.title).font(AppTheme.cardTitleFont).foregroundStyle(AppTheme.textPrimary).lineLimit(2)
+                Text(report.title).font(AppTheme.cardTitleFont).foregroundStyle(AppTheme.textPrimary).lineLimit(dynamicTypeSize.isAccessibilitySize ? 4 : 2)
                 HStack(spacing: 6) {
                     Text(report.type.displayName); Text("·"); Text("\(report.newsCount) 条情报"); Text("·"); Text(report.generatedAt, style: .relative)
                 }

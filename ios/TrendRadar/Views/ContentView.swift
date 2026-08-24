@@ -123,7 +123,7 @@ struct RadarView: View {
             HStack(alignment: .bottom) {
                 VStack(alignment: .leading, spacing: 5) {
                     Text("最新情报")
-                        .font(.system(size: 26, weight: .bold, design: .rounded))
+                        .font(AppTheme.titleFont)
                         .foregroundStyle(AppTheme.textPrimary)
                     Text("来自你关注的信息源。")
                         .font(AppTheme.captionFont)
@@ -134,10 +134,9 @@ struct RadarView: View {
                     .font(.system(size: 42, weight: .light))
                     .foregroundStyle(AppTheme.cyan.opacity(0.8))
             }
-            HStack(spacing: 10) {
-                MetricPill(value: "\(store.items.count)", label: "条情报", tint: AppTheme.cyan)
-                MetricPill(value: "\(store.items.filter { !$0.isRead }.count)", label: "未读", tint: AppTheme.yellow)
-                MetricPill(value: "\(store.items.filter(\.isFavorite).count)", label: "收藏", tint: AppTheme.pink)
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 10) { overviewMetrics }
+                VStack(alignment: .leading, spacing: 8) { overviewMetrics }
             }
         }
         .padding(.horizontal, 20)
@@ -172,7 +171,7 @@ struct RadarView: View {
                 ForEach(sourceNames, id: \.self) { source in
                     Button { selectedSource = source } label: {
                         Text(source)
-                            .font(.system(size: 13, weight: .semibold, design: .rounded))
+                            .font(AppTheme.captionFont.weight(.semibold))
                             .foregroundStyle(selectedSource == source ? AppTheme.background : AppTheme.textSecondary)
                             .padding(.horizontal, 15)
                             .padding(.vertical, 9)
@@ -183,6 +182,13 @@ struct RadarView: View {
             }
             .padding(.horizontal, 20)
         }
+    }
+
+    @ViewBuilder
+    private var overviewMetrics: some View {
+        MetricPill(value: "\(store.items.count)", label: "条情报", tint: AppTheme.cyan)
+        MetricPill(value: "\(store.items.filter { !$0.isRead }.count)", label: "未读", tint: AppTheme.yellow)
+        MetricPill(value: "\(store.items.filter(\.isFavorite).count)", label: "收藏", tint: AppTheme.pink)
     }
 
     private var refreshStatus: some View {
@@ -376,8 +382,8 @@ private struct MetricPill: View {
 
     var body: some View {
         HStack(spacing: 7) {
-            Text(value).font(.system(size: 17, weight: .bold, design: .rounded)).foregroundStyle(tint)
-            Text(label).font(.system(size: 12, weight: .medium, design: .rounded)).foregroundStyle(AppTheme.textSecondary)
+            Text(value).font(AppTheme.numericFont).foregroundStyle(tint)
+            Text(label).font(AppTheme.metadataFont).foregroundStyle(AppTheme.textSecondary)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
@@ -386,6 +392,7 @@ private struct MetricPill: View {
 }
 
 private struct NewsCard: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let item: NewsItem
 
     var body: some View {
@@ -397,22 +404,22 @@ private struct NewsCard: View {
             VStack(alignment: .leading, spacing: 10) {
                 HStack {
                     Text(item.source.uppercased())
-                        .font(.system(size: 10, weight: .heavy, design: .rounded))
+                        .font(AppTheme.metadataFont)
                         .tracking(1)
                         .foregroundStyle(AppTheme.cyan)
                     Spacer()
                     if item.isFavorite { Image(systemName: "star.fill").font(.caption).foregroundStyle(AppTheme.yellow) }
                 }
                 Text(item.title)
-                    .font(.system(size: 16, weight: item.isRead ? .regular : .semibold, design: .rounded))
+                    .font(item.isRead ? AppTheme.bodyFont : AppTheme.cardTitleFont)
                     .foregroundStyle(item.isRead ? AppTheme.textSecondary : AppTheme.textPrimary)
                     .multilineTextAlignment(.leading)
-                    .lineLimit(2)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? 4 : 2)
                 HStack(spacing: 7) {
                     Text(item.publishedAt?.relativeDescription ?? "刚刚")
                     if item.summary != nil { Text("·"); Label("已摘要", systemImage: "sparkles") }
                 }
-                .font(.system(size: 11, weight: .medium, design: .rounded))
+                .font(AppTheme.metadataFont)
                 .foregroundStyle(AppTheme.textTertiary)
             }
         }
@@ -431,10 +438,10 @@ private struct EmptyNewsView: View {
                 .font(.system(size: 34, weight: .light))
                 .foregroundStyle(AppTheme.cyan)
             Text(isFavoriteMode ? "还没有收藏" : "等待第一批情报")
-                .font(.system(size: 18, weight: .bold, design: .rounded))
+                .font(AppTheme.sectionTitleFont)
                 .foregroundStyle(AppTheme.textPrimary)
             Text(isFavoriteMode ? "在新闻卡片上长按即可收藏" : "下拉刷新，开始建立你的信息雷达")
-                .font(.system(size: 13, design: .rounded))
+                .font(AppTheme.captionFont)
                 .foregroundStyle(AppTheme.textTertiary)
         }
     }
@@ -484,41 +491,30 @@ struct NewsDetailView: View {
                     PageVisualBanner(assetName: "TrendRadar-ReadingHero")
                     HStack(spacing: 8) {
                         Circle().fill(AppTheme.cyan).frame(width: 8, height: 8)
-                        Text(item.source).font(.system(size: 15, weight: .semibold)).foregroundStyle(AppTheme.cyan)
+                        Text(item.source).font(AppTheme.headlineFont).foregroundStyle(AppTheme.cyan)
                         Spacer()
                         Text(item.publishedAt?.relativeDescription ?? "刚刚").font(AppTheme.captionFont).foregroundStyle(AppTheme.textTertiary)
                     }
                     Text(item.title)
-                        .font(.system(size: 27, weight: .bold))
+                        .font(AppTheme.titleFont)
                         .foregroundStyle(AppTheme.textPrimary)
                         .lineSpacing(3)
                     if let summary = generatedSummary ?? item.summary, !summary.isEmpty {
                         VStack(alignment: .leading, spacing: 11) {
                             Label("AI 摘要", systemImage: "sparkles")
-                                .font(.system(size: 15, weight: .semibold))
+                                .font(AppTheme.headlineFont)
                                 .foregroundStyle(AppTheme.yellow)
                             Text(summary)
-                                .font(.system(size: 17, weight: .regular))
+                                .font(AppTheme.readingFont)
                                 .foregroundStyle(AppTheme.textSecondary)
                                 .lineSpacing(6)
                         }
                         .padding(18)
                         .intelligenceCard(tint: AppTheme.yellow, cornerRadius: 18)
                     }
-                    HStack(spacing: 10) {
-                        Button {
-                            isSummarizing = true
-                            Task {
-                                await store.summarize(item)
-                                generatedSummary = store.items.first(where: { $0.id == item.id })?.summary
-                                isSummarizing = false
-                            }
-                        } label: { Label(isSummarizing ? "分析中" : "生成摘要", systemImage: "sparkles") }
-                        .buttonStyle(AccentButtonStyle())
-                        .disabled(isSummarizing)
-                        if let url = item.url {
-                            Link(destination: url) { Label("阅读原文", systemImage: "arrow.up.right") }.buttonStyle(OutlineButtonStyle())
-                        }
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: 10) { detailActions }
+                        VStack(alignment: .leading, spacing: 10) { detailActions }
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -531,12 +527,30 @@ struct NewsDetailView: View {
         .navigationTitle("情报详情")
         .navigationBarTitleDisplayMode(.inline)
     }
+
+    @ViewBuilder
+    private var detailActions: some View {
+        Button {
+                            isSummarizing = true
+                            Task {
+                                await store.summarize(item)
+                                generatedSummary = store.items.first(where: { $0.id == item.id })?.summary
+                                isSummarizing = false
+                            }
+        } label: { Label(isSummarizing ? "分析中" : "生成摘要", systemImage: "sparkles") }
+        .buttonStyle(AccentButtonStyle())
+        .disabled(isSummarizing)
+        if let url = item.url {
+            Link(destination: url) { Label("阅读原文", systemImage: "arrow.up.right") }
+                .buttonStyle(OutlineButtonStyle())
+        }
+    }
 }
 
 struct AccentButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.system(size: 14, weight: .bold))
+            .font(AppTheme.headlineFont)
             .foregroundStyle(.white)
             .padding(.horizontal, 17)
             .frame(minHeight: 44)
@@ -549,7 +563,7 @@ struct AccentButtonStyle: ButtonStyle {
 struct OutlineButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.system(size: 14, weight: .semibold))
+            .font(AppTheme.headlineFont)
             .foregroundStyle(AppTheme.textSecondary.opacity(configuration.isPressed ? 0.55 : 1))
             .padding(.horizontal, 16)
             .frame(minHeight: 44)

@@ -250,7 +250,7 @@ struct SubscriptionSourceManager: View {
     @ViewBuilder
     private func sourceSection(title: String, feeds: [ConfigFeed]) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(title).font(.system(size: 15, weight: .medium)).foregroundStyle(AppTheme.textSecondary).padding(.horizontal, 8)
+            Text(title).font(AppTheme.sectionTitleFont).foregroundStyle(AppTheme.textSecondary).padding(.horizontal, 8)
             VStack(spacing: 0) {
                 ForEach(Array(feeds.enumerated()), id: \.element.id) { index, feed in
                     sourceRow(feed: feed, isLast: index == feeds.count - 1)
@@ -263,7 +263,7 @@ struct SubscriptionSourceManager: View {
     @ViewBuilder
     private func sourceSection(title: String, platforms: [PlatformSource]) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(title).font(.system(size: 15, weight: .medium)).foregroundStyle(AppTheme.textSecondary).padding(.horizontal, 8)
+            Text(title).font(AppTheme.sectionTitleFont).foregroundStyle(AppTheme.textSecondary).padding(.horizontal, 8)
             VStack(spacing: 0) {
                 ForEach(Array(platforms.enumerated()), id: \.element.id) { index, source in
                     HStack(spacing: 12) {
@@ -271,7 +271,7 @@ struct SubscriptionSourceManager: View {
                             if let i = settingsStore.settings.platformSources.firstIndex(where: { $0.id == source.id }) { settingsStore.settings.platformSources[i].isEnabled = value }
                         }))
                         .labelsHidden()
-                        Text(source.name).font(.system(size: 17, weight: .medium)).foregroundStyle(AppTheme.textPrimary)
+                        Text(source.name).font(AppTheme.cardTitleFont).foregroundStyle(AppTheme.textPrimary)
                         Spacer()
                         Image(systemName: "chevron.right").foregroundStyle(AppTheme.textTertiary)
                     }
@@ -294,7 +294,7 @@ struct SubscriptionSourceManager: View {
                 }))
                 .labelsHidden()
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(feed.name).font(.system(size: 17, weight: .medium)).foregroundStyle(AppTheme.textPrimary)
+                    Text(feed.name).font(AppTheme.cardTitleFont).foregroundStyle(AppTheme.textPrimary)
                     HStack(spacing: 5) {
                         Circle().fill(feed.isEnabled ? AppTheme.green : AppTheme.textTertiary).frame(width: 7, height: 7)
                         Text(feed.isEnabled ? "运行中" : "已停用").font(AppTheme.captionFont).foregroundStyle(AppTheme.textSecondary)
@@ -302,7 +302,7 @@ struct SubscriptionSourceManager: View {
                     }
                 }
                 Spacer()
-                Text("编辑").font(.system(size: 16, weight: .medium)).foregroundStyle(AppTheme.brandCyan)
+                Text("编辑").font(AppTheme.headlineFont).foregroundStyle(AppTheme.brandCyan)
                 Image(systemName: "chevron.right").foregroundStyle(AppTheme.textTertiary)
             }
             .padding(.horizontal, 16).frame(minHeight: 72)
@@ -336,7 +336,7 @@ struct FeedReaderView: View {
                             .font(AppTheme.captionFont.weight(.semibold))
                             .foregroundStyle(AppTheme.electricBlue)
                         Text(item.body ?? item.summary ?? "暂无正文缓存")
-                            .font(.system(size: 18, weight: .regular, design: .serif))
+                            .font(AppTheme.readingFont)
                             .foregroundStyle(AppTheme.textSecondary)
                             .lineSpacing(7)
                     }
@@ -930,6 +930,7 @@ struct HotNewsView: View {
 }
 
 private struct HotNewsTopicCard: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let topic: HotNewsTopic
 
     private var trendText: String {
@@ -945,14 +946,14 @@ private struct HotNewsTopicCard: View {
     var body: some View {
         HStack(spacing: 14) {
             Text("\(topic.bestRank)")
-                .font(.system(size: 28, weight: .semibold))
+                .font(AppTheme.rankFont)
                 .foregroundStyle(topic.bestRank <= 3 ? AppTheme.pink : AppTheme.textTertiary)
                 .frame(width: 42, alignment: .leading)
             VStack(alignment: .leading, spacing: 6) {
                 Text(topic.title)
-                    .font(.system(size: 17, weight: .semibold))
+                    .font(AppTheme.cardTitleFont)
                     .foregroundStyle(AppTheme.textPrimary)
-                    .lineLimit(1)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? 3 : 2)
                 HStack(spacing: 6) {
                     Text(topic.platforms.joined(separator: " · "))
                     Text("·")
@@ -964,7 +965,7 @@ private struct HotNewsTopicCard: View {
             Spacer(minLength: 4)
             VStack(alignment: .trailing, spacing: 5) {
                 Text(trendText)
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(AppTheme.headlineFont.monospacedDigit())
                     .foregroundStyle(trendTint)
                 Image(systemName: "chevron.right")
                     .foregroundStyle(AppTheme.textTertiary)
@@ -995,7 +996,7 @@ struct HotNewsTrendView: View {
                         .font(AppTheme.captionFont)
                         .foregroundStyle(AppTheme.textSecondary)
                     Text("跨平台出现 · 点击查看排名轨迹")
-                        .font(.system(size: 11, weight: .medium, design: .default))
+                        .font(AppTheme.metadataFont)
                         .foregroundStyle(AppTheme.textTertiary)
                     trendMetrics
                     TrendChart(snapshots: snapshots)
@@ -1620,29 +1621,33 @@ struct SourceHealthBanner: View {
 }
 
 struct FeatureEmptyState: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let icon: String
     let title: String
     let message: String
 
     var body: some View {
         VStack(spacing: 12) {
-            Image("TrendRadar-EmptyState")
-                .resizable()
-                .scaledToFit()
-                .frame(maxWidth: 220, maxHeight: 170)
-                .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-                .overlay {
-                    LinearGradient(colors: [.clear, AppTheme.background.opacity(0.22)], startPoint: .top, endPoint: .bottom)
-                        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-                }
+            if !dynamicTypeSize.isAccessibilitySize {
+                Image("TrendRadar-EmptyState")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(maxWidth: 220, maxHeight: 170)
+                    .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                    .overlay {
+                        LinearGradient(colors: [.clear, AppTheme.background.opacity(0.22)], startPoint: .top, endPoint: .bottom)
+                            .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                    }
+                    .accessibilityHidden(true)
+            }
             Image(systemName: icon)
                 .font(.system(size: 22, weight: .light))
                 .foregroundStyle(AppTheme.brandCyan)
             Text(title)
-                .font(AppTheme.headlineFont)
+                .font(AppTheme.sectionTitleFont)
                 .foregroundStyle(AppTheme.textPrimary)
             Text(message)
-                .font(AppTheme.captionFont)
+                .font(AppTheme.bodyFont)
                 .foregroundStyle(AppTheme.textSecondary)
                 .multilineTextAlignment(.center)
         }
@@ -1667,7 +1672,7 @@ private struct FeedInfoSheet: View {
                     .font(.system(size: 34, weight: .light))
                     .foregroundStyle(AppTheme.cyan)
                 Text("已启用 \(feedCount) 个订阅源")
-                    .font(AppTheme.titleFont)
+                    .font(AppTheme.sectionTitleFont)
                     .foregroundStyle(AppTheme.textPrimary)
                 Text("RSS 与 Atom 内容会在刷新时并发抓取，并保存到本地情报库。")
                     .font(AppTheme.bodyFont)

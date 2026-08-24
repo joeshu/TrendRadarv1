@@ -83,6 +83,7 @@ struct PremiumTag: View {
 }
 
 struct IntelligenceFilterChip: View {
+    @Environment(\.appHighContrast) private var highContrast
     let title: String
     let icon: String?
     let isSelected: Bool
@@ -106,8 +107,10 @@ struct IntelligenceFilterChip: View {
         .frame(minHeight: 36)
         .background(isSelected ? AnyShapeStyle(AppTheme.accentGradient) : AnyShapeStyle(AppTheme.surface.opacity(0.82)))
         .clipShape(Capsule())
-        .overlay(Capsule().stroke(isSelected ? Color.white.opacity(0.15) : AppTheme.cardBorder.opacity(0.55), lineWidth: 1))
+        .overlay(Capsule().stroke(isSelected ? Color.white.opacity(highContrast ? 0.55 : 0.15) : AppTheme.cardBorder.opacity(highContrast ? 0.95 : 0.55), lineWidth: highContrast ? 1.5 : 1))
         .contentShape(Capsule())
+        .accessibilityValue(isSelected ? "已选择" : "未选择")
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }
 

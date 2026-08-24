@@ -31,7 +31,7 @@ private enum SettingsCategory: String, CaseIterable, Identifiable, Hashable {
         case .runtime: return "时区、刷新和时间线"
         case .filtering: return "关键词、AI 筛选和报告"
         case .ai: return "模型、兴趣和翻译"
-        case .display: return "首页区域与独立展示"
+        case .display: return "主题、字体、界面密度与展示区域"
         case .notifications: return "本地提醒和通知渠道"
         case .storage: return "本地保留和远程存储"
         case .advanced: return "请求、代理和排序参数"
