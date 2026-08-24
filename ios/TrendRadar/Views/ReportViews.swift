@@ -161,9 +161,6 @@ struct ReportDetailView: View {
                                 ShareLink(item: ReportFormatter().render(report, format: .markdown)) {
                                     Label("分享 Markdown", systemImage: "doc.text")
                                 }
-                                ShareLink(item: ReportHTMLExport(report: report)) {
-                                    Label("导出 HTML", systemImage: "doc.richtext")
-                                }
                             }
                         }
                     }
