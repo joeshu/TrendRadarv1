@@ -1524,8 +1524,10 @@ struct ReportCenterView: View {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 16) {
                         PageVisualBanner(assetName: "TrendRadar-ReportsHero", height: 118)
+                        PageVisualBanner(assetName: "TrendRadar-ReportsHero", height: 118)
                         reportIntro
                         reportStatusStrip
+                        reportScopeSummary
                         reportToolbar
                         if reportStore.isLoading {
                             FeatureLoadingState(title: "正在加载报告", message: "同步本机报告索引与快照")
@@ -1612,6 +1614,19 @@ struct ReportCenterView: View {
                 Text(reportStore.errorMessage ?? "")
             }
             .task { await reportStore.load() }
+        }
+    }
+
+    private var reportScopeSummary: some View {
+        PremiumPanel(tint: AppTheme.brandIndigo) {
+            VStack(alignment: .leading, spacing: 10) {
+                PremiumSectionHeader(eyebrow: "REPORT SCOPE", title: "本机证据范围", subtitle: "基于最近一次采集快照", icon: "scope", tint: AppTheme.brandIndigo)
+                HStack(spacing: 8) {
+                    PremiumMetricCard(value: "\(reportStore.reports.first?.newsCount ?? 0)", label: "情报条目", icon: "newspaper", tint: AppTheme.brandCyan)
+                    PremiumMetricCard(value: "\(reportStore.reports.first?.sourceCount ?? 0)", label: "信息源", icon: "antenna.radiowaves.left.and.right", tint: AppTheme.green)
+                    PremiumMetricCard(value: "\(reportStore.reports.filter(\.hasAIAnalysis).count)", label: "AI 报告", icon: "sparkles", tint: AppTheme.brandMagenta)
+                }
+            }
         }
     }
 
