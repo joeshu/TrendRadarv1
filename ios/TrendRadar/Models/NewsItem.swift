@@ -77,6 +77,10 @@ struct RSSFeed: Codable, Identifiable, Hashable, Sendable {
     let id: String
     let name: String
     let url: URL
+    var requestTimeout: Int = 20
+    var retryCount: Int = 3
+    var userAgent: String = "TrendRadar/1.0"
+    var requestHeaders: [String: String] = [:]
 }
 
 struct PlatformSource: Codable, Identifiable, Hashable, Sendable {
@@ -100,16 +104,24 @@ struct ConfigFeed: Codable, Identifiable, Hashable, Sendable {
     var isEnabled: Bool
     var maxAgeDays: Int
     var group: String
+    var requestTimeout: Int
+    var retryCount: Int
+    var userAgent: String
+    var requestHeaders: String
 
-    private enum CodingKeys: String, CodingKey { case id, name, url, isEnabled, maxAgeDays, group }
+    private enum CodingKeys: String, CodingKey { case id, name, url, isEnabled, maxAgeDays, group, requestTimeout, retryCount, userAgent, requestHeaders }
 
-    init(id: String, name: String, url: String, isEnabled: Bool = true, maxAgeDays: Int = 0, group: String = "未分组") {
+    init(id: String, name: String, url: String, isEnabled: Bool = true, maxAgeDays: Int = 0, group: String = "未分组", requestTimeout: Int = 20, retryCount: Int = 3, userAgent: String = "TrendRadar/1.0", requestHeaders: String = "") {
         self.id = id
         self.name = name
         self.url = url
         self.isEnabled = isEnabled
         self.maxAgeDays = maxAgeDays
         self.group = group
+        self.requestTimeout = requestTimeout
+        self.retryCount = retryCount
+        self.userAgent = userAgent
+        self.requestHeaders = requestHeaders
     }
 
     init(from decoder: Decoder) throws {
@@ -120,11 +132,19 @@ struct ConfigFeed: Codable, Identifiable, Hashable, Sendable {
         isEnabled = try container.decodeIfPresent(Bool.self, forKey: .isEnabled) ?? true
         maxAgeDays = try container.decodeIfPresent(Int.self, forKey: .maxAgeDays) ?? 0
         group = try container.decodeIfPresent(String.self, forKey: .group) ?? "未分组"
+        requestTimeout = min(max(try container.decodeIfPresent(Int.self, forKey: .requestTimeout) ?? 20, 5), 120)
+        retryCount = min(max(try container.decodeIfPresent(Int.self, forKey: .retryCount) ?? 3, 1), 5)
+        userAgent = try container.decodeIfPresent(String.self, forKey: .userAgent) ?? "TrendRadar/1.0"
+        requestHeaders = try container.decodeIfPresent(String.self, forKey: .requestHeaders) ?? ""
     }
 
     var rssFeed: RSSFeed? {
         guard let feedURL = URL(string: url.trimmingCharacters(in: .whitespacesAndNewlines)) else { return nil }
-        return RSSFeed(id: id, name: name, url: feedURL)
+        let headers = requestHeaders.components(separatedBy: .newlines).reduce(into: [String: String]()) { result, line in
+            let parts = line.split(separator: ":", maxSplits: 1).map { $0.trimmingCharacters(in: .whitespaces) }
+            if parts.count == 2, !parts[0].isEmpty { result[parts[0]] = parts[1] }
+        }
+        return RSSFeed(id: id, name: name, url: feedURL, requestTimeout: requestTimeout, retryCount: retryCount, userAgent: userAgent, requestHeaders: headers)
     }
 }
 

@@ -10,8 +10,12 @@ final class ArchiveRecord {
     var source: String
     var urlString: String?
     var summary: String?
+    var body: String?
     var capturedAt: Date
     var isFavorite: Bool
+    var snapshotVersion: String?
+    var contentSize: Int?
+    var checksum: String?
 
     init(resource: ArchiveResource) {
         id = resource.id
@@ -21,8 +25,12 @@ final class ArchiveRecord {
         source = resource.source
         urlString = resource.url?.absoluteString
         summary = resource.summary
+        body = resource.body
         capturedAt = resource.capturedAt
         isFavorite = resource.isFavorite
+        snapshotVersion = resource.snapshotVersion
+        contentSize = resource.contentSize
+        checksum = resource.checksum
     }
 
     func update(with resource: ArchiveResource) {
@@ -32,12 +40,16 @@ final class ArchiveRecord {
         source = resource.source
         urlString = resource.url?.absoluteString
         summary = resource.summary
+        body = resource.body
         capturedAt = resource.capturedAt
         isFavorite = resource.isFavorite
+        snapshotVersion = resource.snapshotVersion
+        contentSize = resource.contentSize
+        checksum = resource.checksum
     }
 
     var asResource: ArchiveResource? {
         guard let resourceKind = ArchiveResourceKind(rawValue: kind) else { return nil }
-        return ArchiveResource(resourceID: resourceID, kind: resourceKind, title: title, source: source, url: urlString.flatMap(URL.init(string:)), summary: summary, capturedAt: capturedAt, isFavorite: isFavorite)
+        return ArchiveResource(resourceID: resourceID, kind: resourceKind, title: title, source: source, url: urlString.flatMap(URL.init(string:)), summary: summary, body: body, capturedAt: capturedAt, isFavorite: isFavorite, snapshotVersion: snapshotVersion, contentSize: contentSize, checksum: checksum)
     }
 }

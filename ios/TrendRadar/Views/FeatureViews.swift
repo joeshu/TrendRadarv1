@@ -251,14 +251,16 @@ struct SubscriptionSourceManager: View {
                 }
             }
             .sheet(isPresented: $showingFeedEditor) {
-                FeedEditorView(feed: editingFeed) { feed in
+                FeedEditorView(feed: editingFeed, onSave: { feed in
                     if let index = settingsStore.settings.customFeeds.firstIndex(where: { $0.id == feed.id }) {
                         settingsStore.settings.customFeeds[index] = feed
                     } else {
                         settingsStore.settings.customFeeds.append(feed)
                     }
                     editingFeed = nil
-                }
+                }, onDelete: editingFeed.map { target in
+                    { settingsStore.settings.customFeeds.removeAll { $0.id == target.id }; editingFeed = nil }
+                })
             }
             .tint(AppTheme.cyan)
         }
@@ -315,7 +317,11 @@ struct SubscriptionSourceManager: View {
                     HStack(spacing: 5) {
                         Circle().fill(feed.isEnabled ? AppTheme.green : AppTheme.textTertiary).frame(width: 7, height: 7)
                         Text(feed.isEnabled ? "运行中" : "已停用").font(AppTheme.captionFont).foregroundStyle(AppTheme.textSecondary)
+                        Text("· \(newsStore.items.filter { $0.source == feed.name }.count) 条").font(AppTheme.captionFont).foregroundStyle(AppTheme.textTertiary)
                         if let health = newsStore.feedHealth[feed.id], health.shouldShowWarning { Text("· 连续失败 \(health.consecutiveFailures) 次").font(AppTheme.captionFont).foregroundStyle(AppTheme.yellow) }
+                    }
+                    if let lastSuccess = newsStore.feedHealth[feed.id]?.lastSuccessAt {
+                        Text("最近成功：\(lastSuccess.formatted(date: .omitted, time: .shortened))").font(AppTheme.metadataFont).foregroundStyle(AppTheme.textTertiary)
                     }
                 }
                 Spacer()
@@ -335,12 +341,28 @@ struct FeedReaderView: View {
     @EnvironmentObject private var settingsStore: SettingsStore
     @State private var translatedTitle: String?
     @State private var isTranslating = false
+    @AppStorage("reader.fontScale") private var readerFontScale = 1.0
+    @AppStorage("reader.lineSpacing") private var readerLineSpacing = 7.0
+    @AppStorage("reader.sepia") private var readerSepia = false
+    @State private var readingProgress = 0.0
+
+    private var paragraphs: [String] {
+        (item.body ?? item.summary ?? "暂无正文缓存")
+            .components(separatedBy: .newlines)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+    }
 
     var body: some View {
         ZStack {
             IntelligenceScreenBackground()
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack { Text("阅读进度"); Spacer(); Text("\(Int(readingProgress * 100))%") }
+                            .font(AppTheme.metadataFont).foregroundStyle(AppTheme.textTertiary)
+                        ProgressView(value: readingProgress).tint(AppTheme.brandCyan)
+                    }
                     PageVisualBanner(assetName: "TrendRadar-ReadingHero")
                     Text(item.source.uppercased())
                         .font(AppTheme.captionFont)
@@ -357,16 +379,20 @@ struct FeedReaderView: View {
                     if let author = item.author, !author.isEmpty {
                         Text(author).font(AppTheme.captionFont).foregroundStyle(AppTheme.textSecondary)
                     }
-                    VStack(alignment: .leading, spacing: 12) {
+                    LazyVStack(alignment: .leading, spacing: 12) {
                         Label("离线正文", systemImage: "doc.text")
                             .font(AppTheme.captionFont.weight(.semibold))
                             .foregroundStyle(AppTheme.electricBlue)
-                        Text(item.body ?? item.summary ?? "暂无正文缓存")
-                            .font(AppTheme.readingFont)
-                            .foregroundStyle(AppTheme.textSecondary)
-                            .lineSpacing(7)
+                        ForEach(Array(paragraphs.enumerated()), id: \.offset) { index, paragraph in
+                            Text(paragraph)
+                                .font(.system(size: 17 * readerFontScale, design: readerSepia ? .serif : .default))
+                                .foregroundStyle(AppTheme.textSecondary)
+                                .lineSpacing(readerLineSpacing)
+                                .onAppear { readingProgress = max(readingProgress, Double(index + 1) / Double(max(1, paragraphs.count))) }
+                        }
                     }
                     .padding(18)
+                    .background(readerSepia ? Color(red: 0.20, green: 0.17, blue: 0.12).opacity(0.55) : Color.clear)
                     .intelligenceCard(tint: AppTheme.brandIndigo, cornerRadius: 18)
                     ViewThatFits(in: .horizontal) {
                         HStack(spacing: 10) { readerActions }
@@ -382,6 +408,22 @@ struct FeedReaderView: View {
         .navigationTitle("阅读器")
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(AppTheme.background, for: .navigationBar)
+        .toolbar {
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                Menu {
+                    Picker("字号", selection: $readerFontScale) {
+                        Text("小").tag(0.9); Text("标准").tag(1.0); Text("大").tag(1.15); Text("特大").tag(1.3)
+                    }
+                    Picker("行距", selection: $readerLineSpacing) {
+                        Text("紧凑").tag(4.0); Text("标准").tag(7.0); Text("宽松").tag(11.0)
+                    }
+                    Toggle("护眼阅读色", isOn: $readerSepia)
+                } label: { ToolbarIconLabel(systemName: "textformat.size", label: "阅读设置") }
+                ShareLink(item: item.url?.absoluteString ?? item.title) {
+                    ToolbarIconLabel(systemName: "square.and.arrow.up", label: "分享文章")
+                }
+            }
+        }
         .task {
             translatedTitle = store.items.first(where: { $0.id == item.id })?.translatedTitle ?? item.translatedTitle
             await store.markRead(item)
@@ -1031,6 +1073,17 @@ struct HotNewsTrendView: View {
     let topic: HotNewsTopic
     @State private var snapshots: [RankSnapshot] = []
     @State private var isFollowing = false
+    @State private var selectedRange = 7
+
+    private var visibleSnapshots: [RankSnapshot] {
+        guard let start = Calendar.current.date(byAdding: .day, value: -selectedRange, to: Date()) else { return snapshots }
+        return snapshots.filter { $0.capturedAt >= start }
+    }
+
+    private var trendScore: Int {
+        guard let first = visibleSnapshots.first, let last = visibleSnapshots.last else { return 0 }
+        return max(-100, min(100, (first.rank - last.rank) * 8))
+    }
 
     var body: some View {
         ZStack {
@@ -1048,7 +1101,10 @@ struct HotNewsTrendView: View {
                         .font(AppTheme.metadataFont)
                         .foregroundStyle(AppTheme.textTertiary)
                     trendMetrics
-                    TrendChart(snapshots: snapshots)
+                    Picker("时间范围", selection: $selectedRange) {
+                        Text("7 天").tag(7); Text("30 天").tag(30); Text("90 天").tag(90)
+                    }.pickerStyle(.segmented)
+                    TrendChart(snapshots: visibleSnapshots)
                         .padding(16)
                         .intelligenceCard(tint: AppTheme.electricBlue, cornerRadius: 18)
                     sourceDistribution
@@ -1056,6 +1112,20 @@ struct HotNewsTrendView: View {
                         .intelligenceCard(tint: AppTheme.brandIndigo, cornerRadius: 18)
                     ForEach(topic.items) { item in
                         HotNewsTrendRow(item: item)
+                    }
+                    if !visibleSnapshots.isEmpty {
+                        VStack(alignment: .leading, spacing: 10) {
+                            PremiumSectionHeader(title: "时间线事件", subtitle: "真实排名快照", icon: "clock.arrow.circlepath", tint: AppTheme.brandMagenta)
+                            ForEach(visibleSnapshots.reversed()) { snapshot in
+                                HStack(spacing: 10) {
+                                    Circle().fill(AppTheme.brandMagenta).frame(width: 8, height: 8)
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text("\(snapshot.sourceName) 排名 #\(snapshot.rank)").font(AppTheme.headlineFont)
+                                        Text(snapshot.capturedAt.formatted(date: .abbreviated, time: .shortened)).font(AppTheme.captionFont).foregroundStyle(AppTheme.textTertiary)
+                                    }
+                                }
+                            }
+                        }.padding(16).intelligenceCard(tint: AppTheme.brandMagenta, cornerRadius: 18)
                     }
                 }
                     .padding(.horizontal, 16)
@@ -1088,6 +1158,7 @@ struct HotNewsTrendView: View {
                 StatusBadge(title: "最佳 #\(topic.bestRank)", systemImage: "number", tint: AppTheme.brandCyan)
                 StatusBadge(title: "\(topic.platformCount) 个平台", systemImage: "square.stack.3d.up", tint: AppTheme.green)
                 StatusBadge(title: "\(snapshots.count) 次快照", systemImage: "clock.arrow.circlepath", tint: AppTheme.yellow)
+                StatusBadge(title: "趋势分 \(trendScore >= 0 ? "+" : "")\(trendScore)", systemImage: "chart.line.uptrend.xyaxis", tint: trendScore >= 0 ? AppTheme.green : AppTheme.red)
             }
         }
     }
@@ -1332,6 +1403,19 @@ private struct ArchiveSnapshotView: View {
                     Text(resource.title).font(AppTheme.titleFont).foregroundStyle(AppTheme.textPrimary)
                     Text(resource.source).font(AppTheme.captionFont).foregroundStyle(AppTheme.textSecondary)
                     if let summary = resource.summary { Text(summary).font(AppTheme.bodyFont).foregroundStyle(AppTheme.textSecondary) }
+                    if let body = resource.body, !body.isEmpty {
+                        Text(body).font(AppTheme.readingFont).foregroundStyle(AppTheme.textSecondary).lineSpacing(6)
+                    }
+                    VStack(alignment: .leading, spacing: 10) {
+                        Label("已归档（不可变）", systemImage: "lock.shield.fill").foregroundStyle(AppTheme.brandMagenta)
+                        LabeledContent("归档时间", value: resource.capturedAt.formatted(date: .abbreviated, time: .shortened))
+                        LabeledContent("快照版本", value: resource.snapshotVersion ?? "旧版")
+                        if let size = resource.contentSize { LabeledContent("内容大小", value: ByteCountFormatter.string(fromByteCount: Int64(size), countStyle: .file)) }
+                        if let checksum = resource.checksum { LabeledContent("SHA-256", value: String(checksum.prefix(12)) + "…") }
+                    }
+                    .font(AppTheme.captionFont)
+                    .padding(16)
+                    .intelligenceCard(tint: AppTheme.brandMagenta, cornerRadius: 16)
                     if let url = resource.url { Link(destination: url) { Label("打开原文", systemImage: "arrow.up.right") }.buttonStyle(OutlineButtonStyle()) }
                     ShareLink(item: resource.shareText) { Label("分享资料", systemImage: "square.and.arrow.up").frame(maxWidth: .infinity) }
                         .buttonStyle(AccentButtonStyle()).frame(minHeight: 44)
@@ -1410,11 +1494,21 @@ struct ReportCenterView: View {
                 }
             }
             .sheet(isPresented: $showingReportGenerator) {
-                ReportGeneratorSheet { type in
+                ReportGeneratorSheet { type, windowStart, includeRSS, includeHotlist, length, depth, language in
                     Task {
                         await store.refresh(showError: false, autoReport: false)
                         await hotNewsStore.refresh(settings: settingsStore.settings, showError: false)
-                        await reportStore.generate(type: type, settings: settingsStore.settings, items: store.items, hotlistItems: hotNewsStore.items, diagnostics: reportStore.diagnostics(news: store, hotNews: hotNewsStore))
+                        var reportSettings = settingsStore.settings
+                        reportSettings.aiAnalysis.language = language
+                        reportSettings.aiAnalysis.maxNewsForAnalysis = [60, 150, 300][depth]
+                        reportSettings.report.maxNewsPerKeyword = [5, 0, 30][length]
+                        let rssItems = includeRSS ? store.items.filter { item in
+                            windowStart.map { (item.publishedAt ?? .distantPast) >= $0 } ?? true
+                        } : []
+                        let hotItems = includeHotlist ? hotNewsStore.items.filter { item in
+                            windowStart.map { (item.publishedAt ?? .distantPast) >= $0 } ?? true
+                        } : []
+                        await reportStore.generate(type: type, settings: reportSettings, items: rssItems, hotlistItems: hotItems, windowStart: windowStart, diagnostics: reportStore.diagnostics(news: store, hotNews: hotNewsStore))
                     }
                 }
             }

@@ -10,6 +10,7 @@ private enum SettingsCategory: String, CaseIterable, Identifiable, Hashable {
     case storage
     case advanced
     case backup
+    case health
 
     var id: String { rawValue }
 
@@ -23,6 +24,7 @@ private enum SettingsCategory: String, CaseIterable, Identifiable, Hashable {
         case .storage: return "存储"
         case .advanced: return "高级"
         case .backup: return "配置备份"
+        case .health: return "系统健康"
         }
     }
 
@@ -36,6 +38,7 @@ private enum SettingsCategory: String, CaseIterable, Identifiable, Hashable {
         case .storage: return "本地保留和远程存储"
         case .advanced: return "请求、代理和排序参数"
         case .backup: return "导入或分享配置"
+        case .health: return "采集流水线、来源与恢复日志"
         }
     }
 
@@ -49,6 +52,7 @@ private enum SettingsCategory: String, CaseIterable, Identifiable, Hashable {
         case .storage: return "internaldrive"
         case .advanced: return "slider.horizontal.3"
         case .backup: return "arrow.triangle.2.circlepath"
+        case .health: return "heart.text.square"
         }
     }
 }
@@ -253,14 +257,16 @@ struct SettingsView: View {
             })
         view = AnyView(view.onAppear(perform: load))
         view = AnyView(view.sheet(isPresented: $showingFeedEditor) {
-                FeedEditorView(feed: editingFeed) { feed in
+                FeedEditorView(feed: editingFeed, onSave: { feed in
                     if let index = settingsStore.settings.customFeeds.firstIndex(where: { $0.id == feed.id }) {
                         settingsStore.settings.customFeeds[index] = feed
                     } else {
                         settingsStore.settings.customFeeds.append(feed)
                     }
                     editingFeed = nil
-                }
+                }, onDelete: editingFeed.map { target in
+                    { settingsStore.settings.customFeeds.removeAll { $0.id == target.id }; editingFeed = nil }
+                })
             })
         view = AnyView(view.fileImporter(isPresented: $showingSettingsImporter, allowedContentTypes: [.json]) { result in
                 importSettings(result)
@@ -389,6 +395,8 @@ struct SettingsView: View {
             advancedSection
         case .backup:
             backupSection
+        case .health:
+            SystemHealthView()
         }
     }
 
@@ -988,6 +996,57 @@ struct SettingsView: View {
     }
 }
 
+private struct SystemHealthView: View {
+    @EnvironmentObject private var newsStore: NewsStore
+    @EnvironmentObject private var hotNewsStore: HotNewsStore
+    @State private var execution: PipelineExecutionReport?
+    @State private var isRunning = false
+    @State private var message: String?
+
+    private var failureCount: Int { newsStore.sourceFailures.count + hotNewsStore.sourceFailures.count }
+
+    var body: some View {
+        Section("系统状态") {
+            Label(failureCount == 0 ? "系统状态良好" : "发现 \(failureCount) 个异常来源", systemImage: failureCount == 0 ? "checkmark.shield.fill" : "exclamationmark.triangle.fill")
+                .foregroundStyle(failureCount == 0 ? AppTheme.green : AppTheme.yellow)
+            LabeledContent("RSS 缓存", value: "\(newsStore.items.count) 条")
+            LabeledContent("热榜缓存", value: "\(hotNewsStore.items.count) 条")
+            if let execution {
+                LabeledContent("最近触发", value: execution.trigger.rawValue)
+                LabeledContent("阶段耗时", value: String(format: "%.2f 秒", execution.duration))
+                LabeledContent("投递状态", value: execution.deliveryStatus.rawValue)
+                ForEach(Array(execution.stageResults.enumerated()), id: \.offset) { _, stage in
+                    HStack {
+                        Image(systemName: stage.success ? "checkmark.circle.fill" : "xmark.circle.fill")
+                            .foregroundStyle(stage.success ? AppTheme.green : AppTheme.red)
+                        VStack(alignment: .leading) {
+                            Text(stage.name)
+                            if let detail = stage.message { Text(detail).font(.caption).foregroundStyle(.secondary) }
+                        }
+                        Spacer(); Text(String(format: "%.2fs", stage.duration)).font(.caption.monospacedDigit())
+                    }
+                }
+            } else {
+                Text("尚无流水线诊断记录").foregroundStyle(.secondary)
+            }
+            Button {
+                isRunning = true
+                Task {
+                    do { _ = try await RefreshPipelineExecutor.shared.execute(context: PipelineExecutionContext(trigger: .manual)); message = "重新初始化完成" }
+                    catch { message = "重新初始化失败：\(error.localizedDescription)" }
+                    execution = await PipelineDiagnosticsStore.shared.load(); isRunning = false
+                }
+            } label: { Label(isRunning ? "正在重新初始化…" : "重新初始化", systemImage: "arrow.clockwise") }
+                .disabled(isRunning)
+            Button("清空诊断日志", role: .destructive) {
+                Task { await PipelineDiagnosticsStore.shared.clear(); execution = nil }
+            }
+            if let message { Text(message).font(.caption).foregroundStyle(.secondary) }
+        }
+        .task { execution = await PipelineDiagnosticsStore.shared.load() }
+    }
+}
+
 private struct AppearancePreview: View {
     let appearance: AppAppearance
     let highContrast: Bool
@@ -1083,16 +1142,26 @@ struct FeedEditorView: View {
     @State private var isEnabled: Bool
     @State private var maxAgeDays: Int
     @State private var group: String
+    @State private var requestTimeout: Int
+    @State private var retryCount: Int
+    @State private var userAgent: String
+    @State private var requestHeaders: String
     private let onSave: (ConfigFeed) -> Void
+    private let onDelete: (() -> Void)?
 
-    init(feed: ConfigFeed?, onSave: @escaping (ConfigFeed) -> Void) {
+    init(feed: ConfigFeed?, onSave: @escaping (ConfigFeed) -> Void, onDelete: (() -> Void)? = nil) {
         _id = State(initialValue: feed?.id ?? "custom-feed")
         _name = State(initialValue: feed?.name ?? "自定义源")
         _url = State(initialValue: feed?.url ?? "https://example.com/feed.xml")
         _isEnabled = State(initialValue: feed?.isEnabled ?? true)
         _maxAgeDays = State(initialValue: feed?.maxAgeDays ?? 0)
         _group = State(initialValue: feed?.group ?? "未分组")
+        _requestTimeout = State(initialValue: feed?.requestTimeout ?? 20)
+        _retryCount = State(initialValue: feed?.retryCount ?? 3)
+        _userAgent = State(initialValue: feed?.userAgent ?? "TrendRadar/1.0")
+        _requestHeaders = State(initialValue: feed?.requestHeaders ?? "")
         self.onSave = onSave
+        self.onDelete = onDelete
     }
 
     var body: some View {
@@ -1110,6 +1179,17 @@ struct FeedEditorView: View {
                         editorSection(title: "采集策略", icon: "slider.horizontal.3") {
                             Stepper("单源最大年龄：\(maxAgeDays == 0 ? "跟随全局" : "\(maxAgeDays) 天")", value: $maxAgeDays, in: 0...30)
                             editorField("主题分组", text: $group, systemImage: "folder")
+                            Stepper("请求超时：\(requestTimeout) 秒", value: $requestTimeout, in: 5...120, step: 5)
+                            Stepper("失败重试：\(retryCount) 次", value: $retryCount, in: 1...5)
+                            editorField("User-Agent", text: $userAgent, systemImage: "person.text.rectangle", autocorrect: false)
+                            TextField("自定义请求头，每行 Name: Value", text: $requestHeaders, axis: .vertical)
+                                .lineLimit(3...8).textInputAutocapitalization(.never).autocorrectionDisabled()
+                                .padding(12).background(AppTheme.surface).clipShape(RoundedRectangle(cornerRadius: 12))
+                        }
+                        if let onDelete {
+                            Button(role: .destructive) { onDelete(); dismiss() } label: {
+                                Label("删除此 RSS 源", systemImage: "trash").frame(maxWidth: .infinity)
+                            }.buttonStyle(OutlineButtonStyle())
                         }
                     }
                     .padding(16)
@@ -1127,7 +1207,7 @@ struct FeedEditorView: View {
                         let normalizedURL = url.trimmingCharacters(in: .whitespacesAndNewlines)
                         guard !normalizedID.isEmpty, !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
                               URL(string: normalizedURL) != nil else { return }
-                        onSave(ConfigFeed(id: normalizedID, name: name, url: normalizedURL, isEnabled: isEnabled, maxAgeDays: maxAgeDays, group: group.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "未分组" : group))
+                        onSave(ConfigFeed(id: normalizedID, name: name, url: normalizedURL, isEnabled: isEnabled, maxAgeDays: maxAgeDays, group: group.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "未分组" : group, requestTimeout: requestTimeout, retryCount: retryCount, userAgent: userAgent, requestHeaders: requestHeaders))
                         dismiss()
                     }
                 }

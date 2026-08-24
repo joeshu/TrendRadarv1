@@ -3,7 +3,13 @@ import SwiftUI
 struct ReportGeneratorSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var selectedType: ReportType = .daily
-    let onGenerate: (ReportType) -> Void
+    @State private var timeRange = 1
+    @State private var includeRSS = true
+    @State private var includeHotlist = true
+    @State private var reportLength = 1
+    @State private var analysisDepth = 1
+    @State private var outputLanguage = "中文"
+    let onGenerate: (ReportType, Date?, Bool, Bool, Int, Int, String) -> Void
 
     var body: some View {
         NavigationStack {
@@ -34,6 +40,44 @@ struct ReportGeneratorSheet: View {
                         }
                         .padding(18)
                         .intelligenceCard(tint: AppTheme.brandIndigo, cornerRadius: 20)
+                        VStack(alignment: .leading, spacing: 14) {
+                            Label("证据范围", systemImage: "scope")
+                                .font(AppTheme.cardTitleFont).foregroundStyle(AppTheme.textPrimary)
+                            Picker("时间范围", selection: $timeRange) {
+                                Text("当前").tag(0); Text("24 小时").tag(1); Text("7 天").tag(7); Text("30 天").tag(30)
+                            }.pickerStyle(.segmented)
+                            Toggle("包含 RSS 内容", isOn: $includeRSS)
+                            Toggle("包含热榜内容", isOn: $includeHotlist)
+                            HStack {
+                                Label("地域", systemImage: "globe.asia.australia").foregroundStyle(AppTheme.textSecondary)
+                                Spacer(); Text("跟随真实来源").foregroundStyle(AppTheme.textTertiary)
+                            }.font(AppTheme.captionFont)
+                        }
+                        .padding(18)
+                        .intelligenceCard(tint: AppTheme.brandCyan, cornerRadius: 20)
+                        VStack(alignment: .leading, spacing: 14) {
+                            Label("报告偏好", systemImage: "slider.horizontal.3")
+                                .font(AppTheme.cardTitleFont).foregroundStyle(AppTheme.textPrimary)
+                            Picker("报告篇幅", selection: $reportLength) {
+                                Text("精简").tag(0); Text("标准").tag(1); Text("详细").tag(2)
+                            }.pickerStyle(.segmented)
+                            Picker("分析深度", selection: $analysisDepth) {
+                                Text("常规").tag(0); Text("深入").tag(1); Text("专家").tag(2)
+                            }.pickerStyle(.segmented)
+                            Picker("输出语言", selection: $outputLanguage) {
+                                Text("中文").tag("中文"); Text("English").tag("English"); Text("日本語").tag("日本語")
+                            }
+                        }
+                        .padding(18)
+                        .intelligenceCard(tint: AppTheme.brandMagenta, cornerRadius: 20)
+                        Button {
+                            onGenerate(selectedType, windowStart, includeRSS, includeHotlist, reportLength, analysisDepth, outputLanguage)
+                            dismiss()
+                        } label: {
+                            Label("生成报告", systemImage: "sparkles").frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(AccentButtonStyle())
+                        .disabled(!includeRSS && !includeHotlist)
                     }
                     .padding(16)
                     .padding(.bottom, 30)
@@ -45,11 +89,19 @@ struct ReportGeneratorSheet: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("生成") { onGenerate(selectedType); dismiss() }
+                    Button("生成") {
+                        onGenerate(selectedType, windowStart, includeRSS, includeHotlist, reportLength, analysisDepth, outputLanguage)
+                        dismiss()
+                    }.disabled(!includeRSS && !includeHotlist)
                 }
             }
             .tint(AppTheme.cyan)
         }
+    }
+
+    private var windowStart: Date? {
+        guard timeRange > 0 else { return nil }
+        return Calendar.current.date(byAdding: .day, value: -timeRange, to: Date())
     }
 }
 

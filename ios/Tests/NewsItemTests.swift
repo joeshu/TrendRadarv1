@@ -37,6 +37,33 @@ final class NewsItemTests: XCTestCase {
         let legacy = try JSONDecoder().decode(NewsItem.self, from: Data(#"{"id":"legacy","title":"Legacy","source":"Feed"}"#.utf8))
         XCTAssertNil(legacy.translatedTitle)
     }
+
+    func testLegacyFeedDefaultsAdvancedRequestConfiguration() throws {
+        let data = Data(#"{"id":"legacy-feed","name":"Legacy","url":"https://example.com/rss"}"#.utf8)
+        let config = try JSONDecoder().decode(ConfigFeed.self, from: data)
+        XCTAssertEqual(config.requestTimeout, 20)
+        XCTAssertEqual(config.retryCount, 3)
+        XCTAssertEqual(config.userAgent, "TrendRadar/1.0")
+        XCTAssertTrue(config.rssFeed?.requestHeaders.isEmpty == true)
+    }
+
+    func testFeedMapsCustomHeadersIntoCrawlerConfiguration() throws {
+        let config = ConfigFeed(id: "advanced", name: "Advanced", url: "https://example.com/rss", requestTimeout: 45, retryCount: 4, userAgent: "TrendRadar/Test", requestHeaders: "Authorization: Bearer token\nX-Client: iOS")
+        let feed = try XCTUnwrap(config.rssFeed)
+        XCTAssertEqual(feed.requestTimeout, 45)
+        XCTAssertEqual(feed.retryCount, 4)
+        XCTAssertEqual(feed.requestHeaders["Authorization"], "Bearer token")
+        XCTAssertEqual(feed.requestHeaders["X-Client"], "iOS")
+    }
+
+    func testArchiveSnapshotPreservesBodyAndIntegrityMetadata() throws {
+        let resource = ArchiveResource(news: NewsItem(id: "snapshot", title: "Title", source: "Feed", summary: "Summary", body: "Complete offline body", isFavorite: true))
+        let restored = try JSONDecoder().decode(ArchiveResource.self, from: JSONEncoder().encode(resource))
+        XCTAssertEqual(restored.body, "Complete offline body")
+        XCTAssertEqual(restored.snapshotVersion, "v1.0")
+        XCTAssertGreaterThan(restored.contentSize ?? 0, 0)
+        XCTAssertEqual(restored.checksum?.count, 64)
+    }
     private let feed = RSSFeed(id: "test", name: "Test Feed", url: URL(string: "https://example.com/rss")!)
 
     @MainActor

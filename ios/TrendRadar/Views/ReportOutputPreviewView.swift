@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct ReportOutputPreviewView: View {
     @EnvironmentObject private var reportStore: ReportStore
@@ -7,6 +8,7 @@ struct ReportOutputPreviewView: View {
     var reportID: UUID? = nil
     @State private var report: ReportDetail?
     @State private var selectedFormat = 0
+    @State private var copied = false
 
     var body: some View {
         ZStack {
@@ -30,10 +32,27 @@ struct ReportOutputPreviewView: View {
                             .foregroundStyle(AppTheme.brandCyan)
                     }
                     ScrollView {
-                        Text(preview)
-                            .font(.system(.footnote, design: .monospaced))
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .textSelection(.enabled)
+                        if selectedFormat == 0 || selectedFormat == 2 {
+                            VStack(alignment: .leading, spacing: 3) {
+                                ForEach(Array(preview.components(separatedBy: .newlines).enumerated()), id: \.offset) { number, line in
+                                    HStack(alignment: .top, spacing: 10) {
+                                        Text("\(number + 1)").foregroundStyle(AppTheme.textTertiary).frame(width: 30, alignment: .trailing)
+                                        Text(line.isEmpty ? " " : line).frame(maxWidth: .infinity, alignment: .leading)
+                                    }
+                                }
+                            }.font(.system(.footnote, design: .monospaced)).textSelection(.enabled)
+                        } else {
+                            Text(preview).font(.system(.footnote, design: .monospaced)).frame(maxWidth: .infinity, alignment: .leading).textSelection(.enabled)
+                        }
+                    }
+                    HStack {
+                        Text("\(preview.count) 字符 · \(preview.components(separatedBy: .newlines).count) 行")
+                            .font(AppTheme.captionFont).foregroundStyle(AppTheme.textTertiary)
+                        Spacer()
+                        Button {
+                            UIPasteboard.general.string = preview; copied = true
+                        } label: { Label(copied ? "已复制" : "复制", systemImage: copied ? "checkmark" : "doc.on.doc") }
+                            .buttonStyle(OutlineButtonStyle())
                     }
                 }
                 .padding(16)

@@ -2,11 +2,12 @@ import Foundation
 
 struct NewsCrawler: Sendable {
     func fetch(feed: RSSFeed) async throws -> [NewsItem] {
-        return try await NetworkRetrying.perform {
+        return try await NetworkRetrying.perform(attempts: feed.retryCount) {
             var request = URLRequest(url: feed.url)
-            request.timeoutInterval = 20
-            request.setValue("TrendRadar/1.0", forHTTPHeaderField: "User-Agent")
+            request.timeoutInterval = TimeInterval(feed.requestTimeout)
+            request.setValue(feed.userAgent, forHTTPHeaderField: "User-Agent")
             request.setValue("application/rss+xml, application/atom+xml, application/xml, text/xml;q=0.9, */*;q=0.1", forHTTPHeaderField: "Accept")
+            for (name, value) in feed.requestHeaders { request.setValue(value, forHTTPHeaderField: name) }
             let data: Data
             let response: URLResponse
             do {
