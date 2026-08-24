@@ -13,22 +13,6 @@ private actor RetryAttemptCounter {
 final class NewsItemTests: XCTestCase {
     private let feed = RSSFeed(id: "test", name: "Test Feed", url: URL(string: "https://example.com/rss")!)
 
-    @MainActor
-    func testSafeStartupManagerPersistsRecoveryAndClearsIt() throws {
-        let suiteName = "SafeStartupManagerTests.\(UUID().uuidString)"
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
-        defer { defaults.removePersistentDomain(forName: suiteName) }
-        let manager = SafeStartupManager(defaults: defaults)
-
-        manager.markDegraded("cached mode")
-        XCTAssertEqual(manager.currentState().status, .degraded)
-        XCTAssertEqual(manager.currentState().lastFailureMessage, "cached mode")
-
-        manager.clearRecovery()
-        XCTAssertEqual(manager.currentState().status, .normal)
-        XCTAssertNil(manager.currentState().lastFailureMessage)
-    }
-
     func testPipelineExecutionReportRoundTripsDiagnostics() throws {
         let requestID = UUID()
         let report = PipelineExecutionReport(

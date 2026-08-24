@@ -21,8 +21,6 @@ final class AppBootstrapper: ObservableObject {
 
     @Published private(set) var phase: Phase = .idle
     @Published private(set) var diagnosticMessage: String?
-    @Published private(set) var startupState: SafeStartupState = .initial
-    @Published private(set) var isStarting = false
 
     private static let diagnosticKey = "trendradar.bootstrap.snapshot"
 
@@ -32,11 +30,6 @@ final class AppBootstrapper: ObservableObject {
         reportStore: ReportStore,
         hotNewsStore: HotNewsStore
     ) async {
-        guard !isStarting else { return }
-        isStarting = true
-        defer { isStarting = false }
-        startupState = SafeStartupManager.shared.beginLaunch()
-
         transition(to: .loadingPrimaryStore)
         await newsStore.load()
         newsStore.settings = settingsStore.settings
@@ -46,10 +39,9 @@ final class AppBootstrapper: ObservableObject {
         await hotNewsStore.load()
         await reportStore.applyRetentionPolicy(days: settingsStore.settings.storage.localRetentionDays)
 
-        var degradedMessage: String?
         if settingsStore.settings.scheduleEnabled {
             transition(to: .compensatingRefresh)
-            degradedMessage = await compensateMissedRunIfNeeded(
+            await compensateMissedRunIfNeeded(
                 newsStore: newsStore,
                 settingsStore: settingsStore,
                 reportStore: reportStore,
@@ -62,36 +54,7 @@ final class AppBootstrapper: ObservableObject {
             after: settingsStore.settings.refreshInterval * 60,
             enabled: settingsStore.settings.scheduleEnabled
         )
-        if let degradedMessage {
-            transition(to: .degraded, message: degradedMessage)
-            let message = degradedMessage
-            SafeStartupManager.shared.markDegraded(message)
-        } else {
-            transition(to: .ready)
-            SafeStartupManager.shared.markHealthy()
-        }
-        startupState = SafeStartupManager.shared.currentState()
-    }
-
-    func retry(
-        newsStore: NewsStore,
-        settingsStore: SettingsStore,
-        reportStore: ReportStore,
-        hotNewsStore: HotNewsStore
-    ) async {
-        await start(
-            newsStore: newsStore,
-            settingsStore: settingsStore,
-            reportStore: reportStore,
-            hotNewsStore: hotNewsStore
-        )
-    }
-
-    func clearRecovery() {
-        SafeStartupManager.shared.clearRecovery()
-        startupState = SafeStartupManager.shared.currentState()
-        diagnosticMessage = nil
-        if phase == .degraded { transition(to: .ready) }
+        transition(to: .ready)
     }
 
     static func lastSnapshot() -> Snapshot? {
@@ -104,14 +67,15 @@ final class AppBootstrapper: ObservableObject {
         settingsStore: SettingsStore,
         reportStore: ReportStore,
         hotNewsStore: HotNewsStore
-    ) async -> String? {
+    ) async {
         let interval = settingsStore.settings.refreshInterval * 60
-        guard RefreshExecutionLog.shouldCompensate(interval: interval) else { return nil }
+        guard RefreshExecutionLog.shouldCompensate(interval: interval) else { return }
 
         await newsStore.refresh(showError: false, autoReport: false)
         await hotNewsStore.refresh(settings: settingsStore.settings, showError: false)
         guard !newsStore.items.isEmpty || !hotNewsStore.items.isEmpty else {
-            return "补偿刷新未取得数据，已保留本地内容"
+            transition(to: .degraded, message: "补偿刷新未取得数据，已保留本地内容")
+            return
         }
 
         let type = ReportType(rawValue: settingsStore.settings.report.mode) ?? .current
@@ -124,7 +88,6 @@ final class AppBootstrapper: ObservableObject {
             batchID: "foreground-compensation:\(Calendar.current.startOfDay(for: Date()).timeIntervalSince1970)"
         )
         RefreshExecutionLog.record(RefreshExecutionRecord(trigger: .foreground, status: .completed))
-        return nil
     }
 
     private func transition(to phase: Phase, message: String? = nil) {
