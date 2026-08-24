@@ -21,7 +21,7 @@ struct ReportOutputPreviewView: View {
                 VStack(alignment: .leading, spacing: 10) {
                     HStack {
                         Label("输出内容", systemImage: selectedFormat == 0 ? "doc.text" : selectedFormat == 1 ? "globe" : "curlybraces")
-                            .font(.system(size: 16, weight: .semibold))
+                            .font(AppTheme.cardTitleFont)
                             .foregroundStyle(AppTheme.textPrimary)
                         Spacer()
                         Text(["Markdown", "HTML", "JSON"][selectedFormat])

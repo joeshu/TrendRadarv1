@@ -54,6 +54,7 @@ private enum SettingsCategory: String, CaseIterable, Identifiable, Hashable {
 }
 
 private struct SettingsCategoryRow: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let category: SettingsCategory
 
     var body: some View {
@@ -69,6 +70,7 @@ private struct SettingsCategoryRow: View {
                 Text(category.subtitle)
                     .font(AppTheme.captionFont)
                     .foregroundStyle(AppTheme.textSecondary)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? 3 : 2)
             }
             Spacer()
             Image(systemName: "chevron.right")
@@ -152,6 +154,7 @@ private struct SettingsOverviewSection: View {
 }
 
 private struct SettingsRuntimeStatus: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let title: String
     let detail: String
     let tint: Color
@@ -160,7 +163,7 @@ private struct SettingsRuntimeStatus: View {
             Circle().fill(tint).frame(width: 8, height: 8)
             VStack(alignment: .leading, spacing: 2) {
                 Text(title).font(AppTheme.headlineFont).foregroundStyle(AppTheme.textPrimary)
-                Text(detail).font(AppTheme.captionFont).foregroundStyle(AppTheme.textSecondary).lineLimit(1)
+                Text(detail).font(AppTheme.captionFont).foregroundStyle(AppTheme.textSecondary).lineLimit(dynamicTypeSize.isAccessibilitySize ? 3 : 1)
             }
             Spacer(minLength: 0)
         }
@@ -319,6 +322,7 @@ struct SettingsView: View {
                 settingsRootContent
                     .navigationTitle("配置中心")
                     .navigationBarTitleDisplayMode(.inline)
+                    .toolbarBackground(AppTheme.background, for: .navigationBar)
                     .scrollContentBackground(.hidden)
                     .background(IntelligenceScreenBackground())
                     .tint(AppTheme.cyan)
@@ -558,6 +562,11 @@ struct SettingsView: View {
                     Text(style.title).tag(style)
                 }
             }
+            AppearancePreview(
+                appearance: settingsStore.settings.display.appearance,
+                highContrast: settingsStore.settings.display.highContrast,
+                reduceTransparency: settingsStore.settings.display.reduceTransparency
+            )
             TypographyPreview(
                 style: settingsStore.settings.display.fontStyle,
                 scale: settingsStore.settings.display.fontScale
@@ -978,6 +987,46 @@ struct SettingsView: View {
     }
 }
 
+private struct AppearancePreview: View {
+    let appearance: AppAppearance
+    let highContrast: Bool
+    let reduceTransparency: Bool
+
+    var body: some View {
+        HStack(spacing: 12) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(AppTheme.heroGradient)
+                HStack(spacing: 5) {
+                    Circle().fill(AppTheme.electricBlue)
+                    Circle().fill(AppTheme.violet)
+                    Circle().fill(AppTheme.brandMagenta)
+                }
+                .frame(width: 58)
+                .padding(12)
+            }
+            .frame(width: 82, height: 62)
+            .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(appearance.title)
+                    .font(AppTheme.cardTitleFont)
+                    .foregroundStyle(AppTheme.textPrimary)
+                Text([highContrast ? "高对比" : "标准对比", reduceTransparency ? "实色卡片" : "材质卡片"].joined(separator: " · "))
+                    .font(AppTheme.metadataFont)
+                    .foregroundStyle(AppTheme.textSecondary)
+            }
+            Spacer(minLength: 0)
+            Image(systemName: appearance == .system ? "iphone" : appearance == .dark ? "moon.stars.fill" : "sun.max.fill")
+                .foregroundStyle(AppTheme.brandCyan)
+                .accessibilityHidden(true)
+        }
+        .padding(12)
+        .intelligenceCard(tint: AppTheme.brandIndigo, cornerRadius: 16)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("外观预览，\(appearance.title)，\(highContrast ? "高对比" : "标准对比")，\(reduceTransparency ? "实色卡片" : "材质卡片")")
+    }
+}
+
 private struct TypographyPreview: View {
     let style: AppFontStyle
     let scale: Double
@@ -1088,7 +1137,7 @@ struct FeedEditorView: View {
 
     private func editorSection<Content: View>(title: String, icon: String, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            Label(title, systemImage: icon).font(.system(size: 17, weight: .semibold)).foregroundStyle(AppTheme.textPrimary)
+            Label(title, systemImage: icon).font(AppTheme.cardTitleFont).foregroundStyle(AppTheme.textPrimary)
             content()
         }
         .padding(16)

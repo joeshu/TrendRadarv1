@@ -1,5 +1,19 @@
 import SwiftUI
 
+struct ToolbarIconLabel: View {
+    let systemName: String
+    let label: String
+    var tint: Color = AppTheme.textPrimary
+
+    var body: some View {
+        Image(systemName: systemName)
+            .foregroundStyle(tint)
+            .frame(width: 44, height: 44)
+            .contentShape(Rectangle())
+            .accessibilityLabel(label)
+    }
+}
+
 struct PremiumPanel<Content: View>: View {
     let tint: Color
     let content: Content
@@ -28,7 +42,7 @@ struct PremiumSectionHeader: View {
             Image(systemName: icon).font(.system(size: 18, weight: .semibold)).foregroundStyle(tint)
                 .frame(width: 38, height: 38).background(tint.opacity(0.14)).clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             VStack(alignment: .leading, spacing: 4) {
-                if let eyebrow { Text(eyebrow.uppercased()).font(.system(size: 10, weight: .bold, design: .rounded)).tracking(1.2).foregroundStyle(tint) }
+                if let eyebrow { Text(eyebrow.uppercased()).font(AppTheme.brandLabelFont).tracking(1.2).foregroundStyle(tint) }
                 Text(title).font(AppTheme.sectionTitleFont).foregroundStyle(AppTheme.textPrimary)
                 if let subtitle { Text(subtitle).font(AppTheme.captionFont).foregroundStyle(AppTheme.textSecondary) }
             }
@@ -62,6 +76,7 @@ struct PremiumStatusLine: View {
 }
 
 struct RadarDecoration: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let count: Int
     @State private var rotation = 0.0
     var body: some View {
@@ -73,7 +88,10 @@ struct RadarDecoration: View {
             Circle().fill(AppTheme.brandCyan).frame(width: 8, height: 8).shadow(color: AppTheme.brandCyan, radius: 8)
             Rectangle().fill(LinearGradient(colors: [AppTheme.brandCyan.opacity(0.75), .clear], startPoint: .leading, endPoint: .trailing)).frame(width: 118, height: 1).offset(x: 58).rotationEffect(.degrees(rotation))
             Text("\(count)").font(AppTheme.metadataFont.monospacedDigit()).foregroundStyle(AppTheme.textPrimary).offset(y: 72)
-        }.frame(width: 180, height: 180).onAppear { withAnimation(.linear(duration: 5).repeatForever(autoreverses: false)) { rotation = 360 } }
+        }.frame(width: 180, height: 180).onAppear {
+            guard !reduceMotion else { return }
+            withAnimation(.linear(duration: 5).repeatForever(autoreverses: false)) { rotation = 360 }
+        }
     }
 }
 
@@ -84,6 +102,7 @@ struct PremiumTag: View {
 
 struct IntelligenceFilterChip: View {
     @Environment(\.appHighContrast) private var highContrast
+    @Environment(\.accessibilityDifferentiateWithoutColor) private var differentiateWithoutColor
     let title: String
     let icon: String?
     let isSelected: Bool
@@ -99,6 +118,7 @@ struct IntelligenceFilterChip: View {
     var body: some View {
         HStack(spacing: 6) {
             if let icon { Image(systemName: icon) }
+            if differentiateWithoutColor && isSelected { Image(systemName: "checkmark") }
             Text(title)
         }
         .font(AppTheme.captionFont.weight(.semibold))
@@ -134,7 +154,7 @@ struct IntelligencePageHeader: View {
         HStack(alignment: .bottom, spacing: 14) {
             VStack(alignment: .leading, spacing: 6) {
                 Text(eyebrow.uppercased())
-                    .font(.system(size: 10, weight: .heavy, design: .rounded))
+                    .font(AppTheme.brandLabelFont)
                     .tracking(1.5)
                     .foregroundStyle(AppTheme.electricBlue)
                 Text(title)

@@ -49,7 +49,7 @@ struct RadarView: View {
                                 .padding(.top, 44)
                         } else if settingsStore.settings.display.showRSS {
                             Text(showingFavorites ? "已收藏" : "最新情报")
-                                .font(.system(size: 22, weight: .bold, design: .rounded))
+                                .font(AppTheme.sectionTitleFont)
                                 .foregroundStyle(AppTheme.textPrimary)
                                 .padding(.horizontal, 20)
 
@@ -82,15 +82,14 @@ struct RadarView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button { showingFavorites.toggle() } label: {
-                        Image(systemName: showingFavorites ? "star.fill" : "star")
-                            .foregroundStyle(showingFavorites ? AppTheme.yellow : .white)
+                        ToolbarIconLabel(systemName: showingFavorites ? "star.fill" : "star", label: showingFavorites ? "显示全部情报" : "显示收藏", tint: showingFavorites ? AppTheme.yellow : AppTheme.textPrimary)
                     }
                 }
                 ToolbarItem(placement: .principal) {
                     HStack(spacing: 6) {
                         Circle().fill(AppTheme.cyan).frame(width: 8, height: 8)
                         Text("TREND RADAR")
-                            .font(.system(size: 13, weight: .heavy, design: .rounded))
+                            .font(AppTheme.metadataFont)
                             .tracking(1.5)
                             .foregroundStyle(AppTheme.textPrimary)
                     }
@@ -100,8 +99,7 @@ struct RadarView: View {
                         Button { Task { await store.refresh() } } label: { Label("立即刷新", systemImage: "arrow.clockwise") }
                         Button { showingSettings = true } label: { Label("设置", systemImage: "gearshape") }
                     } label: {
-                        Image(systemName: "ellipsis.circle")
-                            .foregroundStyle(AppTheme.textPrimary)
+                        ToolbarIconLabel(systemName: "ellipsis.circle", label: "更多操作")
                     }
                 }
             }

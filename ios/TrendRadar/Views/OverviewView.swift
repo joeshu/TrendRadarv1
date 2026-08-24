@@ -38,6 +38,7 @@ struct OverviewView: View {
             }
             .navigationTitle("今日")
             .navigationBarTitleDisplayMode(.large)
+            .toolbarBackground(AppTheme.background, for: .navigationBar)
             .navigationDestination(for: HotNewsTopic.self) { HotNewsTrendView(topic: $0) }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -148,7 +149,7 @@ struct OverviewView: View {
                             .frame(width: 44, height: 44)
                             .background(AppTheme.brandIndigo.opacity(0.12), in: RoundedRectangle(cornerRadius: 12))
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(report.title).font(.headline).foregroundStyle(AppTheme.textPrimary).lineLimit(2)
+                            Text(report.title).font(AppTheme.cardTitleFont).foregroundStyle(AppTheme.textPrimary).lineLimit(3)
                             Text("\(report.newsCount) 条 · \(report.generatedAt.formatted(date: .abbreviated, time: .shortened))")
                                 .font(.caption).foregroundStyle(AppTheme.textSecondary)
                         }
@@ -207,6 +208,7 @@ private struct TodayMetric: View {
 }
 
 private struct TodayTrendRow: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let topic: HotNewsTopic
 
     var body: some View {
@@ -216,7 +218,7 @@ private struct TodayTrendRow: View {
                 .foregroundStyle(topic.strongestTrend == .up ? AppTheme.green : AppTheme.brandCyan)
                 .frame(width: 48, alignment: .leading)
             VStack(alignment: .leading, spacing: 4) {
-                Text(topic.title).font(.headline).foregroundStyle(AppTheme.textPrimary).lineLimit(2)
+                Text(topic.title).font(AppTheme.cardTitleFont).foregroundStyle(AppTheme.textPrimary).lineLimit(dynamicTypeSize.isAccessibilitySize ? 4 : 2)
                 Text("\(topic.platformCount) 个平台 · \(topic.strongestTrend.todayLabel)")
                     .font(.caption).foregroundStyle(AppTheme.textSecondary)
             }

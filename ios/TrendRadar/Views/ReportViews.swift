@@ -20,7 +20,7 @@ struct ReportGeneratorSheet: View {
                         )
                         VStack(alignment: .leading, spacing: 14) {
                             Label("报告类型", systemImage: "doc.text.magnifyingglass")
-                                .font(.system(size: 17, weight: .semibold))
+                                .font(AppTheme.cardTitleFont)
                                 .foregroundStyle(AppTheme.textPrimary)
                             Picker("类型", selection: $selectedType) {
                                 ForEach(ReportType.allCases, id: \.self) { type in
@@ -41,6 +41,7 @@ struct ReportGeneratorSheet: View {
             }
             .navigationTitle("生成报告")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(AppTheme.background, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
@@ -70,6 +71,7 @@ struct ReportSummaryCard: View {
                 Text(report.title).font(AppTheme.cardTitleFont).foregroundStyle(AppTheme.textPrimary).lineLimit(dynamicTypeSize.isAccessibilitySize ? 4 : 2)
                 HStack(spacing: 6) {
                     Text(report.type.displayName); Text("·"); Text("\(report.newsCount) 条情报"); Text("·"); Text(report.generatedAt, style: .relative)
+                    if dynamicTypeSize.isAccessibilitySize { Text("·"); Text(report.hasAIAnalysis ? "已分析" : "本地快照") }
                 }
                 .font(AppTheme.captionFont).foregroundStyle(AppTheme.textTertiary)
             }
@@ -79,13 +81,17 @@ struct ReportSummaryCard: View {
         .padding(12)
         .intelligenceCard(tint: report.isFavorite ? AppTheme.yellow : AppTheme.brandCyan, cornerRadius: 14)
         .overlay(alignment: .topTrailing) {
-            Text(report.hasAIAnalysis ? "已分析" : "本地快照")
-                .font(AppTheme.metadataFont)
-                .foregroundStyle(report.hasAIAnalysis ? AppTheme.cyan : AppTheme.textTertiary)
-                .padding(.horizontal, 8).padding(.vertical, 5)
-                .background((report.hasAIAnalysis ? AppTheme.cyan : AppTheme.textTertiary).opacity(0.12))
-                .clipShape(Capsule()).padding(10)
+            if !dynamicTypeSize.isAccessibilitySize {
+                Text(report.hasAIAnalysis ? "已分析" : "本地快照")
+                    .font(AppTheme.metadataFont)
+                    .foregroundStyle(report.hasAIAnalysis ? AppTheme.cyan : AppTheme.textTertiary)
+                    .padding(.horizontal, 8).padding(.vertical, 5)
+                    .background((report.hasAIAnalysis ? AppTheme.cyan : AppTheme.textTertiary).opacity(0.12))
+                    .clipShape(Capsule()).padding(10)
+            }
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(report.title)，\(report.type.displayName)，\(report.newsCount) 条情报，\(report.hasAIAnalysis ? "已分析" : "本地快照")")
     }
 }
 
@@ -174,7 +180,7 @@ struct ReportDetailView: View {
                             // The toolbar menu remains available for Markdown/HTML export.
                         } label: {
                             Label("导出报告", systemImage: "square.and.arrow.up")
-                                .font(.system(size: 17, weight: .semibold))
+                                .font(AppTheme.cardTitleFont)
                                 .frame(maxWidth: .infinity)
                                 .frame(minHeight: 50)
                         }
@@ -204,7 +210,7 @@ struct ReportDetailView: View {
                         ShareLink(item: ReportHTMLExport(report: report), preview: SharePreview(report.title, image: Image(systemName: "doc.richtext"))) { Label("导出 HTML 报告", systemImage: "doc.richtext") }
                         Button { Task { await reportStore.toggleFavorite(id: report.id); await loadReport() } } label: { Label(report.isFavorite ? "取消收藏" : "收藏", systemImage: report.isFavorite ? "star.slash" : "star") }
                         Button(role: .destructive) { showingDeleteConfirmation = true } label: { Label("删除报告", systemImage: "trash") }
-                    } label: { Image(systemName: "ellipsis.circle") }
+                    } label: { ToolbarIconLabel(systemName: "ellipsis.circle", label: "报告操作") }
                 }
             }
         }
@@ -320,7 +326,7 @@ struct ReportDetailView: View {
                         Text(item.title).font(AppTheme.headlineFont).foregroundStyle(AppTheme.textPrimary)
                         Text("\(item.source) · \(item.publishedAt?.relativeDescription ?? "刚刚")").font(AppTheme.captionFont).foregroundStyle(AppTheme.textTertiary)
                         if let rank = item.rank { Text(rank <= reportRankThreshold ? "高热度排名：第\(rank)" : "排名：第\(rank)").font(AppTheme.captionFont).foregroundStyle(rank <= reportRankThreshold ? AppTheme.pink : AppTheme.textTertiary) }
-                        if let summary = TextSanitizer.plainText(item.summary), !summary.isEmpty { Text(summary).font(AppTheme.captionFont).foregroundStyle(AppTheme.textSecondary).lineLimit(2) }
+                        if let summary = TextSanitizer.plainText(item.summary), !summary.isEmpty { Text(summary).font(AppTheme.captionFont).foregroundStyle(AppTheme.textSecondary).lineLimit(4) }
                         if let url = item.url { Link("打开原文", destination: url).font(AppTheme.captionFont).foregroundStyle(AppTheme.cyan) }
                     }
                     if item.id != section.items.last?.id { Divider().overlay(AppTheme.cardBorder) }

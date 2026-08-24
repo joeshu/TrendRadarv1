@@ -41,6 +41,7 @@ enum AppTheme {
     static let readingFont = Font.body.leading(.loose)
     static let captionFont = Font.caption
     static let metadataFont = Font.caption2.weight(.medium)
+    static let brandLabelFont = Font.caption2.bold()
     static let numericFont = Font.title2.bold().monospacedDigit()
     static let rankFont = Font.title2.bold().monospacedDigit()
 
@@ -100,11 +101,14 @@ extension EnvironmentValues {
 struct IntelligenceScreenBackground: View {
     @Environment(\.appHighContrast) private var highContrast
     @Environment(\.appReduceTransparency) private var reduceTransparency
+    @Environment(\.accessibilityReduceTransparency) private var systemReduceTransparency
+
+    private var shouldReduceTransparency: Bool { reduceTransparency || systemReduceTransparency }
 
     var body: some View {
         ZStack {
             AppTheme.screenGradient
-            if !reduceTransparency {
+            if !shouldReduceTransparency {
                 Circle()
                     .fill(AppTheme.electricBlue.opacity(highContrast ? 0.07 : 0.10))
                     .frame(width: 320, height: 320)
@@ -125,13 +129,16 @@ struct IntelligenceScreenBackground: View {
 private struct IntelligenceCardModifier: ViewModifier {
     @Environment(\.appHighContrast) private var highContrast
     @Environment(\.appReduceTransparency) private var reduceTransparency
+    @Environment(\.accessibilityReduceTransparency) private var systemReduceTransparency
     let tint: Color
     let cornerRadius: CGFloat
+
+    private var shouldReduceTransparency: Bool { reduceTransparency || systemReduceTransparency }
 
     func body(content: Content) -> some View {
         content
             .background {
-                if reduceTransparency {
+                if shouldReduceTransparency {
                     AppTheme.card
                 } else {
                     Rectangle().fill(.ultraThinMaterial)
@@ -150,7 +157,7 @@ private struct IntelligenceCardModifier: ViewModifier {
                         lineWidth: highContrast ? 1.5 : 1
                     )
             }
-            .shadow(color: reduceTransparency ? .clear : tint.opacity(highContrast ? 0.06 : 0.10), radius: 18, y: 8)
+            .shadow(color: shouldReduceTransparency ? .clear : tint.opacity(highContrast ? 0.06 : 0.10), radius: 18, y: 8)
     }
 }
 

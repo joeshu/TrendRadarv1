@@ -43,7 +43,9 @@ struct DiscoverHubView: View {
             .toolbarBackground(AppTheme.background, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button { showingFeeds = true } label: { Image(systemName: "slider.horizontal.3") }
+                    Button { showingFeeds = true } label: {
+                        ToolbarIconLabel(systemName: "slider.horizontal.3", label: "管理订阅")
+                    }
                 }
             }
             .sheet(isPresented: $showingFeeds) { FeedsView() }

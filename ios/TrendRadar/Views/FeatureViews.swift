@@ -90,9 +90,8 @@ struct FeedsView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { showingSourceManager = true } label: {
-                        Image(systemName: "slider.horizontal.3")
+                        ToolbarIconLabel(systemName: "slider.horizontal.3", label: "管理信息源")
                     }
-                    .accessibilityLabel("管理信息源")
                 }
             }
             .sheet(isPresented: $showingFeedInfo) {
@@ -357,6 +356,7 @@ struct FeedReaderView: View {
         }
         .navigationTitle("阅读器")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(AppTheme.background, for: .navigationBar)
         .task { await store.markRead(item) }
     }
 }
@@ -643,7 +643,7 @@ struct InsightView: View {
     private func insightReportBlock(title: String, content: String) -> some View {
         VStack(alignment: .leading, spacing: 5) {
             Text(title)
-                .font(.system(size: 16, weight: .semibold))
+                .font(AppTheme.cardTitleFont)
                 .foregroundStyle(AppTheme.brandCyan)
             ReportRichText(content: content)
         }
@@ -712,7 +712,7 @@ struct InsightView: View {
                                     Text(topic.title)
                                         .font(AppTheme.headlineFont)
                                         .foregroundStyle(AppTheme.textPrimary)
-                                        .lineLimit(2)
+                                        .lineLimit(3)
                     Text(topic.platforms.joined(separator: " · "))
                         .font(AppTheme.captionFont)
                         .foregroundStyle(AppTheme.textTertiary)
@@ -752,7 +752,7 @@ struct InsightView: View {
                                 Image(systemName: anomaly.isRising ? "arrow.up.right" : "arrow.down.right")
                                     .foregroundStyle(anomaly.isRising ? AppTheme.green : AppTheme.red)
                                 VStack(alignment: .leading, spacing: 3) {
-                                    Text(anomaly.title).font(AppTheme.headlineFont).foregroundStyle(AppTheme.textPrimary).lineLimit(2)
+                                    Text(anomaly.title).font(AppTheme.cardTitleFont).foregroundStyle(AppTheme.textPrimary).lineLimit(3)
                                     Text(anomaly.platforms.joined(separator: " · ")).font(AppTheme.captionFont).foregroundStyle(AppTheme.textTertiary)
                                 }
                                 Spacer()
@@ -1016,15 +1016,15 @@ struct HotNewsTrendView: View {
             }
         .navigationTitle("排名时间线")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(AppTheme.background, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
                     isFollowing.toggle()
                     Task { await hotNewsStore.toggleFavorite(for: topic) }
                 } label: {
-                    Image(systemName: isFollowing ? "star.fill" : "star")
+                    ToolbarIconLabel(systemName: isFollowing ? "star.fill" : "star", label: isFollowing ? "取消关注主题" : "关注主题", tint: isFollowing ? AppTheme.yellow : AppTheme.textPrimary)
                 }
-                .accessibilityLabel(isFollowing ? "取消关注主题" : "关注主题")
             }
         }
         .task {
@@ -1077,7 +1077,7 @@ private struct HotNewsTrendRow: View {
                 .frame(width: 56, alignment: .leading)
             VStack(alignment: .leading, spacing: 4) {
                 Text(item.platformName).font(AppTheme.captionFont).foregroundStyle(AppTheme.yellow)
-                Text(item.title).font(AppTheme.headlineFont).foregroundStyle(AppTheme.textPrimary).lineLimit(2)
+                Text(item.title).font(AppTheme.cardTitleFont).foregroundStyle(AppTheme.textPrimary).lineLimit(3)
             }
             Spacer()
         }
@@ -1187,9 +1187,9 @@ struct FavoritesView: View {
             .toolbarBackground(AppTheme.background, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button { showingSettings = true } label: { Image(systemName: "gearshape") }
-                        .accessibilityLabel("设置")
-                        .frame(minWidth: 44, minHeight: 44)
+                    Button { showingSettings = true } label: {
+                        ToolbarIconLabel(systemName: "gearshape", label: "设置")
+                    }
                 }
             }
             .searchable(text: $archiveStore.searchText, prompt: "搜索标题、来源和摘要")
@@ -1246,6 +1246,7 @@ struct FavoritesView: View {
 }
 
 private struct ArchiveResourceRow: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let resource: ArchiveResource
 
     var body: some View {
@@ -1257,8 +1258,8 @@ private struct ArchiveResourceRow: View {
                 .background(AppTheme.cyan.opacity(0.12), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 5) {
-                Text(resource.title).font(AppTheme.headlineFont).foregroundStyle(AppTheme.textPrimary).lineLimit(2)
-                Text("\(resource.kind.title) · \(resource.source)").font(AppTheme.captionFont).foregroundStyle(AppTheme.textSecondary).lineLimit(1)
+                Text(resource.title).font(AppTheme.cardTitleFont).foregroundStyle(AppTheme.textPrimary).lineLimit(dynamicTypeSize.isAccessibilitySize ? 4 : 2)
+                Text("\(resource.kind.title) · \(resource.source)").font(AppTheme.captionFont).foregroundStyle(AppTheme.textSecondary).lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
                 Text(resource.capturedAt, format: .relative(presentation: .named)).font(AppTheme.captionFont).foregroundStyle(AppTheme.textTertiary)
             }
             Spacer(minLength: 4)
@@ -1292,6 +1293,7 @@ private struct ArchiveSnapshotView: View {
         }
         .navigationTitle("归档快照")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(AppTheme.background, for: .navigationBar)
     }
 }
 
@@ -1354,9 +1356,8 @@ struct ReportCenterView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { showingReportGenerator = true } label: {
-                        Image(systemName: "plus")
+                        ToolbarIconLabel(systemName: "plus", label: "生成报告")
                     }
-                    .accessibilityLabel("生成报告")
                 }
             }
             .sheet(isPresented: $showingReportGenerator) {
