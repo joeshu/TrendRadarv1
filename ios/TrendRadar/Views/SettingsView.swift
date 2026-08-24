@@ -172,6 +172,7 @@ struct SettingsView: View {
     @State private var showingSettingsImporter = false
     @State private var settingsMessage: String?
     @State private var showingSettingsMessage = false
+    @State private var isSaveConfirmation = false
     @State private var isResettingData = false
     @State private var isUpdatingInterestTags = false
     @State private var isTestingWebhook = false
@@ -247,7 +248,13 @@ struct SettingsView: View {
                 importSettings(result)
             })
         view = AnyView(view.alert("操作结果", isPresented: $showingSettingsMessage) {
-                Button("确定", role: .cancel) { settingsMessage = nil }
+                Button("确定", role: .cancel) {
+                    settingsMessage = nil
+                    if isSaveConfirmation {
+                        isSaveConfirmation = false
+                        dismiss()
+                    }
+                }
             } message: {
                 Text(settingsMessage ?? "")
             })
@@ -846,7 +853,9 @@ struct SettingsView: View {
         newsStore.settings = settingsStore.settings
         originalSettings = settingsStore.settings
         BackgroundRefreshService.schedule(after: settingsStore.settings.refreshInterval * 60, enabled: settingsStore.settings.scheduleEnabled)
-        dismiss()
+        isSaveConfirmation = true
+        settingsMessage = "设置已保存"
+        showingSettingsMessage = true
     }
 
     private func updateInterestTags() {
