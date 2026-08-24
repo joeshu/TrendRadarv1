@@ -78,6 +78,14 @@ final class ReportStore: ObservableObject {
         errorMessage = nil
         latestGeneratedReportID = nil
         defer { isGenerating = false }
+        if settings.ai.enabled && settings.aiAnalysis.enabled {
+            do {
+                try await aiService.checkAvailability(settings: settings)
+            } catch {
+                errorMessage = "AI 配置检测失败，报告未保存：\(error.localizedDescription)"
+                return
+            }
+        }
         let request = ReportGenerationRequest(batchID: resolvedBatchID, type: type, trigger: trigger, generatedAt: Date(), settings: settings, windowStart: windowStart, newItemIDs: [], diagnostics: diagnostics)
         do {
             var report = generator.generate(request: request, items: items, hotlistItems: hotlistItems)

@@ -943,6 +943,25 @@ struct SettingsView: View {
         isSaveConfirmation = true
         settingsMessage = "设置已保存"
         showingSettingsMessage = true
+        if settingsStore.settings.ai.enabled && settingsStore.settings.aiAnalysis.enabled {
+            isTestingAI = true
+            aiAvailabilityMessage = "正在检测 AI 配置..."
+            let savedSettings = settingsStore.settings
+            Task {
+                do {
+                    try await AIService().checkAvailability(settings: savedSettings)
+                    await MainActor.run {
+                        aiAvailabilityMessage = "AI 配置可用：接口、密钥和模型检测通过"
+                        isTestingAI = false
+                    }
+                } catch {
+                    await MainActor.run {
+                        aiAvailabilityMessage = "AI 配置不可用：\(error.localizedDescription)"
+                        isTestingAI = false
+                    }
+                }
+            }
+        }
     }
 
     private func testAIAvailability() {
