@@ -4,6 +4,7 @@ struct OverviewView: View {
     @EnvironmentObject private var store: NewsStore
     @EnvironmentObject private var hotNewsStore: HotNewsStore
     @EnvironmentObject private var reportStore: ReportStore
+    @EnvironmentObject private var settingsStore: SettingsStore
     @State private var showingSettings = false
     @State private var isRefreshing = false
     @State private var refreshMessage: String?
