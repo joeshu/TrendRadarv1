@@ -459,33 +459,32 @@ struct NewsDetailView: View {
         ZStack {
             AppTheme.background.ignoresSafeArea()
             ScrollView {
-                VStack(alignment: .leading, spacing: 22) {
-                    Text(item.source.uppercased())
-                        .font(.system(size: 11, weight: .heavy, design: .rounded))
-                        .tracking(1.5)
-                        .foregroundStyle(AppTheme.cyan)
+                VStack(alignment: .leading, spacing: 18) {
+                    HStack(spacing: 8) {
+                        Circle().fill(AppTheme.cyan).frame(width: 8, height: 8)
+                        Text(item.source).font(.system(size: 15, weight: .semibold)).foregroundStyle(AppTheme.cyan)
+                        Spacer()
+                        Text(item.publishedAt?.relativeDescription ?? "刚刚").font(AppTheme.captionFont).foregroundStyle(AppTheme.textTertiary)
+                    }
                     Text(item.title)
-                        .font(.system(size: 29, weight: .bold, design: .rounded))
+                        .font(.system(size: 27, weight: .bold))
                         .foregroundStyle(AppTheme.textPrimary)
-                    Text(item.publishedAt?.relativeDescription ?? "刚刚")
-                        .font(.system(size: 12, design: .rounded))
-                        .foregroundStyle(AppTheme.textTertiary)
-
+                        .lineSpacing(3)
                     if let summary = generatedSummary ?? item.summary, !summary.isEmpty {
                         VStack(alignment: .leading, spacing: 11) {
                             Label("AI 摘要", systemImage: "sparkles")
-                                .font(.system(size: 12, weight: .bold, design: .rounded))
+                                .font(.system(size: 15, weight: .semibold))
                                 .foregroundStyle(AppTheme.yellow)
                             Text(summary)
-                                .font(.system(size: 17, weight: .medium, design: .rounded))
+                                .font(.system(size: 17, weight: .regular))
                                 .foregroundStyle(AppTheme.textSecondary)
-                                .lineSpacing(5)
+                                .lineSpacing(6)
                         }
                         .padding(18)
                         .background(AppTheme.card)
-                        .clipShape(RoundedRectangle(cornerRadius: 18))
+                        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(AppTheme.cardBorder, lineWidth: 1))
+                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                     }
-
                     HStack(spacing: 10) {
                         Button {
                             isSummarizing = true
@@ -494,19 +493,18 @@ struct NewsDetailView: View {
                                 generatedSummary = store.items.first(where: { $0.id == item.id })?.summary
                                 isSummarizing = false
                             }
-                        } label: {
-                            Label(isSummarizing ? "分析中" : "生成摘要", systemImage: "sparkles")
-                        }
+                        } label: { Label(isSummarizing ? "分析中" : "生成摘要", systemImage: "sparkles") }
                         .buttonStyle(AccentButtonStyle())
                         .disabled(isSummarizing)
                         if let url = item.url {
-                            Link(destination: url) { Label("阅读原文", systemImage: "arrow.up.right") }
-                                .buttonStyle(OutlineButtonStyle())
+                            Link(destination: url) { Label("阅读原文", systemImage: "arrow.up.right") }.buttonStyle(OutlineButtonStyle())
                         }
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(20)
+                .padding(.horizontal, 16)
+                .padding(.top, 12)
+                .padding(.bottom, 120)
             }
         }
         .toolbarBackground(AppTheme.background, for: .navigationBar)

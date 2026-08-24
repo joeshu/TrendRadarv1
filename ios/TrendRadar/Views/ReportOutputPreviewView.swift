@@ -8,25 +8,46 @@ struct ReportOutputPreviewView: View {
     @State private var selectedFormat = 0
 
     var body: some View {
-        VStack(spacing: 0) {
-            Picker("格式", selection: $selectedFormat) {
-                Text("Markdown").tag(0)
-                Text("HTML").tag(1)
-                Text("JSON").tag(2)
+        ZStack {
+            AppTheme.background.ignoresSafeArea()
+            VStack(spacing: 14) {
+                Picker("格式", selection: $selectedFormat) {
+                    Text("Markdown").tag(0)
+                    Text("HTML").tag(1)
+                    Text("JSON").tag(2)
+                }
+                .pickerStyle(.segmented)
+                .padding(.horizontal, 16)
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack {
+                        Label("输出内容", systemImage: selectedFormat == 0 ? "doc.text" : selectedFormat == 1 ? "globe" : "curlybraces")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(AppTheme.textPrimary)
+                        Spacer()
+                        Text(["Markdown", "HTML", "JSON"][selectedFormat])
+                            .font(AppTheme.captionFont)
+                            .foregroundStyle(AppTheme.brandCyan)
+                    }
+                    ScrollView {
+                        Text(preview)
+                            .font(.system(.footnote, design: .monospaced))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .textSelection(.enabled)
+                    }
+                }
+                .padding(16)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .background(AppTheme.card)
+                .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(AppTheme.cardBorder, lineWidth: 1))
+                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                .padding(.horizontal, 16)
+                .padding(.bottom, 16)
             }
-            .pickerStyle(.segmented)
-            .padding()
-            ScrollView {
-                Text(preview)
-                    .font(.system(.footnote, design: .monospaced))
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .textSelection(.enabled)
-                    .padding()
-            }
-            .background(Color(.secondarySystemBackground))
         }
         .navigationTitle("报告输出预览")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(AppTheme.background, for: .navigationBar)
+        .toolbarColorScheme(.light, for: .navigationBar)
         .overlay {
             if report == nil {
                 ContentUnavailableView("暂无报告", systemImage: "doc.text", description: Text("先生成一份报告后再预览最终输出。"))
