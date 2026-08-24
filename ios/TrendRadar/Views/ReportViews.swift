@@ -8,7 +8,7 @@ struct ReportGeneratorSheet: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                AppTheme.background.ignoresSafeArea()
+                IntelligenceScreenBackground()
                 ScrollView {
                     VStack(alignment: .leading, spacing: 18) {
                         VStack(alignment: .leading, spacing: 8) {
@@ -104,7 +104,7 @@ struct ReportDetailView: View {
 
     var body: some View {
         ZStack {
-            AppTheme.background.ignoresSafeArea()
+            IntelligenceScreenBackground()
             if let report {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 16) {
@@ -204,7 +204,7 @@ struct ReportDetailView: View {
         .navigationTitle("报告详情")
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(AppTheme.background, for: .navigationBar)
-        .toolbarColorScheme(.light, for: .navigationBar)
+        .toolbarColorScheme(.dark, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 if let report {

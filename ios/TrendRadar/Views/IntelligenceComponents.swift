@@ -5,7 +5,7 @@ struct IntelligencePage<Content: View>: View {
 
     var body: some View {
         ZStack {
-            AppTheme.background.ignoresSafeArea()
+            IntelligenceScreenBackground()
             content
         }
     }

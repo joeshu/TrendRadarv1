@@ -343,7 +343,7 @@ struct SettingsView: View {
             .navigationTitle(category.title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(AppTheme.background, for: .navigationBar)
-            .toolbarColorScheme(.light, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
             .scrollContentBackground(.hidden)
             .background(AppTheme.background)
             .preferredColorScheme(.light)
@@ -990,7 +990,7 @@ struct FeedEditorView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                AppTheme.background.ignoresSafeArea()
+                IntelligenceScreenBackground()
                 ScrollView {
                     VStack(alignment: .leading, spacing: 18) {
                         editorSection(title: "RSS 基本信息", icon: "dot.radiowaves.left.and.right") {
@@ -1011,7 +1011,7 @@ struct FeedEditorView: View {
             .navigationTitle("编辑 RSS")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(AppTheme.background, for: .navigationBar)
-            .toolbarColorScheme(.light, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {

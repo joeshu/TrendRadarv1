@@ -28,7 +28,7 @@ struct RadarView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                AppTheme.background.ignoresSafeArea()
+                IntelligenceScreenBackground()
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 18) {
                         overviewHeader
@@ -78,7 +78,7 @@ struct RadarView: View {
                 }
             }
             .toolbarBackground(AppTheme.background, for: .navigationBar)
-            .toolbarColorScheme(.light, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
             .searchable(text: $searchText, prompt: "搜索标题或来源")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
@@ -343,8 +343,10 @@ struct ContentView: View {
             FavoritesView()
                 .tabItem { Label("资料库", systemImage: "archivebox.fill") }
         }
-        .tint(AppTheme.brandCyan)
-        .toolbarBackground(.ultraThinMaterial, for: .tabBar)
+        .tint(AppTheme.electricBlue)
+        .toolbarBackground(AppTheme.card.opacity(0.94), for: .tabBar)
+        .toolbarBackground(.visible, for: .tabBar)
+        .preferredColorScheme(.dark)
         .safeAreaInset(edge: .top, spacing: 0) {
             if bootstrapper.startupState.status != .normal {
                 RecoveryBanner(
@@ -485,7 +487,7 @@ struct NewsDetailView: View {
 
     var body: some View {
         ZStack {
-            AppTheme.background.ignoresSafeArea()
+            IntelligenceScreenBackground()
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     HStack(spacing: 8) {
@@ -536,7 +538,7 @@ struct NewsDetailView: View {
             }
         }
         .toolbarBackground(AppTheme.background, for: .navigationBar)
-        .toolbarColorScheme(.light, for: .navigationBar)
+        .toolbarColorScheme(.dark, for: .navigationBar)
         .navigationTitle("情报详情")
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -545,23 +547,26 @@ struct NewsDetailView: View {
 struct AccentButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.system(size: 13, weight: .bold, design: .rounded))
-            .foregroundStyle(AppTheme.background)
-            .padding(.horizontal, 15)
-            .padding(.vertical, 11)
-            .background(AppTheme.cyan.opacity(configuration.isPressed ? 0.65 : 1))
-            .clipShape(Capsule())
+            .font(.system(size: 14, weight: .bold))
+            .foregroundStyle(.white)
+            .padding(.horizontal, 17)
+            .frame(minHeight: 44)
+            .background(AppTheme.accentGradient.opacity(configuration.isPressed ? 0.72 : 1))
+            .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
+            .shadow(color: AppTheme.electricBlue.opacity(configuration.isPressed ? 0 : 0.18), radius: 10, y: 5)
     }
 }
 
 struct OutlineButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.system(size: 13, weight: .bold, design: .rounded))
+            .font(.system(size: 14, weight: .semibold))
             .foregroundStyle(AppTheme.textSecondary.opacity(configuration.isPressed ? 0.55 : 1))
-            .padding(.horizontal, 15)
-            .padding(.vertical, 10)
-            .overlay(Capsule().stroke(AppTheme.cardBorder, lineWidth: 1))
+            .padding(.horizontal, 16)
+            .frame(minHeight: 44)
+            .background(AppTheme.surface.opacity(configuration.isPressed ? 0.42 : 0.70))
+            .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 13, style: .continuous).stroke(AppTheme.electricBlue.opacity(0.38), lineWidth: 1))
     }
 }
 

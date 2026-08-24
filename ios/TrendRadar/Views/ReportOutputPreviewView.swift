@@ -9,7 +9,7 @@ struct ReportOutputPreviewView: View {
 
     var body: some View {
         ZStack {
-            AppTheme.background.ignoresSafeArea()
+            IntelligenceScreenBackground()
             VStack(spacing: 14) {
                 Picker("格式", selection: $selectedFormat) {
                     Text("Markdown").tag(0)
@@ -47,7 +47,7 @@ struct ReportOutputPreviewView: View {
         .navigationTitle("报告输出预览")
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(AppTheme.background, for: .navigationBar)
-        .toolbarColorScheme(.light, for: .navigationBar)
+        .toolbarColorScheme(.dark, for: .navigationBar)
         .overlay {
             if report == nil {
                 ContentUnavailableView("暂无报告", systemImage: "doc.text", description: Text("先生成一份报告后再预览最终输出。"))

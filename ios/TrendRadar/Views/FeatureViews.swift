@@ -25,7 +25,7 @@ struct FeedsView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                AppTheme.background.ignoresSafeArea()
+                IntelligenceScreenBackground()
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 16) {
                         PremiumSectionHeader(eyebrow: "DISCOVER", title: "订阅与发现", subtitle: "管理信息源，阅读最新内容", icon: "newspaper.fill", tint: AppTheme.brandCyan)
@@ -87,7 +87,7 @@ struct FeedsView: View {
             .navigationTitle("订阅")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(AppTheme.background, for: .navigationBar)
-            .toolbarColorScheme(.light, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { showingSourceManager = true } label: {
@@ -203,7 +203,7 @@ struct SubscriptionSourceManager: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                AppTheme.background.ignoresSafeArea()
+                IntelligenceScreenBackground()
                 ScrollView {
                     VStack(alignment: .leading, spacing: 22) {
                         sourceSection(title: "RSS", feeds: settingsStore.settings.customFeeds)
@@ -228,7 +228,7 @@ struct SubscriptionSourceManager: View {
             .navigationTitle("订阅源")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(AppTheme.background, for: .navigationBar)
-            .toolbarColorScheme(.light, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
@@ -327,7 +327,7 @@ struct FeedReaderView: View {
 
     var body: some View {
         ZStack {
-            AppTheme.background.ignoresSafeArea()
+            IntelligenceScreenBackground()
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     Text(item.source.uppercased())
@@ -383,7 +383,7 @@ struct InsightView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                AppTheme.background.ignoresSafeArea()
+                IntelligenceScreenBackground()
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 16) {
                         insightHeader
@@ -405,7 +405,7 @@ struct InsightView: View {
             .navigationTitle("洞察")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(AppTheme.background, for: .navigationBar)
-            .toolbarColorScheme(.light, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { showingSettings = true } label: { Image(systemName: "slider.horizontal.3") }
@@ -766,7 +766,7 @@ struct HotNewsView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                AppTheme.background.ignoresSafeArea()
+                IntelligenceScreenBackground()
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 16) {
                         PremiumSectionHeader(eyebrow: "LIVE RADAR", title: "热榜雷达", subtitle: "跨平台排名与真实变化趋势", icon: "dot.radiowaves.left.and.right", tint: AppTheme.brandCyan)
@@ -984,7 +984,7 @@ struct HotNewsTrendView: View {
 
     var body: some View {
         ZStack {
-            AppTheme.background.ignoresSafeArea()
+            IntelligenceScreenBackground()
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     Text(topic.title)
@@ -1148,7 +1148,7 @@ struct FavoritesView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                AppTheme.background.ignoresSafeArea()
+                IntelligenceScreenBackground()
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 16) {
                         archiveHeader
@@ -1180,7 +1180,7 @@ struct FavoritesView: View {
              .navigationTitle("资料库")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(AppTheme.background, for: .navigationBar)
-            .toolbarColorScheme(.light, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { showingSettings = true } label: { Image(systemName: "gearshape") }
@@ -1307,7 +1307,7 @@ struct ReportCenterView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                AppTheme.background.ignoresSafeArea()
+                IntelligenceScreenBackground()
                 LinearGradient(colors: [AppTheme.brandIndigo.opacity(0.12), .clear], startPoint: .topLeading, endPoint: .center)
                     .ignoresSafeArea()
                 ScrollView {
@@ -1353,7 +1353,7 @@ struct ReportCenterView: View {
             .navigationTitle("报告")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(AppTheme.background, for: .navigationBar)
-            .toolbarColorScheme(.light, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { showingReportGenerator = true } label: {
@@ -1536,13 +1536,7 @@ struct FeedFilterChip: View {
 
     var body: some View {
         Button(action: action) {
-            Text(title)
-                .font(AppTheme.captionFont)
-                .foregroundStyle(isSelected ? AppTheme.background : AppTheme.textSecondary)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 9)
-                .background(isSelected ? AppTheme.cyan : AppTheme.card)
-                .clipShape(Capsule())
+            IntelligenceFilterChip(title, isSelected: isSelected)
         }
         .buttonStyle(.plain)
     }
@@ -1570,8 +1564,7 @@ struct InsightPanel<Content: View>: View {
         }
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(AppTheme.card)
-        .clipShape(RoundedRectangle(cornerRadius: 18))
+        .intelligenceCard(tint: tint, cornerRadius: 18)
     }
 }
 
@@ -1709,7 +1702,7 @@ private struct FeedInfoSheet: View {
             }
             .padding(.top, 48)
             .frame(maxWidth: .infinity)
-            .background(AppTheme.background.ignoresSafeArea())
+            .background(IntelligenceScreenBackground())
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) { Button("完成") { dismiss() } }
             }

@@ -24,7 +24,7 @@ struct DiscoverHubView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                AppTheme.background.ignoresSafeArea()
+                IntelligenceScreenBackground()
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 16) {
                         PremiumSectionHeader(eyebrow: "DISCOVER", title: "发现中心", subtitle: "阅读订阅内容，查看本地洞察", icon: "sparkles", tint: AppTheme.brandCyan)
@@ -41,7 +41,7 @@ struct DiscoverHubView: View {
             .navigationTitle("发现")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(AppTheme.background, for: .navigationBar)
-            .toolbarColorScheme(.light, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { showingFeeds = true } label: { Image(systemName: "slider.horizontal.3") }

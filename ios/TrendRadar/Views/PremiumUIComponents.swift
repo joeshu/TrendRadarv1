@@ -10,12 +10,7 @@ struct PremiumPanel<Content: View>: View {
     var body: some View {
         content
             .padding(17)
-            .background {
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(AppTheme.card)
-                    .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(tint.opacity(0.24), lineWidth: 1))
-            }
-            .shadow(color: tint.opacity(0.08), radius: 14, y: 7)
+            .intelligenceCard(tint: tint)
     }
 }
 
@@ -85,4 +80,65 @@ struct RadarDecoration: View {
 struct PremiumTag: View {
     let text: String; let tint: Color
     var body: some View { Text(text).font(.system(size: 10, weight: .bold, design: .rounded)).foregroundStyle(tint).padding(.horizontal, 8).padding(.vertical, 5).background(tint.opacity(0.12)).clipShape(Capsule()) }
+}
+
+struct IntelligenceFilterChip: View {
+    let title: String
+    let icon: String?
+    let isSelected: Bool
+    let tint: Color
+
+    init(_ title: String, icon: String? = nil, isSelected: Bool, tint: Color = AppTheme.electricBlue) {
+        self.title = title
+        self.icon = icon
+        self.isSelected = isSelected
+        self.tint = tint
+    }
+
+    var body: some View {
+        HStack(spacing: 6) {
+            if let icon { Image(systemName: icon) }
+            Text(title)
+        }
+        .font(.system(size: 13, weight: .semibold))
+        .foregroundStyle(isSelected ? .white : AppTheme.textSecondary)
+        .padding(.horizontal, 14)
+        .frame(minHeight: 36)
+        .background(isSelected ? AnyShapeStyle(AppTheme.accentGradient) : AnyShapeStyle(AppTheme.surface.opacity(0.82)))
+        .clipShape(Capsule())
+        .overlay(Capsule().stroke(isSelected ? Color.white.opacity(0.15) : AppTheme.cardBorder.opacity(0.55), lineWidth: 1))
+        .contentShape(Capsule())
+    }
+}
+
+struct IntelligencePageHeader: View {
+    let eyebrow: String
+    let title: String
+    let subtitle: String
+    let icon: String
+
+    var body: some View {
+        HStack(alignment: .bottom, spacing: 14) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(eyebrow.uppercased())
+                    .font(.system(size: 10, weight: .heavy, design: .rounded))
+                    .tracking(1.5)
+                    .foregroundStyle(AppTheme.electricBlue)
+                Text(title)
+                    .font(.system(size: 28, weight: .bold))
+                    .foregroundStyle(AppTheme.textPrimary)
+                Text(subtitle)
+                    .font(AppTheme.captionFont)
+                    .foregroundStyle(AppTheme.textSecondary)
+            }
+            Spacer()
+            Image(systemName: icon)
+                .font(.system(size: 29, weight: .medium))
+                .foregroundStyle(AppTheme.accentGradient)
+                .frame(width: 54, height: 54)
+                .background(AppTheme.surface.opacity(0.76))
+                .clipShape(RoundedRectangle(cornerRadius: 17, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 17, style: .continuous).stroke(AppTheme.cardBorder.opacity(0.55), lineWidth: 1))
+        }
+    }
 }
