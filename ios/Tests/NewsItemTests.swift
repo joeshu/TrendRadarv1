@@ -278,6 +278,51 @@ final class NewsItemTests: XCTestCase {
         XCTAssertTrue(source.hasUsableData)
     }
 
+    func testTrendStateUsesOnlyObservedRankSnapshots() {
+        let start = Date(timeIntervalSince1970: 1_000)
+        let rising = [
+            RankSnapshot(sourceID: "zhihu", sourceName: "知乎", rank: 9, capturedAt: start),
+            RankSnapshot(sourceID: "zhihu", sourceName: "知乎", rank: 3, capturedAt: start.addingTimeInterval(600))
+        ]
+        XCTAssertEqual(TrendStateClassifier.classify(snapshots: rising, firstSeenAt: start, lastSeenAt: start.addingTimeInterval(600)), .rising)
+        XCTAssertEqual(TrendStateClassifier.classify(snapshots: Array(rising.reversed()), firstSeenAt: start, lastSeenAt: start.addingTimeInterval(600)), .rising)
+        XCTAssertEqual(TrendStateClassifier.classify(snapshots: [rising[0]], firstSeenAt: start, lastSeenAt: start), .new)
+    }
+
+    func testTrendTopicCountsUniqueSourcesAndPlatforms() {
+        let now = Date()
+        let items = [
+            IntelligenceItem(id: "hot", sourceType: .hotlist, sourceID: "weibo", sourceName: "微博", title: "主题", topicKey: "topic", rank: 2),
+            IntelligenceItem(id: "rss", sourceType: .rss, sourceID: "feed", sourceName: "订阅源", title: "主题", topicKey: "topic")
+        ]
+        let topic = TrendTopic(id: "topic", normalizedTitle: "主题", title: "主题", items: items, firstSeenAt: now, lastSeenAt: now)
+
+        XCTAssertEqual(topic.platformCount, 1)
+        XCTAssertEqual(topic.sourceCount, 2)
+        XCTAssertEqual(topic.bestRank, 2)
+        XCTAssertEqual(topic.state, .new)
+    }
+
+    func testSourceHealthStorePersistsFailureAndRecovery() async throws {
+        let suiteName = "SourceHealthStoreTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let store = SourceHealthStore(defaults: defaults)
+
+        await store.record(sourceID: "weibo", sourceName: "微博", error: "超时", cacheAvailable: true)
+        var values = await store.load()
+        var health = try XCTUnwrap(values.first)
+        XCTAssertEqual(health.consecutiveFailures, 1)
+        XCTAssertTrue(health.cacheAvailable)
+
+        await store.record(sourceID: "weibo", sourceName: "微博", error: nil, cacheAvailable: true)
+        values = await store.load()
+        health = try XCTUnwrap(values.first)
+        XCTAssertEqual(health.consecutiveFailures, 0)
+        XCTAssertNil(health.lastError)
+        XCTAssertNotNil(health.lastSuccessAt)
+    }
+
     func testArchiveResourceUsesStableNamespacedIdentifier() throws {
         let resource = ArchiveResource(resourceID: "item-1", kind: .rss, title: "文章", source: "RSS")
         let restored = try JSONDecoder().decode(ArchiveResource.self, from: JSONEncoder().encode(resource))

@@ -58,4 +58,3 @@ enum BackgroundRefreshService {
         return settings
     }
 }
-

@@ -350,6 +350,26 @@ actor LocalStore {
         return Array(records.prefix(limit).map { (date: $0.capturedAt, rank: $0.rank) }.reversed())
     }
 
+    func loadRankSnapshots(for topicKey: String, limit: Int = 48) -> [RankSnapshot] {
+        guard let container else { return [] }
+        let context = ModelContext(container)
+        let descriptor = FetchDescriptor<HotNewsTrendRecord>(
+            predicate: #Predicate { $0.topicKey == topicKey },
+            sortBy: [SortDescriptor(\HotNewsTrendRecord.capturedAt, order: .reverse)]
+        )
+        let records = (try? context.fetch(descriptor)) ?? []
+        let names = ((try? context.fetch(FetchDescriptor<HotNewsRecord>())) ?? [])
+            .reduce(into: [String: String]()) { $0[$1.platformID] = $1.platformName }
+        return records.prefix(limit).reversed().map {
+            RankSnapshot(
+                sourceID: $0.platformID,
+                sourceName: names[$0.platformID] ?? $0.platformID,
+                rank: $0.rank,
+                capturedAt: $0.capturedAt
+            )
+        }
+    }
+
     private func migrateLegacyJSON(into context: ModelContext) {
         let legacyItems = loadLegacyJSON()
         for item in legacyItems { context.insert(NewsRecord(from: item)) }

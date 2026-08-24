@@ -65,6 +65,10 @@ final class HotNewsStore: ObservableObject {
         return records.map { TrendPoint(date: $0.date, rank: $0.rank) }
     }
 
+    func rankSnapshots(for topicKey: String) async -> [RankSnapshot] {
+        await localStore.loadRankSnapshots(for: topicKey)
+    }
+
     func load() async {
         blockedTopicKeys = Set(UserDefaults.standard.stringArray(forKey: "trendradar.blockedTopics") ?? [])
         items = await localStore.loadHotNews()

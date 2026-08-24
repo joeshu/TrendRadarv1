@@ -37,7 +37,7 @@ actor RefreshPipelineExecutor {
                 return RefreshPipelineExecutionResult(status: .skipped, context: context)
             }
 
-            let collected = try await runStage("collector", results: &stages) { try await self.collect(settings) }
+            let collected = try await runStage("collector", results: &stages) { try await self.collect(settings, context.trigger) }
             try Task.checkCancellation()
             let filtered = try await runStage("filter", results: &stages) { try await self.filter(collected.freshItems, settings) }
             try Task.checkCancellation()
@@ -72,7 +72,7 @@ actor RefreshPipelineExecutor {
         }
     }
 
-    private func collect(_ settings: AppSettings) async throws -> CollectionSnapshot {
+    private func collect(_ settings: AppSettings, _ trigger: RefreshTrigger) async throws -> CollectionSnapshot {
         let localStore = LocalStore.shared
         let oldItems = await localStore.load()
         let oldHotNews = await localStore.loadHotNews()
@@ -89,11 +89,11 @@ actor RefreshPipelineExecutor {
         if !feeds.isEmpty && freshItems.isEmpty {
             throw PipelineError.collectorFailed(errors.values.sorted().joined(separator: "；"))
         }
-        let hotNews = await collectHotNews(settings, oldHotNews, localStore, &errors)
+        let hotNews = await collectHotNews(settings, oldHotNews, localStore, trigger, &errors)
         return CollectionSnapshot(freshItems: freshItems, hotNews: hotNews, oldItems: oldItems, enabledSourceNames: Set(feeds.map(\.name)), sourceErrors: errors)
     }
 
-    private func collectHotNews(_ settings: AppSettings, _ previous: [HotNewsItem], _ localStore: LocalStore, _ errors: inout [String: String]) async -> [HotNewsItem] {
+    private func collectHotNews(_ settings: AppSettings, _ previous: [HotNewsItem], _ localStore: LocalStore, _ trigger: RefreshTrigger, _ errors: inout [String: String]) async -> [HotNewsItem] {
         guard settings.platformsEnabled else { return [] }
         let sources = settings.platformSources.filter(\.isEnabled)
         guard !sources.isEmpty else { return previous }
@@ -103,14 +103,24 @@ actor RefreshPipelineExecutor {
         for source in sources {
             do {
                 let items = try await service.fetch(sourceID: source.id, sourceName: source.name, expectedDomain: source.expectedDomain, baseURL: baseURL)
-                if items.isEmpty { errors[source.name] = "热榜源未返回内容" } else { successful.append((source, items)) }
-            } catch { errors[source.name] = error.localizedDescription }
+                if items.isEmpty {
+                    errors[source.name] = "热榜源未返回内容"
+                    await SourceHealthStore.shared.record(sourceID: source.id, sourceName: source.name, error: "热榜源未返回内容", cacheAvailable: previous.contains { $0.platformID == source.id })
+                } else {
+                    successful.append((source, items))
+                    await SourceHealthStore.shared.record(sourceID: source.id, sourceName: source.name, error: nil, cacheAvailable: true)
+                }
+            } catch {
+                errors[source.name] = error.localizedDescription
+                await SourceHealthStore.shared.record(sourceID: source.id, sourceName: source.name, error: error.localizedDescription, cacheAvailable: previous.contains { $0.platformID == source.id })
+            }
         }
         guard !successful.isEmpty else { return previous }
         let previousByID = previous.reduce(into: [String: HotNewsItem]()) { $0[$1.id] = $1 }
         let fetched = successful.flatMap(\.1).map { item in
             var updated = item
             updated.previousRank = previousByID[item.id]?.rank
+            updated.firstSeenAt = previousByID[item.id]?.firstSeenAt ?? Date()
             updated.isRead = previousByID[item.id]?.isRead ?? false
             updated.isFavorite = previousByID[item.id]?.isFavorite ?? false
             return updated
@@ -118,7 +128,50 @@ actor RefreshPipelineExecutor {
         let successfulIDs = Set(successful.map { $0.0.id })
         let merged = (fetched + previous.filter { !successfulIDs.contains($0.platformID) }).sorted { $0.rank < $1.rank }
         try? await localStore.saveHotNews(merged, replacingPlatformIDs: successfulIDs)
+        let collectedAt = Date()
+        let intelligenceItems = merged.map {
+            IntelligenceItem(
+                id: $0.id,
+                sourceType: .hotlist,
+                sourceID: $0.platformID,
+                sourceName: $0.platformName,
+                title: $0.title,
+                url: $0.url,
+                publishedAt: $0.publishedAt,
+                summary: $0.extraInfo,
+                topicKey: $0.topicKey,
+                rank: $0.rank,
+                previousRank: $0.previousRank,
+                collectedAt: collectedAt,
+                isRead: $0.isRead,
+                isFavorite: $0.isFavorite
+            )
+        }
+        let failedIDs = sources.filter { errors[$0.name] != nil }.map(\.id)
+        let batch = RefreshBatch(
+            trigger: batchTrigger(for: trigger),
+            startedAt: collectedAt,
+            finishedAt: collectedAt,
+            status: failedIDs.isEmpty ? .completed : .partial,
+            successfulSourceIDs: Array(successfulIDs).sorted(),
+            failedSourceIDs: failedIDs.sorted(),
+            errorMessages: Dictionary(uniqueKeysWithValues: sources.compactMap { source in errors[source.name].map { (source.id, $0) } })
+        )
+        try? await localStore.saveIntelligenceSnapshot(
+            items: intelligenceItems,
+            topics: TopicDeduplicator().topics(from: intelligenceItems),
+            batch: batch,
+            replacingSourceIDs: successfulIDs
+        )
         return merged
+    }
+
+    private func batchTrigger(for trigger: RefreshTrigger) -> RefreshBatchTrigger {
+        switch trigger {
+        case .manual: return .manual
+        case .background: return .background
+        default: return .foreground
+        }
     }
 
     private func filter(_ items: [NewsItem], _ settings: AppSettings) async throws -> [NewsItem] {
@@ -224,4 +277,3 @@ struct RefreshPipelineExecutionResult: Sendable {
         self.sourceErrors = sourceErrors
     }
 }
-
