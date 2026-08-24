@@ -69,6 +69,24 @@ struct AIService: Sendable {
         )
     }
 
+    func translateTitles(_ items: [NewsItem], settings: AppSettings = AppSettings()) async throws -> [String: String] {
+        let pending = items.filter { !$0.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+        guard !pending.isEmpty else { return [:] }
+        let input = pending.enumerated().map { "\($0.offset + 1). \($0.element.title)" }.joined(separator: "\n")
+        let language = settings.aiTranslation.language.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "中文" : settings.aiTranslation.language
+        let content = try await request(messages: AIPromptMessages(
+            system: "你是专业新闻标题翻译器。只输出严格 JSON 数组，每项包含 index 和 translation。必须保留所有编号，不要解释。",
+            user: "请将以下新闻标题翻译为\(language)，保持专有名词、数字和事实准确：\n\(input)"
+        ), settings: settings)
+        guard let data = normalizedJSON(content).data(using: .utf8), let values = try? JSONDecoder().decode([BatchTranslation].self, from: data) else {
+            throw AIError.invalidAnalysis
+        }
+        return values.compactMap { value in
+            guard value.index > 0, value.index <= pending.count, !value.translation.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
+            return (pending[value.index - 1].id, value.translation.trimmingCharacters(in: .whitespacesAndNewlines))
+        }.reduce(into: [:]) { $0[$1.0] = $1.1 }
+    }
+
     func translateTitle(_ title: String, settings: AppSettings = AppSettings()) async throws -> String {
         let source = title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !source.isEmpty else { throw AIError.emptyInput }
@@ -364,6 +382,11 @@ struct AIFilterMatch: Codable, Equatable, Sendable {
         case id, score
         case tagID = "tag_id"
     }
+}
+
+private struct BatchTranslation: Decodable, Sendable {
+    let index: Int
+    let translation: String
 }
 
 private struct AIInterestTagResponse: Codable, Sendable {

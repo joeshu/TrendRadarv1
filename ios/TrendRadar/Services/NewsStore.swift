@@ -115,13 +115,28 @@ final class NewsStore: ObservableObject {
                     errorMessage = "AI 筛选失败，已保留关键词筛选结果：\(error.localizedDescription)"
                 }
             }
-            let refreshedItems = filteredResults.map { item in
+            var refreshedItems = filteredResults.map { item in
                 var updated = item
                 updated.isRead = oldByID[item.id]?.isRead ?? false
                 updated.isFavorite = oldByID[item.id]?.isFavorite ?? false
                 updated.inboxState = oldByID[item.id]?.inboxState ?? .unprocessed
                 updated.translatedTitle = oldByID[item.id]?.translatedTitle
                 return updated
+            }
+            if settings.aiTranslation.enabled, settings.aiTranslation.translateRSS {
+                let pending = refreshedItems.filter { $0.translatedTitle == nil }
+                if !pending.isEmpty {
+                    do {
+                        let translations = try await aiService.translateTitles(Array(pending), settings: settings)
+                        refreshedItems = refreshedItems.map { item in
+                            var updated = item
+                            updated.translatedTitle = translations[item.id] ?? item.translatedTitle
+                            return updated
+                        }
+                    } catch {
+                        errorMessage = "AI 翻译失败，已保留原文：\(error.localizedDescription)"
+                    }
+                }
             }
             let refreshedIDs = Set(refreshedItems.map(\.id))
             let enabledSourceNames = Set(enabledFeeds.map(\.name))
@@ -244,6 +259,9 @@ final class NewsStore: ObservableObject {
         }
         do {
             try await localStore.save(report)
+            if report.aiAnalysis?.hasContent == true {
+                try? await localStore.saveArchive(ArchiveResource(aiBrief: report))
+            }
             let delivery = await ReportDeliveryService().deliver(report: report, settings: settings)
             if let message = delivery.failureMessage {
                 errorMessage = "自动报告已保存，但通知渠道投递失败：\(message)"
