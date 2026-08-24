@@ -162,55 +162,40 @@ struct SubscriptionSourceManager: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section("RSS 订阅") {
-                    Toggle("启用 RSS", isOn: $settingsStore.settings.rssEnabled)
-                    Toggle("只保留最近文章", isOn: $settingsStore.settings.rssFreshnessEnabled)
-                    if settingsStore.settings.rssFreshnessEnabled {
-                        Stepper("文章保留 \(settingsStore.settings.rssMaxAgeDays) 天", value: $settingsStore.settings.rssMaxAgeDays, in: 0...30)
-                    }
-                    ForEach($settingsStore.settings.customFeeds) { $feed in
-                        Button {
-                            editingFeed = feed
-                            showingFeedEditor = true
-                        } label: {
-                            HStack {
-                                Image(systemName: feed.isEnabled ? "checkmark.circle.fill" : "circle")
-                                    .foregroundStyle(feed.isEnabled ? AppTheme.cyan : AppTheme.textTertiary)
-                                VStack(alignment: .leading, spacing: 3) {
-                                    Text(feed.name).foregroundStyle(AppTheme.textPrimary)
-                                    Text(feed.url).font(AppTheme.captionFont).foregroundStyle(AppTheme.textTertiary).lineLimit(1)
-                                    if let health = newsStore.feedHealth[feed.id], health.shouldShowWarning {
-                                        Text("连续失败 \(health.consecutiveFailures) 次：\(health.lastError ?? "请检查来源")")
-                                            .font(.caption2)
-                                            .foregroundStyle(AppTheme.yellow)
-                                    }
+            ZStack {
+                AppTheme.background.ignoresSafeArea()
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 22) {
+                        sourceSection(title: "RSS", feeds: settingsStore.settings.customFeeds)
+                        sourceSection(title: "热榜来源", platforms: settingsStore.settings.platformSources)
+                        PremiumPanel(tint: AppTheme.brandCyan) {
+                            VStack(alignment: .leading, spacing: 10) {
+                                Text("采集设置").font(AppTheme.headlineFont)
+                                Toggle("启用 RSS", isOn: $settingsStore.settings.rssEnabled)
+                                Toggle("启用热榜", isOn: $settingsStore.settings.platformsEnabled)
+                                Toggle("只保留最近文章", isOn: $settingsStore.settings.rssFreshnessEnabled)
+                                if settingsStore.settings.rssFreshnessEnabled {
+                                    Stepper("文章保留 \(settingsStore.settings.rssMaxAgeDays) 天", value: $settingsStore.settings.rssMaxAgeDays, in: 0...30)
                                 }
                             }
                         }
                     }
-                    Button("添加 RSS 源") {
-                        editingFeed = nil
-                        showingFeedEditor = true
-                    }
-                }
-                Section("热榜平台") {
-                    Toggle("启用热榜", isOn: $settingsStore.settings.platformsEnabled)
-                    ForEach($settingsStore.settings.platformSources) { $source in
-                        Toggle(source.name, isOn: $source.isEnabled)
-                    }
-                    TextField("热榜 API 地址", text: $settingsStore.settings.platformAPIURL)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                    Text("填写基础地址，例如 https://newsnow.vercel.app/api。应用会按平台 ID 请求 /s?id=平台ID；保持默认地址即可。")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 12)
+                    .padding(.bottom, 120)
                 }
             }
-            .navigationTitle("信息源")
+            .navigationTitle("订阅源")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(AppTheme.background, for: .navigationBar)
+            .toolbarColorScheme(.light, for: .navigationBar)
             .toolbar {
-                ToolbarItem(placement: .confirmationAction) { Button("完成") { dismiss() } }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        editingFeed = nil
+                        showingFeedEditor = true
+                    } label: { Text("添加订阅") }
+                }
             }
             .sheet(isPresented: $showingFeedEditor) {
                 FeedEditorView(feed: editingFeed) { feed in
@@ -227,6 +212,73 @@ struct SubscriptionSourceManager: View {
         }
     }
 
+    @ViewBuilder
+    private func sourceSection(title: String, feeds: [ConfigFeed]) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title).font(.system(size: 15, weight: .medium)).foregroundStyle(AppTheme.textSecondary).padding(.horizontal, 8)
+            VStack(spacing: 0) {
+                ForEach(Array(feeds.enumerated()), id: \.element.id) { index, feed in
+                    sourceRow(feed: feed, isLast: index == feeds.count - 1)
+                }
+            }
+            .background(AppTheme.card)
+            .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(AppTheme.cardBorder, lineWidth: 1))
+            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        }
+    }
+
+    @ViewBuilder
+    private func sourceSection(title: String, platforms: [PlatformSource]) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title).font(.system(size: 15, weight: .medium)).foregroundStyle(AppTheme.textSecondary).padding(.horizontal, 8)
+            VStack(spacing: 0) {
+                ForEach(Array(platforms.enumerated()), id: \.element.id) { index, source in
+                    HStack(spacing: 12) {
+                        Toggle("", isOn: Binding(get: { source.isEnabled }, set: { value in
+                            if let i = settingsStore.settings.platformSources.firstIndex(where: { $0.id == source.id }) { settingsStore.settings.platformSources[i].isEnabled = value }
+                        }))
+                        .labelsHidden()
+                        Text(source.name).font(.system(size: 17, weight: .medium)).foregroundStyle(AppTheme.textPrimary)
+                        Spacer()
+                        Image(systemName: "chevron.right").foregroundStyle(AppTheme.textTertiary)
+                    }
+                    .padding(.horizontal, 16).frame(minHeight: 60)
+                    if index < platforms.count - 1 { Divider().padding(.leading, 72) }
+                }
+            }
+            .background(AppTheme.card)
+            .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(AppTheme.cardBorder, lineWidth: 1))
+            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        }
+    }
+
+    private func sourceRow(feed: ConfigFeed, isLast: Bool) -> some View {
+        Button {
+            editingFeed = feed
+            showingFeedEditor = true
+        } label: {
+            HStack(spacing: 12) {
+                Toggle("", isOn: Binding(get: { feed.isEnabled }, set: { value in
+                    if let i = settingsStore.settings.customFeeds.firstIndex(where: { $0.id == feed.id }) { settingsStore.settings.customFeeds[i].isEnabled = value }
+                }))
+                .labelsHidden()
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(feed.name).font(.system(size: 17, weight: .medium)).foregroundStyle(AppTheme.textPrimary)
+                    HStack(spacing: 5) {
+                        Circle().fill(feed.isEnabled ? AppTheme.green : AppTheme.textTertiary).frame(width: 7, height: 7)
+                        Text(feed.isEnabled ? "运行中" : "已停用").font(AppTheme.captionFont).foregroundStyle(AppTheme.textSecondary)
+                        if let health = newsStore.feedHealth[feed.id], health.shouldShowWarning { Text("· 连续失败 \(health.consecutiveFailures) 次").font(AppTheme.captionFont).foregroundStyle(AppTheme.yellow) }
+                    }
+                }
+                Spacer()
+                Text("编辑").font(.system(size: 16, weight: .medium)).foregroundStyle(AppTheme.brandCyan)
+                Image(systemName: "chevron.right").foregroundStyle(AppTheme.textTertiary)
+            }
+            .padding(.horizontal, 16).frame(minHeight: 72)
+        }
+        .buttonStyle(.plain)
+        .overlay(alignment: .bottom) { if !isLast { Divider().padding(.leading, 72) } }
+    }
 }
 
 struct FeedReaderView: View {
@@ -705,26 +757,46 @@ struct HotNewsView: View {
 private struct HotNewsTopicCard: View {
     let topic: HotNewsTopic
 
+    private var trendText: String {
+        guard let item = topic.items.min(by: { $0.rank < $1.rank }), let previous = item.previousRank else { return "新" }
+        let delta = previous - item.rank
+        return delta == 0 ? "—" : delta > 0 ? "↑ \(delta)" : "↓ \(abs(delta))"
+    }
+
+    private var trendTint: Color {
+        topic.strongestTrend == .up ? AppTheme.brandCyan : topic.strongestTrend == .new ? AppTheme.yellow : AppTheme.textTertiary
+    }
+
     var body: some View {
-        HStack(spacing: 12) {
-            Text("#\(topic.bestRank)")
-                .font(AppTheme.rankFont)
-                .foregroundStyle(AppTheme.pink)
-                .frame(width: 48, alignment: .leading)
-            VStack(alignment: .leading, spacing: 5) {
+        HStack(spacing: 14) {
+            Text("\(topic.bestRank)")
+                .font(.system(size: 28, weight: .semibold))
+                .foregroundStyle(topic.bestRank <= 3 ? AppTheme.pink : AppTheme.textTertiary)
+                .frame(width: 42, alignment: .leading)
+            VStack(alignment: .leading, spacing: 6) {
                 Text(topic.title)
-                    .font(AppTheme.headlineFont)
+                    .font(.system(size: 17, weight: .semibold))
                     .foregroundStyle(AppTheme.textPrimary)
-                    .lineLimit(2)
-                Text(topic.platforms.joined(separator: " · "))
-                    .font(AppTheme.captionFont)
+                    .lineLimit(1)
+                HStack(spacing: 6) {
+                    Text(topic.platforms.joined(separator: " · "))
+                    Text("·")
+                    Text("热度实时")
+                }
+                .font(AppTheme.captionFont)
+                .foregroundStyle(AppTheme.textTertiary)
+            }
+            Spacer(minLength: 4)
+            VStack(alignment: .trailing, spacing: 5) {
+                Text(trendText)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(trendTint)
+                Image(systemName: "chevron.right")
                     .foregroundStyle(AppTheme.textTertiary)
             }
-            Spacer()
-            Image(systemName: "chevron.right")
-                .foregroundStyle(AppTheme.textTertiary)
         }
-        .padding(16)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
         .background(AppTheme.card)
         .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(AppTheme.cardBorder, lineWidth: 1))
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))

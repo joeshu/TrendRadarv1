@@ -57,57 +57,54 @@ private struct SettingsCategoryRow: View {
     let category: SettingsCategory
 
     var body: some View {
-                HStack(spacing: 12) {
-                    Image(systemName: category.icon)
-                        .font(.headline)
-                        .foregroundStyle(AppTheme.cyan)
-                        .frame(width: 28)
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(category.title)
-                            .font(AppTheme.headlineFont)
-                            .foregroundStyle(AppTheme.textPrimary)
-                        Text(category.subtitle)
-                            .font(AppTheme.captionFont)
-                            .foregroundStyle(AppTheme.textTertiary)
-                    }
-                    Spacer()
-                    Image(systemName: "chevron.right")
-                        .font(.caption.weight(.bold))
-                        .foregroundStyle(AppTheme.textTertiary)
-                        .frame(width: 28, height: 28)
-                        .background(AppTheme.surface)
-                        .clipShape(Circle())
-                }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.vertical, 10)
-        .padding(.horizontal, 12)
-        .background(AppTheme.card.opacity(0.72))
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(AppTheme.cardBorder, lineWidth: 1)
+        HStack(spacing: 14) {
+            Image(systemName: category.icon)
+                .font(.system(size: 21, weight: .medium))
+                .foregroundStyle(AppTheme.brandCyan)
+                .frame(width: 30)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(category.title)
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(AppTheme.textPrimary)
+                Text(category.subtitle)
+                    .font(AppTheme.captionFont)
+                    .foregroundStyle(AppTheme.textSecondary)
+            }
+            Spacer()
+            Image(systemName: "chevron.right")
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(AppTheme.textTertiary)
         }
+        .padding(.horizontal, 18)
+        .frame(minHeight: 76)
         .contentShape(Rectangle())
     }
 }
 
 private struct SettingsCategoriesSection: View {
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 0) {
             Text("设置")
-                .font(AppTheme.headlineFont)
+                .font(.system(size: 23, weight: .bold))
                 .foregroundStyle(AppTheme.textPrimary)
                 .padding(.horizontal, 16)
-            ForEach(SettingsCategory.allCases) { category in
-                NavigationLink(value: category) {
-                    SettingsCategoryRow(category: category)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.bottom, 10)
+            VStack(spacing: 0) {
+                ForEach(Array(SettingsCategory.allCases.enumerated()), id: \.element.id) { index, category in
+                    NavigationLink(value: category) {
+                        SettingsCategoryRow(category: category)
+                    }
+                    .buttonStyle(.plain)
+                    if index < SettingsCategory.allCases.count - 1 {
+                        Divider().padding(.leading, 62).overlay(AppTheme.cardBorder)
+                    }
                 }
-                .buttonStyle(.plain)
-                .padding(.horizontal, 16)
             }
+            .background(AppTheme.card)
+            .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(AppTheme.cardBorder, lineWidth: 1))
+            .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .padding(.horizontal, 16)
         }
-        .padding(.top, 4)
         .padding(.bottom, 18)
     }
 }
@@ -118,38 +115,61 @@ private struct SettingsOverviewSection: View {
     let aiEnabled: Bool
 
     var body: some View {
-        PremiumPanel(tint: AppTheme.brandCyan) {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack(spacing: 12) {
-                    Image("TrendRadar-Webhook")
-                        .resizable().scaledToFill()
-                        .frame(width: 54, height: 54)
-                        .clipped()
-                        .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text("CONFIGURATION CENTER")
-                            .font(.system(size: 10, weight: .bold, design: .rounded))
-                            .tracking(1.3)
-                            .foregroundStyle(AppTheme.brandCyan)
-                        Text("本地配置中心")
-                            .font(AppTheme.titleFont)
-                            .foregroundStyle(AppTheme.textPrimary)
-                        Text("管理采集、分析、报告与投递")
-                            .font(AppTheme.captionFont)
-                            .foregroundStyle(AppTheme.textSecondary)
-                    }
-                    Spacer()
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 14) {
+                ZStack {
+                    Circle().fill(AppTheme.brandCyan)
+                    Image(systemName: "person.fill")
+                        .font(.system(size: 25, weight: .semibold))
+                        .foregroundStyle(.white)
                 }
-                HStack(spacing: 8) {
-                    ConfigStatusPill(title: platformsEnabled ? "热榜已启用" : "热榜已关闭", tint: platformsEnabled ? AppTheme.green : AppTheme.textTertiary)
-                    ConfigStatusPill(title: rssEnabled ? "RSS 已启用" : "RSS 已关闭", tint: rssEnabled ? AppTheme.cyan : AppTheme.textTertiary)
-                    ConfigStatusPill(title: aiEnabled ? "AI 已启用" : "AI 已关闭", tint: aiEnabled ? AppTheme.pink : AppTheme.textTertiary)
+                .frame(width: 58, height: 58)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("TrendRadar 用户")
+                        .font(.system(size: 19, weight: .semibold))
+                        .foregroundStyle(AppTheme.textPrimary)
+                    Text("本地版 · 运行状态正常")
+                        .font(AppTheme.captionFont)
+                        .foregroundStyle(AppTheme.textSecondary)
                 }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .foregroundStyle(AppTheme.textTertiary)
             }
+            .padding(18)
+            Divider().overlay(AppTheme.cardBorder)
+            HStack(spacing: 0) {
+                SettingsRuntimeStatus(title: "运行中", detail: "采集与分析已启动", tint: AppTheme.green)
+                Divider().frame(height: 42).overlay(AppTheme.cardBorder)
+                SettingsRuntimeStatus(title: "信息源", detail: "\(platformsEnabled && rssEnabled ? "热榜与 RSS" : "部分关闭")", tint: AppTheme.brandCyan)
+            }
+            .padding(.horizontal, 18)
+            .padding(.vertical, 14)
         }
+        .background(AppTheme.card)
+        .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(AppTheme.cardBorder, lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .shadow(color: AppTheme.brandCyan.opacity(0.06), radius: 12, y: 5)
         .padding(.horizontal, 16)
         .padding(.top, 12)
-        .padding(.bottom, 8)
+        .padding(.bottom, 16)
+    }
+}
+
+private struct SettingsRuntimeStatus: View {
+    let title: String
+    let detail: String
+    let tint: Color
+    var body: some View {
+        HStack(spacing: 8) {
+            Circle().fill(tint).frame(width: 8, height: 8)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).font(.system(size: 14, weight: .semibold)).foregroundStyle(AppTheme.textPrimary)
+                Text(detail).font(AppTheme.captionFont).foregroundStyle(AppTheme.textSecondary).lineLimit(1)
+            }
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
