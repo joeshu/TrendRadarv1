@@ -2,8 +2,8 @@ import Foundation
 
 /// Bridges pipeline execution output with local report storage.
 enum PipelineReportBridge {
-    static func persist(_ report: ReportDetail?) async {
+    static func persist(_ report: ReportDetail?) async throws {
         guard let report else { return }
-        await ReportStore.shared.save(report)
+        try await LocalStore.shared.save(report)
     }
 }

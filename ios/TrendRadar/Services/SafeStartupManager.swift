@@ -38,7 +38,7 @@ final class SafeStartupManager {
     private func load() -> SafeStartupState {
         guard let data = UserDefaults.standard.data(forKey: defaultsKey),
               let state = try? JSONDecoder().decode(SafeStartupState.self, from: data) else {
-            return SafeStartupState()
+            return .initial
         }
         return state
     }

@@ -42,10 +42,11 @@ actor RefreshPipelineExecutor {
             try Task.checkCancellation()
 
             let report = try await runStage("report", results: &stageResults) {
-                try await ReportStage().execute(items: persisted, settings: settings)
+                let report = try await ReportStage().execute(items: persisted, settings: settings)
+                try await PipelineReportBridge.persist(report)
+                return report
             }
             if let report {
-                await PipelineReportBridge.persist(report)
                 reportID = report.id.uuidString
                 let deliveryStartedAt = Date()
                 let delivery = await DeliveryStage().execute(report: report, settings: settings)
