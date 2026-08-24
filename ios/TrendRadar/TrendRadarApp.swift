@@ -8,6 +8,7 @@ struct TrendRadarApp: App {
     @StateObject private var reportStore = ReportStore()
     @StateObject private var hotNewsStore = HotNewsStore()
     @StateObject private var bootstrapper = AppBootstrapper()
+    @StateObject private var archiveStore = ArchiveStore()
 
     init() {
         BackgroundRefreshService.register()
@@ -21,6 +22,7 @@ struct TrendRadarApp: App {
                 .environmentObject(reportStore)
                 .environmentObject(hotNewsStore)
                 .environmentObject(bootstrapper)
+                .environmentObject(archiveStore)
                 .task {
                     await bootstrapper.start(
                         newsStore: store,

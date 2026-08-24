@@ -1140,10 +1140,10 @@ private extension RadarFilter {
 
 struct FavoritesView: View {
     @EnvironmentObject private var store: NewsStore
-
-    private var items: [NewsItem] {
-        store.items.filter(\.isFavorite)
-    }
+    @EnvironmentObject private var hotNewsStore: HotNewsStore
+    @EnvironmentObject private var reportStore: ReportStore
+    @EnvironmentObject private var archiveStore: ArchiveStore
+    @State private var showingSettings = false
 
     var body: some View {
         NavigationStack {
@@ -1152,18 +1152,23 @@ struct FavoritesView: View {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 16) {
                         archiveHeader
-                         if items.isEmpty {
-                             FeatureEmptyState(icon: "star", title: "还没有收藏", message: "在发现或订阅页面收藏重要内容，它们会出现在这里。")
+                        archiveFilter
+                         if archiveStore.filteredItems.isEmpty {
+                             FeatureEmptyState(icon: "archivebox", title: "资料库还是空的", message: "收藏趋势或报告，或在订阅中归档文章，它们会安全保存在这里。")
                                 .frame(maxWidth: .infinity)
                                 .padding(.top, 32)
                         } else {
-                            ForEach(items) { item in
-                                NavigationLink {
-                                    NewsDetailView(item: item)
-                                } label: {
-                                    CompactFeedCard(item: item)
+                            ForEach(archiveStore.filteredItems) { resource in
+                                NavigationLink(value: resource) {
+                                    ArchiveResourceRow(resource: resource)
                                 }
                                 .buttonStyle(.plain)
+                                .contextMenu {
+                                    ShareLink(item: resource.shareText) { Label("分享", systemImage: "square.and.arrow.up") }
+                                    Button(role: .destructive) { Task { await archiveStore.delete(resource) } } label: {
+                                        Label("移出资料库", systemImage: "trash")
+                                    }
+                                }
                             }
                         }
                     }
@@ -1172,10 +1177,28 @@ struct FavoritesView: View {
                     .padding(.bottom, 120)
                 }
             }
-             .navigationTitle("收藏")
+             .navigationTitle("资料库")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(AppTheme.background, for: .navigationBar)
             .toolbarColorScheme(.light, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button { showingSettings = true } label: { Image(systemName: "gearshape") }
+                        .accessibilityLabel("设置")
+                        .frame(minWidth: 44, minHeight: 44)
+                }
+            }
+            .searchable(text: $archiveStore.searchText, prompt: "搜索标题、来源和摘要")
+            .navigationDestination(for: ArchiveResource.self) { resource in
+                archiveDestination(resource)
+            }
+            .task {
+                await archiveStore.synchronize(news: store.items, topics: hotNewsStore.topics, reports: reportStore.reports)
+            }
+            .alert("资料库", isPresented: Binding(get: { archiveStore.errorMessage != nil }, set: { if !$0 { archiveStore.errorMessage = nil } })) {
+                Button("确定", role: .cancel) { archiveStore.errorMessage = nil }
+            } message: { Text(archiveStore.errorMessage ?? "") }
+            .sheet(isPresented: $showingSettings) { SettingsView() }
         }
     }
 
@@ -1188,12 +1211,90 @@ struct FavoritesView: View {
              Text("保存真正重要的信号")
                 .font(AppTheme.titleFont)
                 .foregroundStyle(AppTheme.textPrimary)
-             Text("集中查看你标记的重要新闻。")
+             Text("新闻、趋势和报告统一归档，本机保存，随时检索与分享。")
                 .font(AppTheme.bodyFont)
                 .foregroundStyle(AppTheme.textSecondary)
         }
     }
 
+    private var archiveFilter: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                FeedFilterChip(title: "全部 \(archiveStore.items.count)", isSelected: archiveStore.selectedKind == nil) { archiveStore.selectedKind = nil }
+                ForEach(ArchiveResourceKind.allCases, id: \.self) { kind in
+                    let count = archiveStore.items.filter { $0.kind == kind }.count
+                    FeedFilterChip(title: "\(kind.title) \(count)", isSelected: archiveStore.selectedKind == kind) { archiveStore.selectedKind = kind }
+                }
+            }
+        }
+        .accessibilityLabel("资料类型筛选")
+    }
+
+    @ViewBuilder
+    private func archiveDestination(_ resource: ArchiveResource) -> some View {
+        switch resource.kind {
+        case .rss:
+            if let item = store.items.first(where: { $0.id == resource.resourceID }) { NewsDetailView(item: item) }
+            else { ArchiveSnapshotView(resource: resource) }
+        case .hotlist:
+            if let topic = hotNewsStore.topics.first(where: { $0.id == resource.resourceID }) { HotNewsTrendView(topic: topic) }
+            else { ArchiveSnapshotView(resource: resource) }
+        case .report:
+            if let id = UUID(uuidString: resource.resourceID), reportStore.reports.contains(where: { $0.id == id }) { ReportDetailView(reportID: id) }
+            else { ArchiveSnapshotView(resource: resource) }
+        }
+    }
+}
+
+private struct ArchiveResourceRow: View {
+    let resource: ArchiveResource
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: resource.kind.systemImage)
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(AppTheme.cyan)
+                .frame(width: 42, height: 42)
+                .background(AppTheme.cyan.opacity(0.12), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 5) {
+                Text(resource.title).font(AppTheme.headlineFont).foregroundStyle(AppTheme.textPrimary).lineLimit(2)
+                Text("\(resource.kind.title) · \(resource.source)").font(AppTheme.captionFont).foregroundStyle(AppTheme.textSecondary).lineLimit(1)
+                Text(resource.capturedAt, format: .relative(presentation: .named)).font(AppTheme.captionFont).foregroundStyle(AppTheme.textTertiary)
+            }
+            Spacer(minLength: 4)
+            Image(systemName: "chevron.right").foregroundStyle(AppTheme.textTertiary).accessibilityHidden(true)
+        }
+        .padding(14)
+        .background(AppTheme.card, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(AppTheme.cardBorder, lineWidth: 1))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(resource.kind.title)，\(resource.title)，来源 \(resource.source)")
+    }
+}
+
+private struct ArchiveSnapshotView: View {
+    let resource: ArchiveResource
+
+    var body: some View {
+        IntelligencePage {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    StatusBadge(title: resource.kind.title, systemImage: resource.kind.systemImage, tint: AppTheme.cyan)
+                    Text(resource.title).font(AppTheme.titleFont).foregroundStyle(AppTheme.textPrimary)
+                    Text(resource.source).font(AppTheme.captionFont).foregroundStyle(AppTheme.textSecondary)
+                    if let summary = resource.summary { Text(summary).font(AppTheme.bodyFont).foregroundStyle(AppTheme.textSecondary) }
+                    if let url = resource.url { Link(destination: url) { Label("打开原文", systemImage: "arrow.up.right") }.buttonStyle(OutlineButtonStyle()) }
+                    ShareLink(item: resource.shareText) { Label("分享资料", systemImage: "square.and.arrow.up").frame(maxWidth: .infinity) }
+                        .buttonStyle(AccentButtonStyle()).frame(minHeight: 44)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(16)
+            }
+        }
+        .navigationTitle("归档快照")
+        .navigationBarTitleDisplayMode(.inline)
+    }
 }
 
 struct ReportCenterView: View {

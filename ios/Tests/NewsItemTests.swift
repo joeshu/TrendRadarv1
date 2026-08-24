@@ -381,6 +381,28 @@ final class NewsItemTests: XCTestCase {
         XCTAssertEqual(record.asResource, resource)
     }
 
+    func testArchiveResourcesNormalizeNewsTrendAndReport() {
+        let date = Date(timeIntervalSince1970: 100)
+        let news = ArchiveResource(news: NewsItem(id: "news-1", title: "Swift update", source: "Feed", url: URL(string: "https://example.com/news"), publishedAt: date, summary: "Summary", isFavorite: true))
+        let hotItem = HotNewsItem(id: "hot-1", title: "AI trend", url: URL(string: "https://example.com/hot"), platformID: "weibo", platformName: "微博", rank: 2, publishedAt: date, extraInfo: nil, topicKey: "ai", isRead: false, isFavorite: true)
+        let trend = ArchiveResource(topic: HotNewsTopic(id: "ai", title: "AI trend", items: [hotItem]))
+        let report = ArchiveResource(report: ReportSummary(id: UUID(), title: "日报", type: .daily, generatedAt: date, status: .completed, newsCount: 3, sourceCount: 2, hasAIAnalysis: false, isFavorite: true))
+
+        XCTAssertEqual(news.id, "rss:news-1")
+        XCTAssertEqual(news.capturedAt, date)
+        XCTAssertTrue(news.searchableText.contains("Summary"))
+        XCTAssertEqual(trend.id, "hotlist:ai")
+        XCTAssertEqual(trend.summary, "最佳排名 #2 · 1 个平台")
+        XCTAssertEqual(report.kind, .report)
+        XCTAssertEqual(report.summary, "3 条情报 · 2 个来源")
+    }
+
+    func testArchiveShareTextIncludesAvailableEvidence() {
+        let resource = ArchiveResource(resourceID: "item", kind: .rss, title: "Title", source: "Source", url: URL(string: "https://example.com"), summary: "Summary")
+
+        XCTAssertEqual(resource.shareText, "Title\nSource\nSummary\nhttps://example.com")
+    }
+
     func testHotNewsAnomalyUsesThreeRankChangeThreshold() {
         let rising = HotNewsItem(id: "p:1", title: "Topic", url: nil, platformID: "p", platformName: "Platform", rank: 2, publishedAt: nil, extraInfo: nil, topicKey: "topic", previousRank: 8, isRead: false, isFavorite: false)
         let stable = HotNewsItem(id: "p:2", title: "Stable", url: nil, platformID: "p", platformName: "Platform", rank: 5, publishedAt: nil, extraInfo: nil, topicKey: "stable", previousRank: 6, isRead: false, isFavorite: false)
