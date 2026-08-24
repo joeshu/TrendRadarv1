@@ -28,7 +28,7 @@ struct FeedsView: View {
                 IntelligenceScreenBackground()
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 16) {
-                        PremiumSectionHeader(eyebrow: "DISCOVER", title: "订阅与发现", subtitle: "管理信息源，阅读最新内容", icon: "newspaper.fill", tint: AppTheme.brandCyan)
+                        IntelligencePageHeader(eyebrow: "SUBSCRIPTION INBOX", title: "订阅与发现", subtitle: "管理信息源，阅读最新内容", icon: "newspaper.fill")
                         feedIntro
                         sourceSummary
                         inboxFilter
@@ -428,14 +428,12 @@ struct InsightView: View {
     }
 
     private var insightHeader: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("今天值得关注什么")
-                .font(AppTheme.headlineFont)
-                .foregroundStyle(AppTheme.textPrimary)
-            Text("基于当前已抓取的新闻。")
-                .font(AppTheme.captionFont)
-                .foregroundStyle(AppTheme.textSecondary)
-        }
+        IntelligencePageHeader(
+            eyebrow: "LOCAL INTELLIGENCE",
+            title: "今天值得关注什么",
+            subtitle: "基于当前已抓取的新闻与真实排名",
+            icon: "sparkles"
+        )
     }
 
     private var windowItems: [NewsItem] {
@@ -769,7 +767,7 @@ struct HotNewsView: View {
                 IntelligenceScreenBackground()
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 16) {
-                        PremiumSectionHeader(eyebrow: "LIVE RADAR", title: "热榜雷达", subtitle: "跨平台排名与真实变化趋势", icon: "dot.radiowaves.left.and.right", tint: AppTheme.brandCyan)
+                        IntelligencePageHeader(eyebrow: "LIVE RADAR", title: "热榜雷达", subtitle: "跨平台排名与真实变化趋势", icon: "dot.radiowaves.left.and.right")
                         hotNewsOverview
                         radarSummary
                         radarStateFilters
@@ -849,13 +847,7 @@ struct HotNewsView: View {
                     Button {
                         withAnimation(AppAnimation.standard) { hotNewsStore.selectedRadarFilter = filter }
                     } label: {
-                        Label(filter.title, systemImage: filter.systemImage)
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(hotNewsStore.selectedRadarFilter == filter ? Color.white : AppTheme.textSecondary)
-                            .padding(.horizontal, 14)
-                            .frame(minHeight: 44)
-                            .background(hotNewsStore.selectedRadarFilter == filter ? AppTheme.brandCyan : AppTheme.card, in: Capsule())
-                            .overlay { Capsule().stroke(AppTheme.cardBorder, lineWidth: hotNewsStore.selectedRadarFilter == filter ? 0 : 1) }
+                        IntelligenceFilterChip(filter.title, icon: filter.systemImage, isSelected: hotNewsStore.selectedRadarFilter == filter)
                     }
                     .buttonStyle(.plain)
                     .accessibilityAddTraits(hotNewsStore.selectedRadarFilter == filter ? .isSelected : [])
@@ -970,9 +962,7 @@ private struct HotNewsTopicCard: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
-        .background(AppTheme.card)
-        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(AppTheme.cardBorder, lineWidth: 1))
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .intelligenceCard(tint: trendTint, cornerRadius: 16)
     }
 }
 
@@ -1203,18 +1193,12 @@ struct FavoritesView: View {
     }
 
     private var archiveHeader: some View {
-        VStack(alignment: .leading, spacing: 8) {
-             Text("SAVED")
-                .font(AppTheme.captionFont)
-                .tracking(1.6)
-                .foregroundStyle(AppTheme.pink)
-             Text("保存真正重要的信号")
-                .font(AppTheme.titleFont)
-                .foregroundStyle(AppTheme.textPrimary)
-             Text("新闻、趋势和报告统一归档，本机保存，随时检索与分享。")
-                .font(AppTheme.bodyFont)
-                .foregroundStyle(AppTheme.textSecondary)
-        }
+        IntelligencePageHeader(
+            eyebrow: "LOCAL LIBRARY",
+            title: "保存真正重要的信号",
+            subtitle: "新闻、趋势和报告统一归档，随时检索与分享",
+            icon: "archivebox.fill"
+        )
     }
 
     private var archiveFilter: some View {
@@ -1448,26 +1432,12 @@ struct ReportCenterView: View {
     }
 
     private var reportIntro: some View {
-        HStack(spacing: 14) {
-            Image(systemName: "doc.text.magnifyingglass")
-                .font(.system(size: 25, weight: .semibold))
-                .foregroundStyle(AppTheme.pink)
-                .frame(width: 48, height: 48)
-                .background(AppTheme.pink.opacity(0.14))
-                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-            VStack(alignment: .leading, spacing: 4) {
-                Text("本地情报档案")
-                    .font(AppTheme.headlineFont)
-                    .foregroundStyle(AppTheme.textPrimary)
-                Text("保存采集时刻的新闻快照和分析结果")
-                    .font(AppTheme.captionFont)
-                    .foregroundStyle(AppTheme.textSecondary)
-            }
-            Spacer()
-        }
-        .padding(16)
-        .background(AppTheme.heroGradient)
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        IntelligencePageHeader(
+            eyebrow: "REPORT ARCHIVE",
+            title: "本地情报档案",
+            subtitle: "保存采集时刻的新闻快照和分析结果",
+            icon: "doc.text.magnifyingglass"
+        )
     }
 }
 
@@ -1509,9 +1479,7 @@ struct CompactFeedCard: View {
             }
         }
         .padding(16)
-        .background(AppTheme.card)
-        .overlay(RoundedRectangle(cornerRadius: 16).stroke(item.isRead ? AppTheme.cardBorder : AppTheme.cyan.opacity(0.22), lineWidth: 1))
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .intelligenceCard(tint: item.isRead ? AppTheme.textTertiary : AppTheme.cyan, cornerRadius: 16)
         .contextMenu {
             Button {
                 Task { await store.toggleFavorite(item) }

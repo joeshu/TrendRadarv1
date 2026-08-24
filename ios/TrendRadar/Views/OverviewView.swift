@@ -58,16 +58,19 @@ struct OverviewView: View {
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(Date.now.formatted(.dateTime.month(.wide).day().weekday(.wide)))
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(AppTheme.brandCyan)
-            Text("今日情报简报")
-                .font(.largeTitle.weight(.bold))
-                .foregroundStyle(AppTheme.textPrimary)
+        VStack(alignment: .leading, spacing: 12) {
+            IntelligencePageHeader(
+                eyebrow: Date.now.formatted(.dateTime.month(.wide).day().weekday(.wide)),
+                title: "今日情报简报",
+                subtitle: "聚合本机订阅、热榜与分析结果",
+                icon: "sun.max.fill"
+            )
             Label(isRefreshing ? "正在刷新本机数据" : lastUpdated.map { "更新于 \($0.formatted(date: .omitted, time: .shortened))" } ?? "等待首次刷新", systemImage: isRefreshing ? "arrow.triangle.2.circlepath" : "clock")
                 .font(.caption)
                 .foregroundStyle(AppTheme.textSecondary)
+                .padding(.horizontal, 10)
+                .frame(minHeight: 32)
+                .background(AppTheme.surface.opacity(0.72), in: Capsule())
         }
     }
 
@@ -151,7 +154,7 @@ struct OverviewView: View {
                         Image(systemName: "chevron.right").foregroundStyle(AppTheme.textTertiary)
                     }
                     .padding(14)
-                    .background(AppTheme.card, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .intelligenceCard(tint: AppTheme.brandIndigo, cornerRadius: 16)
                 }
                 .buttonStyle(.plain)
             } else {
@@ -196,8 +199,7 @@ private struct TodayMetric: View {
         }
         .frame(width: 120, alignment: .leading)
         .padding(14)
-        .background(AppTheme.card, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay { RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(tint.opacity(0.22), lineWidth: 1) }
+        .intelligenceCard(tint: tint, cornerRadius: 16)
         .accessibilityElement(children: .combine)
     }
 }

@@ -100,9 +100,7 @@ private struct SettingsCategoriesSection: View {
                     }
                 }
             }
-            .background(AppTheme.card)
-            .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(AppTheme.cardBorder, lineWidth: 1))
-            .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .intelligenceCard(tint: AppTheme.brandIndigo, cornerRadius: 22)
             .padding(.horizontal, 16)
         }
         .padding(.bottom, 18)
@@ -146,10 +144,7 @@ private struct SettingsOverviewSection: View {
             .padding(.horizontal, 18)
             .padding(.vertical, 14)
         }
-        .background(AppTheme.card)
-        .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(AppTheme.cardBorder, lineWidth: 1))
-        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-        .shadow(color: AppTheme.brandCyan.opacity(0.06), radius: 12, y: 5)
+        .intelligenceCard(tint: AppTheme.brandCyan, cornerRadius: 22)
         .padding(.horizontal, 16)
         .padding(.top, 12)
         .padding(.bottom, 16)
