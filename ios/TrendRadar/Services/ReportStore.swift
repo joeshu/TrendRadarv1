@@ -60,7 +60,8 @@ final class ReportStore: ObservableObject {
         let request = ReportGenerationRequest(batchID: resolvedBatchID, type: type, trigger: trigger, generatedAt: Date(), settings: settings, windowStart: windowStart, newItemIDs: [], diagnostics: diagnostics)
         do {
             var report = generator.generate(request: request, items: items, hotlistItems: hotlistItems)
-            if settings.aiAnalysis.enabled && settings.display.showAIAnalysis {
+            // AI 报告生产不应受页面展示开关影响；展示开关只控制 UI 是否显示。
+            if settings.ai.enabled && settings.aiAnalysis.enabled {
                 let snapshotHotlist = report.sections.flatMap(\.items).filter { $0.sourceType == .hotlist }.map { snapshot in
                     HotNewsItem(id: snapshot.id, title: snapshot.title, url: snapshot.url, platformID: snapshot.source, platformName: snapshot.source, rank: snapshot.rank ?? 0, publishedAt: snapshot.publishedAt, extraInfo: snapshot.summary, topicKey: snapshot.title, previousRank: nil, isRead: snapshot.isRead, isFavorite: snapshot.isFavorite)
                 }
