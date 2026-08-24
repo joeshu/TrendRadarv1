@@ -1017,6 +1017,8 @@ final class NewsItemTests: XCTestCase {
         var settings = AppSettings()
         settings.display.appearance = .light
         settings.display.fontStyle = .serif
+        settings.display.highContrast = true
+        settings.display.reduceTransparency = true
         settings.display.fontScale = 1.2
         settings.display.uiScale = 1.1
         settings.display.cardSpacing = 20
@@ -1025,6 +1027,8 @@ final class NewsItemTests: XCTestCase {
 
         XCTAssertEqual(restored.display.appearance, .light)
         XCTAssertEqual(restored.display.fontStyle, .serif)
+        XCTAssertTrue(restored.display.highContrast)
+        XCTAssertTrue(restored.display.reduceTransparency)
         XCTAssertEqual(restored.display.fontScale, 1.2)
         XCTAssertEqual(restored.display.uiScale, 1.1)
         XCTAssertEqual(restored.display.cardSpacing, 20)
@@ -1035,6 +1039,8 @@ final class NewsItemTests: XCTestCase {
 
         XCTAssertEqual(restored.appearance, .dark)
         XCTAssertEqual(restored.fontStyle, .system)
+        XCTAssertFalse(restored.highContrast)
+        XCTAssertFalse(restored.reduceTransparency)
         XCTAssertEqual(restored.fontScale, 1.0)
     }
 }

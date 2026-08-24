@@ -173,6 +173,8 @@ struct DisplaySettings: Codable, Equatable, Sendable {
     var showAIAnalysis = true
     var appearance = AppAppearance.dark
     var fontStyle = AppFontStyle.system
+    var highContrast = false
+    var reduceTransparency = false
     /// 全局字体倍率，映射到系统 Dynamic Type 等级。
     var fontScale = 1.0
     /// 全局 UI 密度，控制表单行高和控件尺寸。
@@ -186,7 +188,7 @@ struct DisplaySettings: Codable, Equatable, Sendable {
 
     private enum CodingKeys: String, CodingKey {
         case showHotlist, showNewItems, showRSS, showStandalone, showAIAnalysis
-        case appearance, fontStyle
+        case appearance, fontStyle, highContrast, reduceTransparency
         case fontScale, uiScale, cardSpacing, regionOrder, standalonePlatforms
         case standaloneRSSFeeds, standaloneMaxItems
     }
@@ -202,6 +204,8 @@ struct DisplaySettings: Codable, Equatable, Sendable {
         showAIAnalysis = try c.decodeIfPresent(Bool.self, forKey: .showAIAnalysis) ?? true
         appearance = try c.decodeIfPresent(AppAppearance.self, forKey: .appearance) ?? .dark
         fontStyle = try c.decodeIfPresent(AppFontStyle.self, forKey: .fontStyle) ?? .system
+        highContrast = try c.decodeIfPresent(Bool.self, forKey: .highContrast) ?? false
+        reduceTransparency = try c.decodeIfPresent(Bool.self, forKey: .reduceTransparency) ?? false
         fontScale = min(max(try c.decodeIfPresent(Double.self, forKey: .fontScale) ?? 1.0, 0.85), 1.30)
         uiScale = min(max(try c.decodeIfPresent(Double.self, forKey: .uiScale) ?? 1.0, 0.90), 1.15)
         cardSpacing = min(max(try c.decodeIfPresent(Double.self, forKey: .cardSpacing) ?? 14.0, 8), 24)

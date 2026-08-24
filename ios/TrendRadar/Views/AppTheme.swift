@@ -32,11 +32,17 @@ enum AppTheme {
     static let textTertiary = adaptive(light: UIColor(red: 0.43, green: 0.51, blue: 0.60, alpha: 1), dark: UIColor(red: 0.57, green: 0.65, blue: 0.75, alpha: 1))
 
     // Product typography: Chinese uses the native system sans-serif; rounded is reserved for brand eyebrow labels.
+    static let pageTitleFont = Font.largeTitle.bold()
     static let titleFont = Font.title.weight(.semibold)
+    static let sectionTitleFont = Font.title3.weight(.semibold)
     static let headlineFont = Font.headline.weight(.semibold)
+    static let cardTitleFont = Font.headline.weight(.semibold)
     static let bodyFont = Font.body
+    static let readingFont = Font.body.leading(.loose)
     static let captionFont = Font.caption
-    static let rankFont = Font.title2.bold()
+    static let metadataFont = Font.caption2.weight(.medium)
+    static let numericFont = Font.title2.bold().monospacedDigit()
+    static let rankFont = Font.title2.bold().monospacedDigit()
 
     static let accentGradient = LinearGradient(
         colors: [electricBlue, violet, brandMagenta],
@@ -71,20 +77,45 @@ enum AppTheme {
     }
 }
 
+private struct AppHighContrastKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
+private struct AppReduceTransparencyKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
+extension EnvironmentValues {
+    var appHighContrast: Bool {
+        get { self[AppHighContrastKey.self] }
+        set { self[AppHighContrastKey.self] = newValue }
+    }
+
+    var appReduceTransparency: Bool {
+        get { self[AppReduceTransparencyKey.self] }
+        set { self[AppReduceTransparencyKey.self] = newValue }
+    }
+}
+
 struct IntelligenceScreenBackground: View {
+    @Environment(\.appHighContrast) private var highContrast
+    @Environment(\.appReduceTransparency) private var reduceTransparency
+
     var body: some View {
         ZStack {
             AppTheme.screenGradient
-            Circle()
-                .fill(AppTheme.electricBlue.opacity(0.10))
-                .frame(width: 320, height: 320)
-                .blur(radius: 55)
-                .offset(x: -170, y: -310)
-            Circle()
-                .fill(AppTheme.brandMagenta.opacity(0.08))
-                .frame(width: 280, height: 280)
-                .blur(radius: 60)
-                .offset(x: 190, y: 330)
+            if !reduceTransparency {
+                Circle()
+                    .fill(AppTheme.electricBlue.opacity(highContrast ? 0.07 : 0.10))
+                    .frame(width: 320, height: 320)
+                    .blur(radius: 55)
+                    .offset(x: -170, y: -310)
+                Circle()
+                    .fill(AppTheme.brandMagenta.opacity(highContrast ? 0.05 : 0.08))
+                    .frame(width: 280, height: 280)
+                    .blur(radius: 60)
+                    .offset(x: 190, y: 330)
+            }
         }
         .ignoresSafeArea()
         .accessibilityHidden(true)
@@ -92,13 +123,21 @@ struct IntelligenceScreenBackground: View {
 }
 
 private struct IntelligenceCardModifier: ViewModifier {
+    @Environment(\.appHighContrast) private var highContrast
+    @Environment(\.appReduceTransparency) private var reduceTransparency
     let tint: Color
     let cornerRadius: CGFloat
 
     func body(content: Content) -> some View {
         content
-            .background(.ultraThinMaterial)
-            .background(AppTheme.card.opacity(0.82))
+            .background {
+                if reduceTransparency {
+                    AppTheme.card
+                } else {
+                    Rectangle().fill(.ultraThinMaterial)
+                }
+            }
+            .background(AppTheme.card.opacity(highContrast ? 0.96 : 0.82))
             .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
@@ -108,10 +147,10 @@ private struct IntelligenceCardModifier: ViewModifier {
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         ),
-                        lineWidth: 1
+                        lineWidth: highContrast ? 1.5 : 1
                     )
             }
-            .shadow(color: tint.opacity(0.10), radius: 18, y: 8)
+            .shadow(color: reduceTransparency ? .clear : tint.opacity(highContrast ? 0.06 : 0.10), radius: 18, y: 8)
     }
 }
 

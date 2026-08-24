@@ -64,7 +64,7 @@ private struct SettingsCategoryRow: View {
                 .frame(width: 30)
             VStack(alignment: .leading, spacing: 3) {
                 Text(category.title)
-                    .font(.system(size: 18, weight: .semibold))
+                    .font(AppTheme.cardTitleFont)
                     .foregroundStyle(AppTheme.textPrimary)
                 Text(category.subtitle)
                     .font(AppTheme.captionFont)
@@ -85,7 +85,7 @@ private struct SettingsCategoriesSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             Text("设置")
-                .font(.system(size: 23, weight: .bold))
+                .font(AppTheme.sectionTitleFont)
                 .foregroundStyle(AppTheme.textPrimary)
                 .padding(.horizontal, 16)
                 .padding(.bottom, 10)
@@ -124,7 +124,7 @@ private struct SettingsOverviewSection: View {
                 .frame(width: 58, height: 58)
                 VStack(alignment: .leading, spacing: 4) {
                     Text("TrendRadar 用户")
-                        .font(.system(size: 19, weight: .semibold))
+                        .font(AppTheme.sectionTitleFont)
                         .foregroundStyle(AppTheme.textPrimary)
                     Text("本地版 · 运行状态正常")
                         .font(AppTheme.captionFont)
@@ -159,7 +159,7 @@ private struct SettingsRuntimeStatus: View {
         HStack(spacing: 8) {
             Circle().fill(tint).frame(width: 8, height: 8)
             VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(.system(size: 14, weight: .semibold)).foregroundStyle(AppTheme.textPrimary)
+                Text(title).font(AppTheme.headlineFont).foregroundStyle(AppTheme.textPrimary)
                 Text(detail).font(AppTheme.captionFont).foregroundStyle(AppTheme.textSecondary).lineLimit(1)
             }
             Spacer(minLength: 0)
@@ -562,6 +562,14 @@ struct SettingsView: View {
                 style: settingsStore.settings.display.fontStyle,
                 scale: settingsStore.settings.display.fontScale
             )
+            Toggle("高对比度", isOn: $settingsStore.settings.display.highContrast)
+            Text("增强卡片边界与内容区分，适合强光环境。")
+                .font(AppTheme.captionFont)
+                .foregroundStyle(AppTheme.textSecondary)
+            Toggle("减少透明效果", isOn: $settingsStore.settings.display.reduceTransparency)
+            Text("使用实色卡片并减少背景光效。")
+                .font(AppTheme.captionFont)
+                .foregroundStyle(AppTheme.textSecondary)
             Toggle("热榜区域", isOn: $settingsStore.settings.display.showHotlist)
             Toggle("新增热点区域", isOn: $settingsStore.settings.display.showNewItems)
             Toggle("RSS 区域", isOn: $settingsStore.settings.display.showRSS)
@@ -605,6 +613,8 @@ struct SettingsView: View {
             Button("恢复默认显示设置") {
                 settingsStore.settings.display.appearance = .dark
                 settingsStore.settings.display.fontStyle = .system
+                settingsStore.settings.display.highContrast = false
+                settingsStore.settings.display.reduceTransparency = false
                 settingsStore.settings.display.fontScale = 1.0
                 settingsStore.settings.display.uiScale = 1.0
                 settingsStore.settings.display.cardSpacing = 14.0

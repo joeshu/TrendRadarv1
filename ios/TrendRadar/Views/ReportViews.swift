@@ -66,7 +66,7 @@ struct ReportSummaryCard: View {
             }
             .frame(width: 44, height: 44)
             VStack(alignment: .leading, spacing: 5) {
-                Text(report.title).font(.system(size: 17, weight: .semibold)).foregroundStyle(AppTheme.textPrimary).lineLimit(2)
+                Text(report.title).font(AppTheme.cardTitleFont).foregroundStyle(AppTheme.textPrimary).lineLimit(2)
                 HStack(spacing: 6) {
                     Text(report.type.displayName); Text("·"); Text("\(report.newsCount) 条情报"); Text("·"); Text(report.generatedAt, style: .relative)
                 }
@@ -79,7 +79,7 @@ struct ReportSummaryCard: View {
         .intelligenceCard(tint: report.isFavorite ? AppTheme.yellow : AppTheme.brandCyan, cornerRadius: 14)
         .overlay(alignment: .topTrailing) {
             Text(report.hasAIAnalysis ? "已分析" : "本地快照")
-                .font(.system(size: 10, weight: .bold, design: .rounded))
+                .font(AppTheme.metadataFont)
                 .foregroundStyle(report.hasAIAnalysis ? AppTheme.cyan : AppTheme.textTertiary)
                 .padding(.horizontal, 8).padding(.vertical, 5)
                 .background((report.hasAIAnalysis ? AppTheme.cyan : AppTheme.textTertiary).opacity(0.12))

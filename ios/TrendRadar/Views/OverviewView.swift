@@ -197,7 +197,7 @@ private struct TodayMetric: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Label(label, systemImage: icon).font(.caption.weight(.semibold)).foregroundStyle(tint)
-            Text(value).font(.title2.bold().monospacedDigit()).foregroundStyle(AppTheme.textPrimary)
+            Text(value).font(AppTheme.numericFont).foregroundStyle(AppTheme.textPrimary)
         }
         .frame(width: 120, alignment: .leading)
         .padding(14)
@@ -212,7 +212,7 @@ private struct TodayTrendRow: View {
     var body: some View {
         HStack(spacing: 12) {
             Text("#\(topic.bestRank)")
-                .font(.headline.monospacedDigit())
+                .font(AppTheme.rankFont)
                 .foregroundStyle(topic.strongestTrend == .up ? AppTheme.green : AppTheme.brandCyan)
                 .frame(width: 48, alignment: .leading)
             VStack(alignment: .leading, spacing: 4) {

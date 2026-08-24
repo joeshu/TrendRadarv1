@@ -27,6 +27,8 @@ struct TrendRadarApp: App {
                 .dynamicTypeSize(dynamicTypeSize)
                 .fontDesign(fontDesign)
                 .controlSize(controlSize)
+                .environment(\.appHighContrast, settingsStore.settings.display.highContrast)
+                .environment(\.appReduceTransparency, settingsStore.settings.display.reduceTransparency)
                 .environment(\.defaultMinListRowHeight, 48 * settingsStore.settings.display.uiScale)
                 .task {
                     await bootstrapper.start(
