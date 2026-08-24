@@ -61,6 +61,7 @@ final class NewsItemTests: XCTestCase {
         let restored = try JSONDecoder().decode(ArchiveResource.self, from: JSONEncoder().encode(resource))
         XCTAssertEqual(restored.body, "Complete offline body")
         XCTAssertEqual(restored.snapshotVersion, "v1.0")
+        XCTAssertNotNil(restored.archivedAt)
         XCTAssertGreaterThan(restored.contentSize ?? 0, 0)
         XCTAssertEqual(restored.checksum?.count, 64)
     }

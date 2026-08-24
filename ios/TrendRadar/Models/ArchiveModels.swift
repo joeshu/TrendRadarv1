@@ -33,12 +33,13 @@ struct ArchiveResource: Codable, Equatable, Hashable, Identifiable, Sendable {
     var summary: String?
     var body: String?
     var capturedAt: Date
+    var archivedAt: Date?
     var isFavorite: Bool
     var snapshotVersion: String?
     var contentSize: Int?
     var checksum: String?
 
-    init(resourceID: String, kind: ArchiveResourceKind, title: String, source: String, url: URL? = nil, summary: String? = nil, body: String? = nil, capturedAt: Date = Date(), isFavorite: Bool = true, snapshotVersion: String? = "v1.0", contentSize: Int? = nil, checksum: String? = nil) {
+    init(resourceID: String, kind: ArchiveResourceKind, title: String, source: String, url: URL? = nil, summary: String? = nil, body: String? = nil, capturedAt: Date = Date(), archivedAt: Date? = Date(), isFavorite: Bool = true, snapshotVersion: String? = "v1.0", contentSize: Int? = nil, checksum: String? = nil) {
         self.resourceID = resourceID
         self.kind = kind
         self.id = "\(kind.rawValue):\(resourceID)"
@@ -48,6 +49,7 @@ struct ArchiveResource: Codable, Equatable, Hashable, Identifiable, Sendable {
         self.summary = summary
         self.body = body
         self.capturedAt = capturedAt
+        self.archivedAt = archivedAt
         self.isFavorite = isFavorite
         self.snapshotVersion = snapshotVersion
         let payload = [title, source, summary ?? "", body ?? "", url?.absoluteString ?? ""].joined(separator: "\n")
@@ -63,7 +65,7 @@ struct ArchiveResource: Codable, Equatable, Hashable, Identifiable, Sendable {
     }
 
     init(news: NewsItem) {
-        self.init(resourceID: news.id, kind: .rss, title: news.title, source: news.source, url: news.url, summary: news.summary, body: news.body, capturedAt: Date(), isFavorite: news.isFavorite)
+        self.init(resourceID: news.id, kind: .rss, title: news.title, source: news.source, url: news.url, summary: news.summary, body: news.body, capturedAt: news.publishedAt ?? Date(), isFavorite: news.isFavorite)
     }
 
     init(topic: HotNewsTopic) {

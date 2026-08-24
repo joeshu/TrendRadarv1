@@ -12,6 +12,7 @@ final class ArchiveRecord {
     var summary: String?
     var body: String?
     var capturedAt: Date
+    var archivedAt: Date?
     var isFavorite: Bool
     var snapshotVersion: String?
     var contentSize: Int?
@@ -27,6 +28,7 @@ final class ArchiveRecord {
         summary = resource.summary
         body = resource.body
         capturedAt = resource.capturedAt
+        archivedAt = resource.archivedAt
         isFavorite = resource.isFavorite
         snapshotVersion = resource.snapshotVersion
         contentSize = resource.contentSize
@@ -42,6 +44,7 @@ final class ArchiveRecord {
         summary = resource.summary
         body = resource.body
         capturedAt = resource.capturedAt
+        archivedAt = resource.archivedAt
         isFavorite = resource.isFavorite
         snapshotVersion = resource.snapshotVersion
         contentSize = resource.contentSize
@@ -50,6 +53,6 @@ final class ArchiveRecord {
 
     var asResource: ArchiveResource? {
         guard let resourceKind = ArchiveResourceKind(rawValue: kind) else { return nil }
-        return ArchiveResource(resourceID: resourceID, kind: resourceKind, title: title, source: source, url: urlString.flatMap(URL.init(string:)), summary: summary, body: body, capturedAt: capturedAt, isFavorite: isFavorite, snapshotVersion: snapshotVersion, contentSize: contentSize, checksum: checksum)
+        return ArchiveResource(resourceID: resourceID, kind: resourceKind, title: title, source: source, url: urlString.flatMap(URL.init(string:)), summary: summary, body: body, capturedAt: capturedAt, archivedAt: archivedAt, isFavorite: isFavorite, snapshotVersion: snapshotVersion, contentSize: contentSize, checksum: checksum)
     }
 }

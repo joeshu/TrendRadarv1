@@ -1408,7 +1408,8 @@ private struct ArchiveSnapshotView: View {
                     }
                     VStack(alignment: .leading, spacing: 10) {
                         Label("已归档（不可变）", systemImage: "lock.shield.fill").foregroundStyle(AppTheme.brandMagenta)
-                        LabeledContent("归档时间", value: resource.capturedAt.formatted(date: .abbreviated, time: .shortened))
+                        LabeledContent("内容时间", value: resource.capturedAt.formatted(date: .abbreviated, time: .shortened))
+                        LabeledContent("归档时间", value: (resource.archivedAt ?? resource.capturedAt).formatted(date: .abbreviated, time: .shortened))
                         LabeledContent("快照版本", value: resource.snapshotVersion ?? "旧版")
                         if let size = resource.contentSize { LabeledContent("内容大小", value: ByteCountFormatter.string(fromByteCount: Int64(size), countStyle: .file)) }
                         if let checksum = resource.checksum { LabeledContent("SHA-256", value: String(checksum.prefix(12)) + "…") }
