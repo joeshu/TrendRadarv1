@@ -524,7 +524,6 @@ struct NewsDetailView: View {
             IntelligenceScreenBackground()
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
-                    PageVisualBanner(assetName: "TrendRadar-ReadingHero")
                     HStack(spacing: 8) {
                         Circle().fill(AppTheme.cyan).frame(width: 8, height: 8)
                         Text(item.source).font(AppTheme.headlineFont).foregroundStyle(AppTheme.cyan)

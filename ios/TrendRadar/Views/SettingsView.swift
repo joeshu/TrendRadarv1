@@ -362,7 +362,6 @@ struct SettingsView: View {
     private var settingsRootContent: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 16) {
-                PageVisualBanner(assetName: "TrendRadar-SettingsHero", height: 118)
                 SettingsOverviewSection(
                     platformsEnabled: settingsStore.settings.platformsEnabled,
                     rssEnabled: settingsStore.settings.rssEnabled,

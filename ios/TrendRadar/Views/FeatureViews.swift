@@ -29,7 +29,6 @@ struct FeedsView: View {
                 IntelligenceScreenBackground()
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 16) {
-                        PageVisualBanner(assetName: "TrendRadar-SubscriptionHero", height: 118)
                         sourceSummary
                         inboxFilter
                         feedPicker
@@ -504,13 +503,17 @@ struct InsightView: View {
         return store.items.filter { filterEngine.includes($0) }
     }
 
+    private var aiAvailability: String {
+        guard settingsStore.settings.ai.enabled && settingsStore.settings.aiAnalysis.enabled else { return "disabled" }
+        return KeychainStore().read("ai-availability") == "ok" ? "available" : "unverified"
+    }
+
     var body: some View {
         NavigationStack {
             ZStack {
                 IntelligenceScreenBackground()
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 16) {
-                        PageVisualBanner(assetName: "TrendRadar-InsightHero", height: 118)
                         insightWindowPicker
                         signalCard
                         sentimentCard
@@ -658,25 +661,28 @@ struct InsightView: View {
     private var aiCard: some View {
         InsightPanel(title: "AI 洞察", icon: "sparkles", tint: AppTheme.cyan) {
             VStack(alignment: .leading, spacing: 10) {
-                let aiReady = settingsStore.settings.ai.enabled && settingsStore.settings.aiAnalysis.enabled
-                Text(aiReady ? "AI 分析已启用" : "AI 分析未启用")
+                let aiReady = aiAvailability == "available"
+                let aiColor: Color = aiAvailability == "available" ? AppTheme.green : (aiAvailability == "unverified" ? AppTheme.yellow : AppTheme.red)
+                Text(aiAvailability == "available" ? "AI 配置可用" : aiAvailability == "unverified" ? "AI 配置待检测" : "AI 分析未启用")
                     .font(AppTheme.headlineFont)
-                    .foregroundStyle(AppTheme.textPrimary)
-                Text(aiReady ? "生成后，完整报告会显示在本页下方。" : "请同时启用 AI 分析与结构化报告分析，并配置 API Base URL、Key 和模型。")
+                    .foregroundStyle(aiColor)
+                Text(aiAvailability == "available" ? "接口、密钥和模型检测通过，可生成结构化洞察。" : aiAvailability == "unverified" ? "请先到配置中心检测 AI 配置，避免生成空报告。" : "请同时启用 AI 分析与结构化报告分析，并配置 API Base URL、Key 和模型。")
                     .font(AppTheme.bodyFont)
                     .foregroundStyle(AppTheme.textSecondary)
                 if aiReady {
-                    Button {
-                        generateCurrentAIReport()
-                    } label: {
+                    Button { generateCurrentAIReport() } label: {
                         Label(isGenerating ? "正在生成并分析" : "生成并展示 \(selectedWindow.title) 报告", systemImage: "doc.text.magnifyingglass")
                     }
                     .buttonStyle(AccentButtonStyle())
                     .disabled(isGenerating)
-                    Label("报告生成时会按结构化 JSON 保存情绪比例、弱信号和策略建议。", systemImage: "info.circle")
-                        .font(AppTheme.captionFont)
-                        .foregroundStyle(AppTheme.textTertiary)
+                } else {
+                    Label("前往配置中心检测 AI", systemImage: "checkmark.shield")
+                        .font(AppTheme.captionFont.weight(.semibold))
+                        .foregroundStyle(aiColor)
                 }
+                Label("报告生成时会按结构化 JSON 保存情绪比例、弱信号和策略建议。", systemImage: "info.circle")
+                    .font(AppTheme.captionFont)
+                    .foregroundStyle(AppTheme.textTertiary)
             }
         }
     }
@@ -931,7 +937,6 @@ struct HotNewsView: View {
                 IntelligenceScreenBackground()
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 16) {
-                        PageVisualBanner(assetName: "TrendRadar-RadarHero", height: 118)
                         hotNewsOverview
                         if !hotNewsStore.items.isEmpty {
                             radarSummary
@@ -1158,7 +1163,6 @@ struct HotNewsTrendView: View {
             IntelligenceScreenBackground()
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
-                    PageVisualBanner(assetName: "TrendRadar-RadarHero", height: 120)
                     Text(topic.title)
                         .font(AppTheme.titleFont)
                         .foregroundStyle(AppTheme.textPrimary)
@@ -1344,7 +1348,6 @@ struct FavoritesView: View {
                 IntelligenceScreenBackground()
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 16) {
-                        PageVisualBanner(assetName: "TrendRadar-LibraryHero", height: 118)
                         archiveMetrics
                         archiveFilter
                          if archiveStore.filteredItems.isEmpty {
@@ -1523,8 +1526,6 @@ struct ReportCenterView: View {
                     .ignoresSafeArea()
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 16) {
-                        PageVisualBanner(assetName: "TrendRadar-ReportsHero", height: 118)
-                        PageVisualBanner(assetName: "TrendRadar-ReportsHero", height: 118)
                         reportIntro
                         reportStatusStrip
                         reportScopeSummary

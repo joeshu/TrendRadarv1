@@ -319,6 +319,7 @@ struct AIService: Sendable {
         let baseURL = keychain.read("api-base").trimmingCharacters(in: .whitespacesAndNewlines)
         let apiKey = keychain.read("api-key")
         let model = keychain.read("ai-model").trimmingCharacters(in: .whitespacesAndNewlines)
+        keychain.delete("ai-availability")
         guard !baseURL.isEmpty, !apiKey.isEmpty, !model.isEmpty else {
             throw AIError.missingConfiguration
         }
@@ -334,6 +335,7 @@ struct AIService: Sendable {
             ],
             settings: settings
         )
+        keychain.write("ok", for: "ai-availability")
     }
 
     func reportAnalysis(for items: [NewsItem], settings: AppSettings) async -> ReportAIAnalysis {
