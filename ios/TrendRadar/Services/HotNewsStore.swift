@@ -160,7 +160,14 @@ final class HotNewsStore: ObservableObject {
                 replacingSourceIDs: successfulPlatformIDs
             )
             lastUpdated = Date()
+        } catch is CancellationError {
+            if items.isEmpty { await load() }
         } catch {
+            let nsError = error as NSError
+            if nsError.domain == NSURLErrorDomain, nsError.code == NSURLErrorCancelled {
+                if items.isEmpty { await load() }
+                return
+            }
             let suffix = sourceFailures.isEmpty ? "" : "失败平台：\(sourceFailures.joined(separator: "、"))。"
             let details = sourceFailures.compactMap { name in
                 sourceFailureDetails[name].map { "\(name)：\($0)" }

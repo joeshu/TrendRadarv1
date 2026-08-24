@@ -23,7 +23,7 @@ struct PremiumPanel<Content: View>: View {
     }
     var body: some View {
         content
-            .padding(17)
+            .padding(13)
             .intelligenceCard(tint: tint)
     }
 }
@@ -38,9 +38,9 @@ struct PremiumSectionHeader: View {
         self.eyebrow = eyebrow; self.title = title; self.subtitle = subtitle; self.icon = icon; self.tint = tint
     }
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: icon).font(.system(size: 18, weight: .semibold)).foregroundStyle(tint)
-                .frame(width: 38, height: 38).background(tint.opacity(0.14)).clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: icon).font(.system(size: 16, weight: .medium)).foregroundStyle(tint)
+                .frame(width: 32, height: 32).background(tint.opacity(0.14)).clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
             VStack(alignment: .leading, spacing: 4) {
                 if let eyebrow { Text(eyebrow.uppercased()).font(AppTheme.brandLabelFont).tracking(1.2).foregroundStyle(tint) }
                 Text(title).font(AppTheme.sectionTitleFont).foregroundStyle(AppTheme.textPrimary)
@@ -54,11 +54,11 @@ struct PremiumSectionHeader: View {
 struct PremiumMetricCard: View {
     let value: String; let label: String; let icon: String; let tint: Color
     var body: some View {
-        VStack(alignment: .leading, spacing: 9) {
+        VStack(alignment: .leading, spacing: 6) {
             Image(systemName: icon).font(.caption.weight(.bold)).foregroundStyle(tint)
             Text(value).font(AppTheme.numericFont).foregroundStyle(AppTheme.textPrimary).minimumScaleFactor(0.7)
             Text(label).font(AppTheme.metadataFont).foregroundStyle(AppTheme.textSecondary)
-        }.frame(maxWidth: .infinity, alignment: .leading).padding(13)
+        }.frame(maxWidth: .infinity, alignment: .leading).padding(11)
             .background(AppTheme.surface).clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(tint.opacity(0.16), lineWidth: 1))
     }
@@ -151,7 +151,7 @@ struct IntelligencePageHeader: View {
     }
 
     var body: some View {
-        HStack(alignment: .bottom, spacing: 14) {
+        HStack(alignment: .center, spacing: 12) {
             VStack(alignment: .leading, spacing: 6) {
                 Text(eyebrow.uppercased())
                     .font(AppTheme.brandLabelFont)
@@ -160,7 +160,7 @@ struct IntelligencePageHeader: View {
                 Text(title)
                     .font(AppTheme.titleFont)
                     .foregroundStyle(assetName == nil ? AppTheme.textPrimary : Color.white)
-                    .lineLimit(2)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
                     .minimumScaleFactor(0.74)
                 Text(subtitle)
                     .font(AppTheme.captionFont)
@@ -170,17 +170,17 @@ struct IntelligencePageHeader: View {
             Spacer()
             if !dynamicTypeSize.isAccessibilitySize {
                 Image(systemName: icon)
-                    .font(.system(size: 29, weight: .medium))
+                    .font(.system(size: 22, weight: .medium))
                     .foregroundStyle(AppTheme.accentGradient)
-                    .frame(width: 54, height: 54)
+                    .frame(width: 46, height: 46)
                     .background(assetName == nil ? AppTheme.surface.opacity(0.76) : Color.black.opacity(0.32))
                     .clipShape(RoundedRectangle(cornerRadius: 17, style: .continuous))
                     .overlay(RoundedRectangle(cornerRadius: 17, style: .continuous).stroke(AppTheme.cardBorder.opacity(0.55), lineWidth: 1))
                     .accessibilityHidden(true)
             }
         }
-        .padding(assetName == nil ? 0 : 18)
-        .frame(minHeight: assetName == nil ? nil : (dynamicTypeSize.isAccessibilitySize ? 188 : 158), alignment: .bottom)
+        .padding(assetName == nil ? 0 : 14)
+        .frame(minHeight: assetName == nil ? nil : (dynamicTypeSize.isAccessibilitySize ? 118 : 104), alignment: .center)
         .background {
             if let assetName {
                 Image(assetName)
@@ -196,10 +196,10 @@ struct IntelligencePageHeader: View {
                     .accessibilityHidden(true)
             }
         }
-        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay {
             if assetName != nil {
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
                     .stroke(AppTheme.cardBorder.opacity(0.55), lineWidth: 1)
             }
         }

@@ -252,7 +252,7 @@ struct ReportDetailView: View {
                     }
                     .padding(.horizontal, 16)
                     .padding(.top, 10)
-                    .padding(.bottom, 120)
+                    .padding(.bottom, 28)
                 }
             } else if isLoading {
                 FeatureLoadingState(title: "正在加载报告", message: "读取本机快照与分析结果")

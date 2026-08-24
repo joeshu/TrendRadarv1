@@ -34,12 +34,12 @@ struct OverviewView: View {
                     }
                     .padding(.horizontal, 16)
                     .padding(.top, 8)
-                    .padding(.bottom, 120)
+                    .padding(.bottom, 28)
                 }
                 .refreshable { await refresh() }
             }
-            .navigationTitle("今日")
-            .navigationBarTitleDisplayMode(.large)
+            .navigationTitle("")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(AppTheme.background, for: .navigationBar)
             .navigationDestination(for: HotNewsTopic.self) { HotNewsTrendView(topic: $0) }
             .toolbar {
@@ -50,6 +50,7 @@ struct OverviewView: View {
                     } label: {
                         Image(systemName: "ellipsis.circle").frame(width: 44, height: 44)
                     }
+                    .buttonStyle(.plain)
                     .accessibilityLabel("今日页工具")
                 }
             }
@@ -65,10 +66,9 @@ struct OverviewView: View {
         VStack(alignment: .leading, spacing: 12) {
             IntelligencePageHeader(
                 eyebrow: Date.now.formatted(.dateTime.month(.wide).day().weekday(.wide)),
-                title: "今日情报简报",
+                title: "今日",
                 subtitle: "聚合本机订阅、热榜与分析结果",
-                icon: "sun.max.fill",
-                assetName: "TrendRadar-TodayHero"
+                icon: "sun.max.fill"
             )
             Label(isRefreshing ? "正在刷新本机数据" : lastUpdated.map { "更新于 \($0.formatted(date: .omitted, time: .shortened))" } ?? "等待首次刷新", systemImage: isRefreshing ? "arrow.triangle.2.circlepath" : "clock")
                 .font(.caption)
@@ -84,7 +84,7 @@ struct OverviewView: View {
             VStack(alignment: .leading, spacing: 12) {
                 PremiumSectionHeader(eyebrow: "LOCAL BRIEF", title: "本机摘要", subtitle: "基于当前缓存与本轮采集结果", icon: "text.alignleft", tint: AppTheme.brandCyan)
                 Text(digest.briefing)
-                    .font(.body)
+                    .font(AppTheme.bodyFont)
                     .foregroundStyle(AppTheme.textPrimary)
                     .fixedSize(horizontal: false, vertical: true)
                 if let refreshMessage {
@@ -97,13 +97,10 @@ struct OverviewView: View {
     }
 
     private var metrics: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 10) {
-                TodayMetric(value: "\(digest.newsCount)", label: "订阅情报", icon: "newspaper", tint: AppTheme.brandCyan)
-                TodayMetric(value: "\(digest.unreadCount)", label: "未处理", icon: "circle.fill", tint: AppTheme.brandIndigo)
-                TodayMetric(value: "\(hotNewsStore.topics.count)", label: "趋势主题", icon: "waveform.path.ecg", tint: AppTheme.green)
-                TodayMetric(value: "\(failureCount)", label: "来源异常", icon: "exclamationmark.triangle", tint: failureCount == 0 ? AppTheme.green : AppTheme.yellow)
-            }
+        HStack(spacing: 8) {
+            TodayMetric(value: "\(digest.newsCount)", label: "订阅情报", icon: "newspaper", tint: AppTheme.brandCyan)
+            TodayMetric(value: "\(digest.unreadCount)", label: "未处理", icon: "circle.fill", tint: AppTheme.brandIndigo)
+            TodayMetric(value: "\(hotNewsStore.topics.count)", label: "趋势主题", icon: "waveform.path.ecg", tint: AppTheme.green)
         }
     }
 
@@ -208,7 +205,14 @@ struct OverviewView: View {
         do {
             _ = try await RefreshPipelineExecutor.shared.execute(context: PipelineExecutionContext(trigger: .manual))
             await reloadStores()
+        } catch is CancellationError {
+            await reloadStores()
         } catch {
+            let nsError = error as NSError
+            if nsError.domain == NSURLErrorDomain, nsError.code == NSURLErrorCancelled {
+                await reloadStores()
+                return
+            }
             refreshMessage = "刷新失败，当前继续显示本机缓存：\(error.localizedDescription)"
             await reloadStores()
         }
@@ -238,8 +242,8 @@ private struct TodayMetric: View {
             Label(label, systemImage: icon).font(.caption.weight(.semibold)).foregroundStyle(tint)
             Text(value).font(AppTheme.numericFont).foregroundStyle(AppTheme.textPrimary)
         }
-        .frame(width: 120, alignment: .leading)
-        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(11)
         .intelligenceCard(tint: tint, cornerRadius: 16)
         .accessibilityElement(children: .combine)
     }

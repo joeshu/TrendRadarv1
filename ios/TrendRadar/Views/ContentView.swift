@@ -353,8 +353,11 @@ struct ContentView: View {
         }
         .sensoryFeedback(.selection, trigger: selectedTab)
         .tint(AppTheme.electricBlue)
-        .toolbarBackground(AppTheme.card.opacity(0.94), for: .tabBar)
-        .toolbarBackground(.visible, for: .tabBar)
+        .toolbar(.hidden, for: .tabBar)
+        .dynamicTypeSize(.small ... .xxLarge)
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            CompactAppTabBar(selection: $selectedTab)
+        }
         .safeAreaInset(edge: .top, spacing: 0) {
             if bootstrapper.startupState.status != .normal {
                 RecoveryBanner(
@@ -381,7 +384,62 @@ struct ContentView: View {
     }
 }
 
-private enum AppTab: Hashable { case today, radar, feeds, insight, library }
+private enum AppTab: Hashable, CaseIterable {
+    case today, radar, feeds, insight, library
+
+    var title: String {
+        switch self {
+        case .today: "今日"
+        case .radar: "雷达"
+        case .feeds: "订阅"
+        case .insight: "洞察"
+        case .library: "资料库"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .today: "sun.max.fill"
+        case .radar: "waveform.path.ecg"
+        case .feeds: "newspaper.fill"
+        case .insight: "sparkles"
+        case .library: "archivebox.fill"
+        }
+    }
+}
+
+private struct CompactAppTabBar: View {
+    @Binding var selection: AppTab
+
+    var body: some View {
+        HStack(spacing: 2) {
+            ForEach(AppTab.allCases, id: \.self) { tab in
+                Button {
+                    withAnimation(AppAnimation.standard) { selection = tab }
+                } label: {
+                    VStack(spacing: 3) {
+                        Image(systemName: tab.icon).font(.system(size: 18, weight: .medium))
+                        Text(tab.title).font(.system(size: 10, weight: .medium))
+                    }
+                    .foregroundStyle(selection == tab ? AppTheme.electricBlue : AppTheme.textSecondary)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 48)
+                    .background(selection == tab ? AppTheme.electricBlue.opacity(0.13) : Color.clear, in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(tab.title)
+                .accessibilityAddTraits(selection == tab ? .isSelected : [])
+            }
+        }
+        .padding(4)
+        .background(AppTheme.card.opacity(0.98), in: RoundedRectangle(cornerRadius: 17, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 17, style: .continuous).stroke(AppTheme.cardBorder.opacity(0.65), lineWidth: 1))
+        .shadow(color: .black.opacity(0.2), radius: 10, y: 3)
+        .padding(.horizontal, 12)
+        .padding(.top, 4)
+    }
+}
 
 private struct MetricPill: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -569,7 +627,7 @@ struct NewsDetailView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 16)
                 .padding(.top, 12)
-                .padding(.bottom, 120)
+                .padding(.bottom, 28)
             }
         }
         .toolbarBackground(AppTheme.background, for: .navigationBar)

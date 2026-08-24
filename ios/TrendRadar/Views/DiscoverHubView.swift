@@ -39,7 +39,7 @@ struct DiscoverHubView: View {
                         if mode == 0 { feedContent } else { insightContent }
                     }
                     .padding(20)
-                    .padding(.bottom, 150)
+                    .padding(.bottom, 28)
                 }
             }
             .navigationTitle("发现")

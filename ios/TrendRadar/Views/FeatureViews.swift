@@ -29,7 +29,7 @@ struct FeedsView: View {
                 IntelligenceScreenBackground()
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 16) {
-                        IntelligencePageHeader(eyebrow: "SUBSCRIPTION INBOX", title: "订阅与发现", subtitle: "管理信息源，阅读最新内容", icon: "newspaper.fill", assetName: "TrendRadar-SubscriptionHero")
+                        IntelligencePageHeader(eyebrow: "SUBSCRIPTION INBOX", title: "订阅", subtitle: "管理信息源，阅读最新内容", icon: "newspaper.fill")
                         feedIntro
                         sourceSummary
                         inboxFilter
@@ -89,7 +89,7 @@ struct FeedsView: View {
                 }
                 .refreshable { await store.refresh() }
             }
-            .navigationTitle("订阅")
+            .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(AppTheme.background, for: .navigationBar)
             .toolbar {
@@ -97,11 +97,13 @@ struct FeedsView: View {
                     Button { showingDiscover = true } label: {
                         ToolbarIconLabel(systemName: "magnifyingglass.circle", label: "发现与检索")
                     }
+                    .buttonStyle(.plain)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { showingSourceManager = true } label: {
                         ToolbarIconLabel(systemName: "slider.horizontal.3", label: "管理信息源")
                     }
+                    .buttonStyle(.plain)
                 }
             }
             .sheet(isPresented: $showingFeedInfo) {
@@ -240,7 +242,7 @@ struct SubscriptionSourceManager: View {
                     }
                     .padding(.horizontal, 16)
                     .padding(.top, 12)
-                    .padding(.bottom, 120)
+                    .padding(.bottom, 28)
                 }
             }
             .navigationTitle("订阅源")
@@ -406,7 +408,7 @@ struct FeedReaderView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 16)
                 .padding(.top, 12)
-                .padding(.bottom, 120)
+                .padding(.bottom, 28)
             }
         }
         .navigationTitle("阅读器")
@@ -494,10 +496,10 @@ struct InsightView: View {
                     }
                     .padding(.horizontal, 16)
                     .padding(.top, 12)
-                    .padding(.bottom, 120)
+                    .padding(.bottom, 28)
                 }
             }
-            .navigationTitle("洞察")
+            .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(AppTheme.background, for: .navigationBar)
             .toolbar {
@@ -509,6 +511,7 @@ struct InsightView: View {
                             .frame(width: 44, height: 44)
                     }
                     .accessibilityLabel("报告中心")
+                    .buttonStyle(.plain)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { showingSettings = true } label: {
@@ -516,6 +519,7 @@ struct InsightView: View {
                             .frame(width: 44, height: 44)
                     }
                     .accessibilityLabel("洞察设置")
+                    .buttonStyle(.plain)
                 }
             }
             .sheet(isPresented: $showingSettings) { SettingsView() }
@@ -549,8 +553,7 @@ struct InsightView: View {
             eyebrow: "LOCAL INTELLIGENCE",
             title: "今天值得关注什么",
             subtitle: "基于当前已抓取的新闻与真实排名",
-            icon: "sparkles",
-            assetName: "TrendRadar-InsightHero"
+            icon: "sparkles"
         )
     }
 
@@ -890,7 +893,7 @@ struct HotNewsView: View {
                 IntelligenceScreenBackground()
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 16) {
-                        IntelligencePageHeader(eyebrow: "LIVE RADAR", title: "热榜雷达", subtitle: "跨平台排名与真实变化趋势", icon: "dot.radiowaves.left.and.right", assetName: "TrendRadar-RadarHero")
+                        IntelligencePageHeader(eyebrow: "LIVE RADAR", title: "雷达", subtitle: "跨平台排名与真实变化趋势", icon: "dot.radiowaves.left.and.right")
                         hotNewsOverview
                         radarSummary
                         radarStateFilters
@@ -944,10 +947,10 @@ struct HotNewsView: View {
                         }
                     }
                     .padding(20)
-                    .padding(.bottom, 150)
+                    .padding(.bottom, 28)
                 }
             }
-            .navigationTitle("热榜")
+            .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(AppTheme.background, for: .navigationBar)
             .navigationDestination(for: HotNewsTopic.self) { topic in
@@ -1154,7 +1157,7 @@ struct HotNewsTrendView: View {
                 }
                     .padding(.horizontal, 16)
                     .padding(.top, 12)
-                    .padding(.bottom, 120)
+                    .padding(.bottom, 28)
                 }
             }
         .navigationTitle("排名时间线")
@@ -1323,10 +1326,10 @@ struct FavoritesView: View {
                     }
                     .padding(.horizontal, 16)
                     .padding(.top, 12)
-                    .padding(.bottom, 120)
+                    .padding(.bottom, 28)
                 }
             }
-             .navigationTitle("资料库")
+             .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(AppTheme.background, for: .navigationBar)
             .toolbar {
@@ -1334,6 +1337,7 @@ struct FavoritesView: View {
                     Button { showingSettings = true } label: {
                         ToolbarIconLabel(systemName: "gearshape", label: "设置")
                     }
+                    .buttonStyle(.plain)
                 }
             }
             .searchable(text: $archiveStore.searchText, prompt: "搜索标题、来源和摘要")
@@ -1355,8 +1359,7 @@ struct FavoritesView: View {
             eyebrow: "LOCAL LIBRARY",
             title: "保存真正重要的信号",
             subtitle: "新闻、趋势和报告统一归档，随时检索与分享",
-            icon: "archivebox.fill",
-            assetName: "TrendRadar-LibraryHero"
+            icon: "archivebox.fill"
         )
     }
 
@@ -1506,7 +1509,7 @@ struct ReportCenterView: View {
                     }
                     .padding(.horizontal, 16)
                     .padding(.top, 12)
-                    .padding(.bottom, 150)
+                    .padding(.bottom, 28)
                 }
             }
             .navigationTitle("报告")
@@ -1831,11 +1834,11 @@ struct FeatureEmptyState: View {
                 Image("TrendRadar-EmptyState")
                     .resizable()
                     .scaledToFit()
-                    .frame(maxWidth: 220, maxHeight: 170)
-                    .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                    .frame(maxWidth: 140, maxHeight: 86)
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                     .overlay {
                         LinearGradient(colors: [.clear, AppTheme.background.opacity(0.22)], startPoint: .top, endPoint: .bottom)
-                            .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                     }
                     .accessibilityHidden(true)
             }
@@ -1858,7 +1861,7 @@ struct FeatureEmptyState: View {
                 .buttonStyle(AccentButtonStyle())
             }
         }
-        .padding(26)
+        .padding(18)
         .frame(maxWidth: .infinity)
         .intelligenceCard(tint: AppTheme.brandCyan, cornerRadius: 22)
         .transition(reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.97)))

@@ -4,9 +4,9 @@ import UIKit
 enum AppTheme {
     // White technology surface: cool paper white, ink typography, electric cyan accents.
     static let background = adaptive(light: UIColor(red: 0.965, green: 0.978, blue: 0.992, alpha: 1), dark: UIColor(red: 0.035, green: 0.055, blue: 0.085, alpha: 1))
-    static let card = adaptive(light: .white, dark: UIColor(red: 0.075, green: 0.105, blue: 0.15, alpha: 1))
-    static let surface = adaptive(light: UIColor(red: 0.935, green: 0.955, blue: 0.978, alpha: 1), dark: UIColor(red: 0.105, green: 0.14, blue: 0.19, alpha: 1))
-    static let elevated = adaptive(light: .white, dark: UIColor(red: 0.11, green: 0.145, blue: 0.20, alpha: 1))
+    static let card = adaptive(light: .white, dark: UIColor(red: 0.045, green: 0.068, blue: 0.105, alpha: 1))
+    static let surface = adaptive(light: UIColor(red: 0.935, green: 0.955, blue: 0.978, alpha: 1), dark: UIColor(red: 0.065, green: 0.09, blue: 0.13, alpha: 1))
+    static let elevated = adaptive(light: .white, dark: UIColor(red: 0.075, green: 0.105, blue: 0.15, alpha: 1))
     static let heroGradient = LinearGradient(
         colors: [
             adaptive(light: UIColor(red: 0.86, green: 0.96, blue: 1.0, alpha: 1), dark: UIColor(red: 0.08, green: 0.20, blue: 0.29, alpha: 1)),
@@ -34,18 +34,18 @@ enum AppTheme {
     static let readerText = adaptive(light: UIColor(red: 0.19, green: 0.15, blue: 0.10, alpha: 1), dark: UIColor(red: 0.92, green: 0.86, blue: 0.73, alpha: 1))
 
     // Product typography: Chinese uses the native system sans-serif; rounded is reserved for brand eyebrow labels.
-    static let pageTitleFont = Font.largeTitle.bold()
-    static let titleFont = Font.title.weight(.semibold)
-    static let sectionTitleFont = Font.title3.weight(.semibold)
-    static let headlineFont = Font.headline.weight(.semibold)
-    static let cardTitleFont = Font.headline.weight(.semibold)
-    static let bodyFont = Font.body
-    static let readingFont = Font.body.leading(.loose)
-    static let captionFont = Font.caption
-    static let metadataFont = Font.caption2.weight(.medium)
+    static let pageTitleFont = Font.system(size: 28, weight: .semibold, design: .default)
+    static let titleFont = Font.system(size: 24, weight: .semibold, design: .default)
+    static let sectionTitleFont = Font.system(size: 19, weight: .medium, design: .default)
+    static let headlineFont = Font.system(size: 16, weight: .medium, design: .default)
+    static let cardTitleFont = Font.system(size: 16, weight: .medium, design: .default)
+    static let bodyFont = Font.system(size: 15, weight: .regular, design: .default)
+    static let readingFont = Font.system(size: 16, weight: .regular, design: .default).leading(.loose)
+    static let captionFont = Font.system(size: 12, weight: .regular, design: .default)
+    static let metadataFont = Font.system(size: 11, weight: .medium, design: .default)
     static let brandLabelFont = Font.caption2.bold()
-    static let numericFont = Font.title2.bold().monospacedDigit()
-    static let rankFont = Font.title2.bold().monospacedDigit()
+    static let numericFont = Font.system(size: 21, weight: .semibold, design: .rounded).monospacedDigit()
+    static let rankFont = Font.system(size: 20, weight: .semibold, design: .rounded).monospacedDigit()
 
     static let accentGradient = LinearGradient(
         colors: [electricBlue, violet, brandMagenta],
@@ -136,20 +136,14 @@ private struct IntelligenceCardModifier: ViewModifier {
     let cornerRadius: CGFloat
 
     private var shouldReduceTransparency: Bool { reduceTransparency || systemReduceTransparency }
+    private var resolvedCornerRadius: CGFloat { min(cornerRadius, 16) }
 
     func body(content: Content) -> some View {
         content
-            .background {
-                if shouldReduceTransparency {
-                    AppTheme.card
-                } else {
-                    Rectangle().fill(.ultraThinMaterial)
-                }
-            }
-            .background(AppTheme.card.opacity(highContrast ? 0.96 : 0.82))
-            .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+            .background(AppTheme.card.opacity(highContrast ? 1 : 0.97))
+            .clipShape(RoundedRectangle(cornerRadius: resolvedCornerRadius, style: .continuous))
             .overlay {
-                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                RoundedRectangle(cornerRadius: resolvedCornerRadius, style: .continuous)
                     .stroke(
                         LinearGradient(
                             colors: [tint.opacity(0.34), AppTheme.cardBorder.opacity(0.35)],
@@ -159,7 +153,7 @@ private struct IntelligenceCardModifier: ViewModifier {
                         lineWidth: highContrast ? 1.5 : 1
                     )
             }
-            .shadow(color: shouldReduceTransparency ? .clear : tint.opacity(highContrast ? 0.06 : 0.10), radius: 18, y: 8)
+            .shadow(color: shouldReduceTransparency ? .clear : tint.opacity(highContrast ? 0.04 : 0.07), radius: 10, y: 4)
     }
 }
 
