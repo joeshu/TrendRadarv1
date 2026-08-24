@@ -339,7 +339,6 @@ struct ContentView: View {
         }
         .tint(AppTheme.brandCyan)
         .toolbarBackground(.thinMaterial, for: .tabBar)
-        .toolbarBackgroundVisibility(.visible, for: .tabBar)
         .preferredColorScheme(.light)
     }
 }
