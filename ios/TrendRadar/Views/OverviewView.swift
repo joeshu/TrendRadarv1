@@ -44,6 +44,12 @@ struct OverviewView: View {
             .toolbarBackground(AppTheme.background, for: .navigationBar)
             .navigationDestination(for: HotNewsTopic.self) { HotNewsTrendView(topic: $0) }
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Image(systemName: "scope")
+                        .foregroundStyle(AppTheme.accentGradient)
+                        .accessibilityLabel("TrendRadar")
+                }
+
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
                         Button { Task { await refresh() } } label: { Label("立即刷新", systemImage: "arrow.clockwise") }
@@ -130,7 +136,17 @@ struct OverviewView: View {
     @ViewBuilder
     private func topicSection(title: String, subtitle: String, icon: String, topics: [HotNewsTopic]) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            PremiumSectionHeader(title: title, subtitle: subtitle, icon: icon, tint: AppTheme.brandCyan)
+            HStack(alignment: .top, spacing: 8) {
+                PremiumSectionHeader(title: title, subtitle: subtitle, icon: icon, tint: AppTheme.brandCyan)
+                if !topics.isEmpty {
+                    NavigationLink { HotNewsView() } label: {
+                        Text("查看全部")
+                            .font(AppTheme.captionFont.weight(.semibold))
+                            .foregroundStyle(AppTheme.brandCyan)
+                    }
+                    .padding(.top, 8)
+                }
+            }
             if topics.isEmpty {
                 Text("暂无符合条件的真实趋势，等待后续采集。")
                     .font(.subheadline)
