@@ -199,6 +199,7 @@ actor RefreshPipelineExecutor {
             var updated = item
             updated.isRead = oldByID[item.id]?.isRead ?? false
             updated.isFavorite = oldByID[item.id]?.isFavorite ?? false
+            updated.inboxState = oldByID[item.id]?.inboxState ?? .unprocessed
             result[item.id] = updated
         }
         var merged = Array(refreshed.values)

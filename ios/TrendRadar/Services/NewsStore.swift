@@ -119,6 +119,7 @@ final class NewsStore: ObservableObject {
                 var updated = item
                 updated.isRead = oldByID[item.id]?.isRead ?? false
                 updated.isFavorite = oldByID[item.id]?.isFavorite ?? false
+                updated.inboxState = oldByID[item.id]?.inboxState ?? .unprocessed
                 return updated
             }
             let refreshedIDs = Set(refreshedItems.map(\.id))
@@ -176,6 +177,23 @@ final class NewsStore: ObservableObject {
         items = items.map { item in
             var updated = item
             updated.isRead = true
+            return updated
+        }
+        await localStore.save(items)
+    }
+
+    func setInboxState(_ state: InboxState, for item: NewsItem) async {
+        guard let index = items.firstIndex(where: { $0.id == item.id }) else { return }
+        items[index].inboxState = state
+        await localStore.save(items)
+    }
+
+    func setInboxState(_ state: InboxState, forIDs ids: Set<String>) async {
+        guard !ids.isEmpty else { return }
+        items = items.map { item in
+            guard ids.contains(item.id) else { return item }
+            var updated = item
+            updated.inboxState = state
             return updated
         }
         await localStore.save(items)

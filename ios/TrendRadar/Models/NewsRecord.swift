@@ -14,6 +14,7 @@ final class NewsRecord {
     var bodyCachedAt: Date?
     var isRead: Bool
     var isFavorite: Bool
+    var inboxState: String = InboxState.unprocessed.rawValue
 
     init(from item: NewsItem) {
         id = item.id
@@ -27,6 +28,7 @@ final class NewsRecord {
         bodyCachedAt = item.bodyCachedAt
         isRead = item.isRead
         isFavorite = item.isFavorite
+        inboxState = item.inboxState.rawValue
     }
 
     func asNewsItem() -> NewsItem {
@@ -41,7 +43,8 @@ final class NewsRecord {
             body: body,
             bodyCachedAt: bodyCachedAt,
             isRead: isRead,
-            isFavorite: isFavorite
+            isFavorite: isFavorite,
+            inboxState: InboxState(rawValue: inboxState) ?? (isRead ? .archived : .unprocessed)
         )
     }
 }

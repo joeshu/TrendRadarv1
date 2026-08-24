@@ -11,6 +11,23 @@ private actor RetryAttemptCounter {
 }
 
 final class NewsItemTests: XCTestCase {
+    func testLegacyUnreadNewsDefaultsToUnprocessedInbox() throws {
+        let data = Data(#"{"id":"legacy-unread","title":"Unread","source":"Feed","isRead":false}"#.utf8)
+        let item = try JSONDecoder().decode(NewsItem.self, from: data)
+        XCTAssertEqual(item.inboxState, .unprocessed)
+    }
+
+    func testLegacyReadNewsDefaultsToArchivedInbox() throws {
+        let data = Data(#"{"id":"legacy-read","title":"Read","source":"Feed","isRead":true}"#.utf8)
+        let item = try JSONDecoder().decode(NewsItem.self, from: data)
+        XCTAssertEqual(item.inboxState, .archived)
+    }
+
+    func testNewsInboxStateRoundTrips() throws {
+        let original = NewsItem(id: "later", title: "Read later", source: "Feed", inboxState: .readLater)
+        let decoded = try JSONDecoder().decode(NewsItem.self, from: JSONEncoder().encode(original))
+        XCTAssertEqual(decoded.inboxState, .readLater)
+    }
     private let feed = RSSFeed(id: "test", name: "Test Feed", url: URL(string: "https://example.com/rss")!)
 
     @MainActor

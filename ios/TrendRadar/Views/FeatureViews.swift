@@ -8,7 +8,7 @@ struct FeedsView: View {
     @State private var selectedFeedID: String?
     @State private var showingFeedInfo = false
     @State private var showingSourceManager = false
-    @State private var showingUnreadOnly = false
+    @State private var selectedInboxState: InboxState = .unprocessed
 
     private var enabledFeeds: [ConfigFeed] {
         settingsStore.settings.customFeeds.filter(\.isEnabled)
@@ -16,7 +16,7 @@ struct FeedsView: View {
 
     private var feedItems: [NewsItem] {
         let filterEngine = FilterEngine(settings: settingsStore.settings)
-        let filtered = store.items.filter { filterEngine.includes($0) && (!showingUnreadOnly || !$0.isRead) }
+        let filtered = store.items.filter { filterEngine.includes($0) && $0.inboxState == selectedInboxState }
         guard let selectedFeedID else { return filtered }
         guard let feed = settingsStore.settings.customFeeds.first(where: { $0.id == selectedFeedID }) else { return [] }
         return filtered.filter { $0.source == feed.name }
@@ -31,14 +31,9 @@ struct FeedsView: View {
                         PremiumSectionHeader(eyebrow: "DISCOVER", title: "订阅与发现", subtitle: "管理信息源，阅读最新内容", icon: "newspaper.fill", tint: AppTheme.brandCyan)
                         feedIntro
                         sourceSummary
+                        inboxFilter
                         feedPicker
-                        HStack {
-                            Toggle("仅未读", isOn: $showingUnreadOnly)
-                            Spacer()
-                            Button("全部已读") { Task { await store.markAllRead() } }
-                                .font(AppTheme.captionFont)
-                                .foregroundStyle(AppTheme.cyan)
-                        }
+                        bulkActions
                         if !store.sourceFailures.isEmpty {
                             SourceHealthBanner(title: "部分 RSS 源暂不可用", detail: store.sourceFailures.joined(separator: "、"), tint: AppTheme.yellow)
                         }
@@ -59,6 +54,17 @@ struct FeedsView: View {
                                     CompactFeedCard(item: item)
                                 }
                                 .buttonStyle(.plain)
+                                .contextMenu {
+                                    ForEach(InboxState.allCases, id: \.self) { state in
+                                        Button { Task { await store.setInboxState(state, for: item) } } label: {
+                                            Label(state.title, systemImage: state.systemImage)
+                                        }
+                                        .disabled(item.inboxState == state)
+                                    }
+                                    Button { Task { await store.toggleFavorite(item) } } label: {
+                                        Label(item.isFavorite ? "取消收藏" : "收藏", systemImage: item.isFavorite ? "star.slash" : "star")
+                                    }
+                                }
                                 .overlay(alignment: .topTrailing) {
                                     if relatedTopic(for: item) != nil {
                                         Text("关联热榜")
@@ -139,6 +145,40 @@ struct FeedsView: View {
                 ForEach(enabledFeeds) { feed in
                     FeedFilterChip(title: feed.name, isSelected: selectedFeedID == feed.id) { selectedFeedID = feed.id }
                 }
+            }
+        }
+    }
+
+    private var inboxFilter: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(InboxState.allCases, id: \.self) { state in
+                    let count = store.items.filter { $0.inboxState == state }.count
+                    FeedFilterChip(title: "\(state.title) \(count)", isSelected: selectedInboxState == state) {
+                        withAnimation(.easeInOut(duration: 0.2)) { selectedInboxState = state }
+                    }
+                    .accessibilityLabel("\(state.title)，\(count) 条")
+                }
+            }
+        }
+        .accessibilityLabel("收件箱状态筛选")
+    }
+
+    private var bulkActions: some View {
+        HStack(spacing: 12) {
+            Label("当前 \(feedItems.count) 条", systemImage: selectedInboxState.systemImage)
+                .font(AppTheme.captionFont)
+                .foregroundStyle(AppTheme.textSecondary)
+            Spacer()
+            if selectedInboxState != .archived, !feedItems.isEmpty {
+                Button("全部归档") {
+                    let ids = Set(feedItems.map(\.id))
+                    Task { await store.setInboxState(.archived, forIDs: ids) }
+                }
+                .font(AppTheme.captionFont.weight(.semibold))
+                .foregroundStyle(AppTheme.cyan)
+                .frame(minHeight: 44)
+                .accessibilityHint("归档当前筛选结果")
             }
         }
     }

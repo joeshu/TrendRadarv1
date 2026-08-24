@@ -387,6 +387,7 @@ actor LocalStore {
         record.bodyCachedAt = item.bodyCachedAt
         record.isRead = item.isRead
         record.isFavorite = item.isFavorite
+        record.inboxState = item.inboxState.rawValue
     }
 
     private func loadLegacyJSON() -> [NewsItem] {

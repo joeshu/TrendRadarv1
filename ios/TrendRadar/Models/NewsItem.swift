@@ -1,5 +1,27 @@
 import Foundation
 
+enum InboxState: String, Codable, CaseIterable, Sendable {
+    case unprocessed
+    case readLater
+    case archived
+
+    var title: String {
+        switch self {
+        case .unprocessed: return "未处理"
+        case .readLater: return "稍后读"
+        case .archived: return "已归档"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .unprocessed: return "tray"
+        case .readLater: return "bookmark"
+        case .archived: return "archivebox"
+        }
+    }
+}
+
 struct NewsItem: Codable, Identifiable, Hashable, Sendable {
     let id: String
     let title: String
@@ -12,10 +34,11 @@ struct NewsItem: Codable, Identifiable, Hashable, Sendable {
     var bodyCachedAt: Date?
     var isRead: Bool = false
     var isFavorite: Bool = false
+    var inboxState: InboxState = .unprocessed
 
-    private enum CodingKeys: String, CodingKey { case id, title, source, url, publishedAt, summary, author, body, bodyCachedAt, isRead, isFavorite }
+    private enum CodingKeys: String, CodingKey { case id, title, source, url, publishedAt, summary, author, body, bodyCachedAt, isRead, isFavorite, inboxState }
 
-    init(id: String = UUID().uuidString, title: String, source: String, url: URL? = nil, publishedAt: Date? = nil, summary: String? = nil, author: String? = nil, body: String? = nil, bodyCachedAt: Date? = nil, isRead: Bool = false, isFavorite: Bool = false) {
+    init(id: String = UUID().uuidString, title: String, source: String, url: URL? = nil, publishedAt: Date? = nil, summary: String? = nil, author: String? = nil, body: String? = nil, bodyCachedAt: Date? = nil, isRead: Bool = false, isFavorite: Bool = false, inboxState: InboxState = .unprocessed) {
         self.id = id
         self.title = title
         self.source = source
@@ -27,6 +50,7 @@ struct NewsItem: Codable, Identifiable, Hashable, Sendable {
         self.bodyCachedAt = bodyCachedAt
         self.isRead = isRead
         self.isFavorite = isFavorite
+        self.inboxState = inboxState
     }
 
     init(from decoder: Decoder) throws {
@@ -42,6 +66,7 @@ struct NewsItem: Codable, Identifiable, Hashable, Sendable {
         bodyCachedAt = try container.decodeIfPresent(Date.self, forKey: .bodyCachedAt)
         isRead = try container.decodeIfPresent(Bool.self, forKey: .isRead) ?? false
         isFavorite = try container.decodeIfPresent(Bool.self, forKey: .isFavorite) ?? false
+        inboxState = try container.decodeIfPresent(InboxState.self, forKey: .inboxState) ?? (isRead ? .archived : .unprocessed)
     }
 }
 
