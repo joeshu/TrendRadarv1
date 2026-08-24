@@ -368,7 +368,6 @@ struct FeedReaderView: View {
                             .font(AppTheme.metadataFont).foregroundStyle(AppTheme.textTertiary)
                         ProgressView(value: readingProgress).tint(AppTheme.brandCyan)
                     }
-                    PageVisualBanner(assetName: "TrendRadar-ReadingHero")
                     Text(item.source.uppercased())
                         .font(AppTheme.captionFont)
                         .foregroundStyle(AppTheme.cyan)
@@ -539,7 +538,7 @@ struct InsightView: View {
     }
 
     private func loadLatestAnalysis() async {
-        guard let latest = reportStore.reports.first else {
+        guard let latest = reportStore.reports.max(by: { $0.generatedAt < $1.generatedAt }) else {
             latestAnalysis = nil
             return
         }
@@ -671,8 +670,19 @@ struct InsightView: View {
                 diagnostics: reportStore.diagnostics(news: store, hotNews: hotNewsStore)
             )
             await reportStore.refreshLatestAIAnalysis()
-            await loadLatestAnalysis()
-            actionFeedback = reportStore.errorMessage.map { .failure($0) } ?? .success("AI æ´žå¯ŸæŠ¥å‘Šå·²ç”Ÿæˆå¹¶ä¿å­˜")
+            if let generated = await reportStore.latestGeneratedDetail() {
+                latestAnalysis = generated.aiAnalysis
+                if let failure = generated.aiAnalysis?.failureMessage, !failure.isEmpty {
+                    actionFeedback = .failure("æŠ¥å‘Šå·²ä¿å­˜ï¼Œä½† AI åˆ†æžå¤±è´¥ï¼š\(failure)")
+                } else if generated.aiAnalysis?.hasContent == true {
+                    actionFeedback = .success("AI æ´žå¯ŸæŠ¥å‘Šå·²ç”Ÿæˆå¹¶ä¿å­˜")
+                } else {
+                    actionFeedback = .failure("æŠ¥å‘Šå·²ä¿å­˜ï¼Œä½†æ²¡æœ‰ç”Ÿæˆå¯ç”¨çš„ AI åˆ†æžï¼Œè¯·æ£€æŸ¥ AI é…ç½®")
+                }
+            } else {
+                await loadLatestAnalysis()
+                actionFeedback = .failure(reportStore.errorMessage ?? "æŠ¥å‘Šç”Ÿæˆå¤±è´¥ï¼Œè¯·ç¨åŽé‡è¯•")
+            }
         }
     }
 
@@ -715,7 +725,7 @@ struct InsightView: View {
                         }
                     }
                     NavigationLink {
-                        if let report = reportStore.reports.first {
+                        if let report = reportStore.reports.max(by: { $0.generatedAt < $1.generatedAt }) {
                             ReportDetailView(reportID: report.id)
                         }
                     } label: {
@@ -725,7 +735,7 @@ struct InsightView: View {
                 }
             } else {
                 VStack(alignment: .leading, spacing: 10) {
-                    if let latest = reportStore.reports.first {
+                    if let latest = reportStore.reports.max(by: { $0.generatedAt < $1.generatedAt }) {
                         Text("æœ€è¿‘æŠ¥å‘Šå°šæœªç”Ÿæˆ AI åˆ†æž")
                             .font(AppTheme.bodyFont)
                             .foregroundStyle(AppTheme.textPrimary)
@@ -1173,750 +1183,7 @@ struct HotNewsTrendView: View {
         .task {
             isFollowing = topic.items.contains(where: \.isFavorite)
             snapshots = await hotNewsStore.rankSnapshots(for: topic.id)
-        }
-    }
-
-    private var trendMetrics: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                StatusBadge(title: "æœ€ä½³ #\(topic.bestRank)", systemImage: "number", tint: AppTheme.brandCyan)
-                StatusBadge(title: "\(topic.platformCount) ä¸ªå¹³å°", systemImage: "square.stack.3d.up", tint: AppTheme.green)
-                StatusBadge(title: "\(snapshots.count) æ¬¡å¿«ç…§", systemImage: "clock.arrow.circlepath", tint: AppTheme.yellow)
-                StatusBadge(title: "è¶‹åŠ¿åˆ† \(trendScore >= 0 ? "+" : "")\(trendScore)", systemImage: "chart.line.uptrend.xyaxis", tint: trendScore >= 0 ? AppTheme.green : AppTheme.red)
-            }
-        }
-    }
-
-    private var sourceDistribution: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("æ¥æºåˆ†å¸ƒ")
-                .font(AppTheme.headlineFont)
-                .foregroundStyle(AppTheme.textPrimary)
-            ForEach(Dictionary(grouping: topic.items, by: \.platformName).keys.sorted(), id: \.self) { name in
-                HStack {
-                    Text(name)
-                        .font(AppTheme.bodyFont)
-                        .foregroundStyle(AppTheme.textSecondary)
-                    Spacer()
-                    Text("\(topic.items.filter { $0.platformName == name }.count) æ¡")
-                        .font(.caption.monospacedDigit())
-                        .foregroundStyle(AppTheme.textTertiary)
-                }
-                Divider()
-            }
-        }
-        .padding(16)
-        .intelligenceCard(tint: AppTheme.brandIndigo, cornerRadius: 16)
-    }
-}
-
-private struct HotNewsTrendRow: View {
-    let item: HotNewsItem
-
-    var body: some View {
-        HStack {
-            Text("#\(item.rank)")
-                .font(AppTheme.rankFont)
-                .foregroundStyle(item.trend == .up ? AppTheme.green : AppTheme.textSecondary)
-                .frame(width: 56, alignment: .leading)
-            VStack(alignment: .leading, spacing: 4) {
-                Text(item.platformName).font(AppTheme.captionFont).foregroundStyle(AppTheme.yellow)
-                Text(item.title).font(AppTheme.cardTitleFont).foregroundStyle(AppTheme.textPrimary).lineLimit(3)
-            }
-            Spacer()
-        }
-        .padding(12)
-        .intelligenceCard(tint: item.trend == .up ? AppTheme.green : AppTheme.brandIndigo, cornerRadius: 14)
-    }
-}
-
-private struct TrendChart: View {
-    let snapshots: [RankSnapshot]
-
-    var body: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 16, style: .continuous).fill(AppTheme.card)
-            if snapshots.count >= 2 {
-                Chart(snapshots) { snapshot in
-                    LineMark(x: .value("æ—¶é—´", snapshot.capturedAt), y: .value("æŽ’å", snapshot.rank))
-                        .foregroundStyle(by: .value("å¹³å°", snapshot.sourceName))
-                        .lineStyle(StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round))
-                    PointMark(x: .value("æ—¶é—´", snapshot.capturedAt), y: .value("æŽ’å", snapshot.rank))
-                        .foregroundStyle(by: .value("å¹³å°", snapshot.sourceName))
-                }
-                .chartYScale(domain: .automatic(includesZero: false, reversed: true))
-                .chartYAxis { AxisMarks(position: .leading) }
-                .chartXAxis { AxisMarks(values: .automatic(desiredCount: 4)) }
-                .padding(14)
-                VStack {
-                    Spacer()
-                    Text("æŽ’åè¶Šé å‰ï¼Œæ›²çº¿è¶ŠæŽ¥è¿‘é¡¶éƒ¨")
-                        .font(AppTheme.captionFont)
-                        .foregroundStyle(AppTheme.textTertiary)
-                        .padding(.bottom, 10)
-                }
-            } else {
-                Text("æ•°æ®ç§¯ç´¯ä¸­ï¼Œè‡³å°‘éœ€è¦ä¸¤æ¬¡é‡‡é›†")
-                    .font(AppTheme.bodyFont)
-                    .foregroundStyle(AppTheme.textSecondary)
-            }
-        }
-        .frame(height: 220)
-    }
-}
-
-private extension RadarFilter {
-    var title: String {
-        switch self {
-        case .all: return "å…¨éƒ¨"
-        case .rising: return "ä¸Šå‡"
-        case .new: return "æ–°è¿›"
-        case .sustained: return "æŒç»­"
-        case .following: return "å…³æ³¨"
-        }
-    }
-
-    var systemImage: String {
-        switch self {
-        case .all: return "line.3.horizontal.decrease"
-        case .rising: return "arrow.up.right"
-        case .new: return "sparkles"
-        case .sustained: return "clock"
-        case .following: return "star"
-        }
-    }
-}
-
-struct FavoritesView: View {
-    @EnvironmentObject private var store: NewsStore
-    @EnvironmentObject private var hotNewsStore: HotNewsStore
-    @EnvironmentObject private var reportStore: ReportStore
-    @EnvironmentObject private var archiveStore: ArchiveStore
-    @State private var showingSettings = false
-
-    var body: some View {
-        NavigationStack {
-            ZStack {
-                IntelligenceScreenBackground()
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 16) {
-                        archiveFilter
-                         if archiveStore.filteredItems.isEmpty {
-                             FeatureEmptyState(icon: "archivebox", title: "èµ„æ–™åº“è¿˜æ˜¯ç©ºçš„", message: "æ”¶è—è¶‹åŠ¿æˆ–æŠ¥å‘Šï¼Œæˆ–åœ¨è®¢é˜…ä¸­å½’æ¡£æ–‡ç« ï¼Œå®ƒä»¬ä¼šå®‰å…¨ä¿å­˜åœ¨è¿™é‡Œã€‚")
-                                .frame(maxWidth: .infinity)
-                                .padding(.top, 32)
-                        } else {
-                            ForEach(archiveStore.filteredItems) { resource in
-                                NavigationLink(value: resource) {
-                                    ArchiveResourceRow(resource: resource)
-                                }
-                                .buttonStyle(.plain)
-                                .contextMenu {
-                                    ShareLink(item: resource.shareText) { Label("åˆ†äº«", systemImage: "square.and.arrow.up") }
-                                    Button(role: .destructive) { Task { await archiveStore.delete(resource) } } label: {
-                                        Label("ç§»å‡ºèµ„æ–™åº“", systemImage: "trash")
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.top, 12)
-                    .padding(.bottom, 28)
-                }
-            }
-             .navigationTitle("èµ„æ–™åº“")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(AppTheme.background, for: .navigationBar)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button { showingSettings = true } label: {
-                        ToolbarIconLabel(systemName: "gearshape", label: "è®¾ç½®")
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .searchable(text: $archiveStore.searchText, prompt: "æœç´¢æ ‡é¢˜ã€æ¥æºå’Œæ‘˜è¦")
-            .navigationDestination(for: ArchiveResource.self) { resource in
-                archiveDestination(resource)
-            }
-            .task {
-                await archiveStore.synchronize(news: store.items, topics: hotNewsStore.topics, reports: reportStore.reports)
-            }
-            .alert("èµ„æ–™åº“", isPresented: Binding(get: { archiveStore.errorMessage != nil }, set: { if !$0 { archiveStore.errorMessage = nil } })) {
-                Button("ç¡®å®š", role: .cancel) { archiveStore.errorMessage = nil }
-            } message: { Text(archiveStore.errorMessage ?? "") }
-            .sheet(isPresented: $showingSettings) { SettingsView() }
-        }
-    }
-
-    private var archiveHeader: some View {
-        IntelligencePageHeader(
-            eyebrow: "LOCAL LIBRARY",
-            title: "ä¿å­˜çœŸæ­£é‡è¦çš„ä¿¡å·",
-            subtitle: "æ–°é—»ã€è¶‹åŠ¿å’ŒæŠ¥å‘Šç»Ÿä¸€å½’æ¡£ï¼Œéšæ—¶æ£€ç´¢ä¸Žåˆ†äº«",
-            icon: "archivebox.fill"
-        )
-    }
-
-    private var archiveFilter: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                FeedFilterChip(title: "å…¨éƒ¨ \(archiveStore.items.count)", isSelected: archiveStore.selectedKind == nil) { archiveStore.selectedKind = nil }
-                ForEach(ArchiveResourceKind.allCases, id: \.self) { kind in
-                    let count = archiveStore.items.filter { $0.kind == kind }.count
-                    FeedFilterChip(title: "\(kind.title) \(count)", isSelected: archiveStore.selectedKind == kind) { archiveStore.selectedKind = kind }
-                }
-            }
-        }
-        .accessibilityLabel("èµ„æ–™ç±»åž‹ç­›é€‰")
-    }
-
-    @ViewBuilder
-    private func archiveDestination(_ resource: ArchiveResource) -> some View {
-        switch resource.kind {
-        case .rss:
-            if let item = store.items.first(where: { $0.id == resource.resourceID }) { NewsDetailView(item: item) }
-            else { ArchiveSnapshotView(resource: resource) }
-        case .hotlist:
-            if let topic = hotNewsStore.topics.first(where: { $0.id == resource.resourceID }) { HotNewsTrendView(topic: topic) }
-            else { ArchiveSnapshotView(resource: resource) }
-        case .report:
-            if let id = UUID(uuidString: resource.resourceID), reportStore.reports.contains(where: { $0.id == id }) { ReportDetailView(reportID: id) }
-            else { ArchiveSnapshotView(resource: resource) }
-        }
-    }
-}
-
-private struct ArchiveResourceRow: View {
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    let resource: ArchiveResource
-
-    var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: resource.kind.systemImage)
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(AppTheme.cyan)
-                .frame(width: 42, height: 42)
-                .background(AppTheme.cyan.opacity(0.12), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 5) {
-                Text(resource.title).font(AppTheme.cardTitleFont).foregroundStyle(AppTheme.textPrimary).lineLimit(dynamicTypeSize.isAccessibilitySize ? 4 : 2)
-                Text("\(resource.kind.title) Â· \(resource.source)").font(AppTheme.captionFont).foregroundStyle(AppTheme.textSecondary).lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
-                Text(resource.capturedAt, format: .relative(presentation: .named)).font(AppTheme.captionFont).foregroundStyle(AppTheme.textTertiary)
-            }
-            Spacer(minLength: 4)
-            Image(systemName: "chevron.right").foregroundStyle(AppTheme.textTertiary).accessibilityHidden(true)
-        }
-        .padding(14)
-        .intelligenceCard(tint: AppTheme.cyan, cornerRadius: 16)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(resource.kind.title)ï¼Œ\(resource.title)ï¼Œæ¥æº \(resource.source)")
-    }
-}
-
-private struct ArchiveSnapshotView: View {
-    let resource: ArchiveResource
-
-    var body: some View {
-        IntelligencePage {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    StatusBadge(title: resource.kind.title, systemImage: resource.kind.systemImage, tint: AppTheme.cyan)
-                    Text(resource.title).font(AppTheme.titleFont).foregroundStyle(AppTheme.textPrimary)
-                    Text(resource.source).font(AppTheme.captionFont).foregroundStyle(AppTheme.textSecondary)
-                    if let summary = resource.summary { Text(summary).font(AppTheme.bodyFont).foregroundStyle(AppTheme.textSecondary) }
-                    if let body = resource.body, !body.isEmpty {
-                        Text(body).font(AppTheme.readingFont).foregroundStyle(AppTheme.textSecondary).lineSpacing(6)
-                    }
-                    VStack(alignment: .leading, spacing: 10) {
-                        Label("å·²å½’æ¡£ï¼ˆä¸å¯å˜ï¼‰", systemImage: "lock.shield.fill").foregroundStyle(AppTheme.brandMagenta)
-                        LabeledContent("å†…å®¹æ—¶é—´", value: resource.capturedAt.formatted(date: .abbreviated, time: .shortened))
-                        LabeledContent("å½’æ¡£æ—¶é—´", value: (resource.archivedAt ?? resource.capturedAt).formatted(date: .abbreviated, time: .shortened))
-                        LabeledContent("å¿«ç…§ç‰ˆæœ¬", value: resource.snapshotVersion ?? "æ—§ç‰ˆ")
-                        if let size = resource.contentSize { LabeledContent("å†…å®¹å¤§å°", value: ByteCountFormatter.string(fromByteCount: Int64(size), countStyle: .file)) }
-                        if let checksum = resource.checksum { LabeledContent("SHA-256", value: String(checksum.prefix(12)) + "â€¦") }
-                    }
-                    .font(AppTheme.captionFont)
-                    .padding(16)
-                    .intelligenceCard(tint: AppTheme.brandMagenta, cornerRadius: 16)
-                    if let url = resource.url { Link(destination: url) { Label("æ‰“å¼€åŽŸæ–‡", systemImage: "arrow.up.right") }.buttonStyle(OutlineButtonStyle()) }
-                    ShareLink(item: resource.shareText) { Label("åˆ†äº«èµ„æ–™", systemImage: "square.and.arrow.up").frame(maxWidth: .infinity) }
-                        .buttonStyle(AccentButtonStyle()).frame(minHeight: 44)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(16)
-            }
-        }
-        .navigationTitle("å½’æ¡£å¿«ç…§")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(AppTheme.background, for: .navigationBar)
-    }
-}
-
-struct ReportCenterView: View {
-    @EnvironmentObject private var store: NewsStore
-    @EnvironmentObject private var hotNewsStore: HotNewsStore
-    @EnvironmentObject private var settingsStore: SettingsStore
-    @EnvironmentObject private var reportStore: ReportStore
-    @State private var showingReportGenerator = false
-
-    var body: some View {
-        NavigationStack {
-            ZStack {
-                IntelligenceScreenBackground()
-                LinearGradient(colors: [AppTheme.brandIndigo.opacity(0.12), .clear], startPoint: .topLeading, endPoint: .center)
-                    .ignoresSafeArea()
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 16) {
-                        reportIntro
-                        reportStatusStrip
-                        reportToolbar
-                        if reportStore.isLoading {
-                            FeatureLoadingState(title: "æ­£åœ¨åŠ è½½æŠ¥å‘Š", message: "åŒæ­¥æœ¬æœºæŠ¥å‘Šç´¢å¼•ä¸Žå¿«ç…§")
-                        } else if reportStore.filteredReports.isEmpty {
-                            FeatureEmptyState(icon: "doc.text.magnifyingglass", title: "æš‚æ— æŠ¥å‘Š", message: "ç”Ÿæˆä¸€ä»½æŠ¥å‘ŠåŽï¼Œå®ƒä¼šå›ºå®šä¿å­˜å½“æ—¶çš„æ–°é—»å¿«ç…§ã€‚", actionTitle: "ç”Ÿæˆç¬¬ä¸€ä»½æŠ¥å‘Š") {
-                                showingReportGenerator = true
-                            }
-                                .frame(maxWidth: .infinity)
-                                .padding(.top, 32)
-                        } else {
-                            ForEach(reportStore.filteredReports) { report in
-                                NavigationLink {
-                                    ReportDetailView(reportID: report.id)
-                                } label: {
-                                    ReportSummaryCard(report: report)
-                                }
-                                .buttonStyle(.plain)
-                                .contextMenu {
-                                    Button {
-                                        Task { await reportStore.toggleFavorite(id: report.id) }
-                                    } label: {
-                                        Label(report.isFavorite ? "å–æ¶ˆæ”¶è—" : "æ”¶è—", systemImage: report.isFavorite ? "star.slash" : "star")
-                                    }
-                                    Button(role: .destructive) {
-                                        Task { await reportStore.delete(id: report.id) }
-                                    } label: {
-                                        Label("åˆ é™¤æŠ¥å‘Š", systemImage: "trash")
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.top, 12)
-                    .padding(.bottom, 28)
-                }
-            }
-            .navigationTitle("æŠ¥å‘Š")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(AppTheme.background, for: .navigationBar)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button { showingReportGenerator = true } label: {
-                        ToolbarIconLabel(systemName: "plus", label: "ç”ŸæˆæŠ¥å‘Š")
-                    }
-                }
-            }
-            .sheet(isPresented: $showingReportGenerator) {
-                ReportGeneratorSheet { type, windowStart, includeRSS, includeHotlist, length, depth, language in
-                    Task {
-                        await store.refresh(showError: false, autoReport: false)
-                        await hotNewsStore.refresh(settings: settingsStore.settings, showError: false)
-                        var reportSettings = settingsStore.settings
-                        reportSettings.aiAnalysis.language = language
-                        reportSettings.aiAnalysis.maxNewsForAnalysis = [60, 150, 300][depth]
-                        reportSettings.report.maxNewsPerKeyword = [5, 0, 30][length]
-                        let rssItems = includeRSS ? store.items.filter { item in
-                            windowStart.map { (item.publishedAt ?? .distantPast) >= $0 } ?? true
-                        } : []
-                        let hotItems = includeHotlist ? hotNewsStore.items.filter { item in
-                            windowStart.map { (item.publishedAt ?? .distantPast) >= $0 } ?? true
-                        } : []
-                        await reportStore.generate(type: type, settings: reportSettings, items: rssItems, hotlistItems: hotItems, windowStart: windowStart, diagnostics: reportStore.diagnostics(news: store, hotNews: hotNewsStore))
-                    }
-                }
-            }
-            .overlay {
-                if reportStore.isGenerating {
-                    ZStack {
-                        Color.black.opacity(0.28).ignoresSafeArea()
-                        FeatureLoadingState(title: "æ­£åœ¨ç”ŸæˆæŠ¥å‘Š", message: "é‡‡é›†ã€ç­›é€‰ã€åˆ†æžå¹¶ä¿å­˜æœ¬æœºå¿«ç…§")
-                            .frame(maxWidth: 320)
-                            .padding(24)
-                    }
-                    .transition(.opacity)
-                }
-            }
-            .animation(AppAnimation.standard, value: reportStore.isGenerating)
-            .sensoryFeedback(.success, trigger: reportStore.reports.count)
-            .alert("æŠ¥å‘Šæ“ä½œ", isPresented: Binding(get: { reportStore.errorMessage != nil }, set: { if !$0 { reportStore.errorMessage = nil } })) {
-                Button("é‡æ–°åŠ è½½") { Task { await reportStore.load() } }
-                Button("ç¡®å®š", role: .cancel) { reportStore.errorMessage = nil }
-            } message: {
-                Text(reportStore.errorMessage ?? "")
-            }
-            .task { await reportStore.load() }
-        }
-    }
-
-    private var reportStatusStrip: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: 8) { reportMetrics }
-            VStack(spacing: 8) { reportMetrics }
-        }
-    }
-
-    @ViewBuilder
-    private var reportMetrics: some View {
-        PremiumMetricCard(value: "\(reportStore.reports.count)", label: "å…¨éƒ¨æŠ¥å‘Š", icon: "doc.text", tint: AppTheme.brandCyan)
-        PremiumMetricCard(value: "\(reportStore.reports.filter(\.isFavorite).count)", label: "å·²æ”¶è—", icon: "star.fill", tint: AppTheme.yellow)
-        PremiumMetricCard(value: "\(reportStore.reports.filter { $0.type == .daily }.count)", label: "æ—¥æŠ¥", icon: "calendar", tint: AppTheme.brandMagenta)
-    }
-
-    private var reportToolbar: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 8) {
-                Image(systemName: "line.3.horizontal.decrease.circle.fill")
-                    .foregroundStyle(AppTheme.brandCyan)
-                Text("æŠ¥å‘Šæ£€ç´¢")
-                    .font(AppTheme.headlineFont)
-                    .foregroundStyle(AppTheme.textPrimary)
-                Spacer()
-                Text(reportStore.favoritesOnly ? "ä»…æ”¶è—" : reportStore.selectedType?.displayName ?? "å…¨éƒ¨ç±»åž‹")
-                    .font(AppTheme.captionFont)
-                    .foregroundStyle(AppTheme.textSecondary)
-            }
-            HStack(spacing: 8) {
-                HStack(spacing: 8) {
-                    Image(systemName: "magnifyingglass")
-                        .foregroundStyle(AppTheme.brandCyan)
-                    TextField("æœç´¢æŠ¥å‘Šæ ‡é¢˜", text: $reportStore.searchText)
-                        .textFieldStyle(.plain)
-                    if !reportStore.searchText.isEmpty {
-                        Button { reportStore.searchText = "" } label: {
-                            Image(systemName: "xmark.circle.fill")
-                                .foregroundStyle(AppTheme.textTertiary)
-                        }
-                    }
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 11)
-                .intelligenceCard(tint: AppTheme.brandCyan, cornerRadius: 12)
-                Menu {
-                    Button("å…¨éƒ¨ç±»åž‹") { reportStore.selectedType = nil }
-                    ForEach(ReportType.allCases, id: \.self) { type in
-                        Button(type.displayName) { reportStore.selectedType = type }
-                    }
-                    Divider()
-                    Toggle("ä»…æ”¶è—", isOn: $reportStore.favoritesOnly)
-                } label: {
-                    Image(systemName: reportStore.selectedType == nil && !reportStore.favoritesOnly ? "line.3.horizontal.decrease.circle" : "line.3.horizontal.decrease.circle.fill")
-                        .font(.title3)
-                        .foregroundStyle(AppTheme.cyan)
-                        .frame(width: 42, height: 42)
-                        .intelligenceCard(tint: AppTheme.brandCyan, cornerRadius: 12)
-                }
-            }
-        }
-    }
-
-    private var reportIntro: some View {
-        IntelligencePageHeader(
-            eyebrow: "REPORT ARCHIVE",
-            title: "æœ¬åœ°æƒ…æŠ¥æ¡£æ¡ˆ",
-            subtitle: "ä¿å­˜é‡‡é›†æ—¶åˆ»çš„æ–°é—»å¿«ç…§å’Œåˆ†æžç»“æžœ",
-            icon: "doc.text.magnifyingglass",
-            assetName: "TrendRadar-ReportsHero"
-        )
-    }
-}
-
-struct CompactFeedCard: View {
-    let item: NewsItem
-    @EnvironmentObject private var store: NewsStore
-
-    var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            Circle()
-                .fill(item.isRead ? AppTheme.textTertiary : AppTheme.cyan)
-                .frame(width: 8, height: 8)
-                .padding(.top, 6)
-            VStack(alignment: .leading, spacing: 5) {
-                HStack {
-                    Text(item.source.uppercased())
-                        .font(AppTheme.captionFont)
-                        .tracking(0.8)
-                        .foregroundStyle(AppTheme.cyan)
-                    Spacer()
-                    if item.isFavorite { Image(systemName: "star.fill").foregroundStyle(AppTheme.yellow) }
-                }
-                Text(item.translatedTitle ?? item.title)
-                    .font(AppTheme.headlineFont)
-                    .foregroundStyle(AppTheme.textPrimary)
-                    .multilineTextAlignment(.leading)
-                    .lineLimit(2)
-                if item.translatedTitle != nil {
-                    Label("å·²ç¿»è¯‘", systemImage: "character.book.closed")
-                        .font(AppTheme.captionFont)
-                        .foregroundStyle(AppTheme.brandIndigo)
-                }
-                HStack(spacing: 6) {
-                    Text(item.publishedAt?.relativeDescription ?? "åˆšåˆš")
-                    Text("Â·")
-                    Text(item.isRead ? "å·²è¯»" : "æœªè¯»")
-                    if item.summary != nil {
-                        Text("Â·")
-                        Label("å·²æ‘˜è¦", systemImage: "sparkles")
-                    }
-                }
-                .font(AppTheme.captionFont)
-                .foregroundStyle(AppTheme.textTertiary)
-            }
-        }
-        .padding(12)
-        .intelligenceCard(tint: item.isRead ? AppTheme.textTertiary : AppTheme.cyan, cornerRadius: 16)
-        .contextMenu {
-            Button {
-                Task { await store.toggleFavorite(item) }
-            } label: {
-                Label(item.isFavorite ? "å–æ¶ˆæ”¶è—" : "æ”¶è—", systemImage: item.isFavorite ? "star.slash" : "star")
-            }
-            if !item.isRead {
-                Button {
-                    Task { await store.markRead(item) }
-                } label: {
-                    Label("æ ‡è®°å·²è¯»", systemImage: "checkmark.circle")
-                }
-            }
-        }
-    }
-}
-
-struct FeedFilterChip: View {
-    let title: String
-    let isSelected: Bool
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            IntelligenceFilterChip(title, isSelected: isSelected)
-        }
-        .buttonStyle(.plain)
-    }
-}
-
-struct InsightPanel<Content: View>: View {
-    let title: String
-    let icon: String
-    let tint: Color
-    let content: Content
-
-    init(title: String, icon: String, tint: Color, @ViewBuilder content: () -> Content) {
-        self.title = title
-        self.icon = icon
-        self.tint = tint
-        self.content = content()
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Label(title, systemImage: icon)
-                .font(AppTheme.headlineFont)
-                .foregroundStyle(tint)
-            content
-        }
-        .padding(13)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .intelligenceCard(tint: tint, cornerRadius: 18)
-    }
-}
-
-struct InsightMetric: View {
-    let value: String
-    let label: String
-    let tint: Color
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(value).font(AppTheme.rankFont).foregroundStyle(tint)
-            Text(label).font(AppTheme.captionFont).foregroundStyle(AppTheme.textTertiary)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-}
-
-private struct FeedSummaryMetric: View {
-    let value: String
-    let label: String
-    let tint: Color
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text(value)
-                .font(AppTheme.rankFont)
-                .foregroundStyle(tint)
-            Text(label)
-                .font(AppTheme.captionFont)
-                .foregroundStyle(AppTheme.textTertiary)
-                .lineLimit(1)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-}
-
-private struct FlowLayout: View {
-    let items: [String]
-
-    var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                ForEach(items, id: \.self) { item in
-                    Text(item)
-                        .font(AppTheme.captionFont)
-                        .foregroundStyle(AppTheme.background)
-                        .padding(.horizontal, 11)
-                        .padding(.vertical, 7)
-                        .background(AppTheme.yellow)
-                        .clipShape(Capsule())
-                }
-            }
-        }
-    }
-}
-
-struct SourceHealthBanner: View {
-    let title: String
-    let detail: String
-    let tint: Color
-
-    var body: some View {
-        HStack(alignment: .top, spacing: 10) {
-            Image(systemName: "exclamationmark.triangle.fill")
-                .foregroundStyle(tint)
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title).font(AppTheme.headlineFont).foregroundStyle(AppTheme.textPrimary)
-                Text(detail).font(AppTheme.captionFont).foregroundStyle(AppTheme.textSecondary).lineLimit(3)
-            }
-            Spacer(minLength: 0)
-        }
-        .padding(12)
-        .background(tint.opacity(0.09))
-        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(tint.opacity(0.28), lineWidth: 1))
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-    }
-}
-
-struct FeatureEmptyState: View {
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    let icon: String
-    let title: String
-    let message: String
-    let actionTitle: String?
-    let action: (() -> Void)?
-
-    init(icon: String, title: String, message: String, actionTitle: String? = nil, action: (() -> Void)? = nil) {
-        self.icon = icon
-        self.title = title
-        self.message = message
-        self.actionTitle = actionTitle
-        self.action = action
-    }
-
-    var body: some View {
-        VStack(spacing: 12) {
-            if !dynamicTypeSize.isAccessibilitySize {
-                Image("TrendRadar-EmptyState")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(maxWidth: 140, maxHeight: 86)
-                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                    .overlay {
-                        LinearGradient(colors: [.clear, AppTheme.background.opacity(0.22)], startPoint: .top, endPoint: .bottom)
-                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                    }
-                    .accessibilityHidden(true)
-            }
-            Image(systemName: icon)
-                .font(.system(size: 22, weight: .light))
-                .foregroundStyle(AppTheme.brandCyan)
-            Text(title)
-                .font(AppTheme.sectionTitleFont)
-                .foregroundStyle(AppTheme.textPrimary)
-            Text(message)
-                .font(AppTheme.bodyFont)
-                .foregroundStyle(AppTheme.textSecondary)
-                .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
-            if let actionTitle, let action {
-                Button(action: action) {
-                    Label(actionTitle, systemImage: "arrow.clockwise")
-                        .frame(maxWidth: dynamicTypeSize.isAccessibilitySize ? .infinity : 240)
-                }
-                .buttonStyle(AccentButtonStyle())
-            }
-        }
-        .padding(18)
-        .frame(maxWidth: .infinity)
-        .intelligenceCard(tint: AppTheme.brandCyan, cornerRadius: 22)
-        .transition(reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.97)))
-    }
-}
-
-struct FeatureLoadingState: View {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    let title: String
-    let message: String
-
-    var body: some View {
-        VStack(spacing: 14) {
-            ProgressView().controlSize(.large).tint(AppTheme.brandCyan)
-            Text(title).font(AppTheme.sectionTitleFont).foregroundStyle(AppTheme.textPrimary)
-            Text(message).font(AppTheme.captionFont).foregroundStyle(AppTheme.textSecondary).multilineTextAlignment(.center)
-        }
-        .padding(26)
-        .frame(maxWidth: .infinity)
-        .intelligenceCard(tint: AppTheme.brandCyan, cornerRadius: 22)
-        .transition(reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.98)))
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(title)ï¼Œ\(message)")
-    }
-}
-
-private struct FeedInfoSheet: View {
-    let feedCount: Int
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        NavigationStack {
-            VStack(spacing: 16) {
-                Image("TrendRadar-Webhook")
-                    .resizable()
-                    .scaledToFill()
-                    .frame(height: 150)
-                    .clipped()
-                    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-                Image(systemName: "antenna.radiowaves.left.and.right")
-                    .font(.system(size: 34, weight: .light))
-                    .foregroundStyle(AppTheme.cyan)
-                Text("å·²å¯ç”¨ \(feedCount) ä¸ªè®¢é˜…æº")
-                    .font(AppTheme.sectionTitleFont)
-                    .foregroundStyle(AppTheme.textPrimary)
-                Text("RSS ä¸Ž Atom å†…å®¹ä¼šåœ¨åˆ·æ–°æ—¶å¹¶å‘æŠ“å–ï¼Œå¹¶ä¿å­˜åˆ°æœ¬åœ°æƒ…æŠ¥åº“ã€‚")
-                    .font(AppTheme.bodyFont)
-                    .foregroundStyle(AppTheme.textSecondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 24)
-                Spacer()
-            }
-            .padding(.top, 48)
-            .frame(maxWidth: .infinity)
-            .background(IntelligenceScreenBackground())
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) { Button("å®Œæˆ") { dismiss() } }
-            }
-        }
-        .tint(AppTheme.cyan)
-    }
-}
+     ómí¢G§²ÚîÆ­yÑY¥•Üì(€€€±•ÐÍ¹…ÁÍ¡½ÑÌèmI…¹­M¹…ÁÍ¡½Ñt((€€€Ù…È‰½‘äèÍ½µ”Y¥•Üì(€€€€€€€iMÑ…¬ì(€€€€€€€€€€€I½Õ¹‘•‘I•Ñ…¹±”¡½É¹•ÉI…‘¥ÕÌè€ÄØ°ÍÑå±”è€¹½¹Ñ¥¹Õ½ÕÌ¤¹™¥±°¡ÁÁQ¡•µ”¹…É¤(€€€€€€€€€€€¥˜Í¹…ÁÍ¡½ÑÌ¹½Õ¹Ð€øô€Èì(€€€€€€€€€€€€€€€¡…ÉÐ¡Í¹…ÁÍ¡½ÑÌ¤ìÍ¹…ÁÍ¡½Ð¥¸(€€€€€€€€€€€€€€€€€€€1¥¹•5…É¬¡àè€¹Ù…±Õ” ‹š^Û¦^Ðˆ°Í¹…ÁÍ¡½Ð¹…ÁÑÕÉ•‘Ð¤°äè€¹Ù…±Õ” ‹š:K–B4ˆ°Í¹…ÁÍ¡½Ð¹É…¹¬¤¤(€€€€€€€€€€€€€€€€€€€€€€€€¹™½É•É½Õ¹‘MÑå±”¡‰äè€¹Ù…±Õ” ‹–æÏ–>Àˆ°Í¹…ÁÍ¡½Ð¹Í½ÕÉ•9…µ”¤¤(€€€€€€€€€€€€€€€€€€€€€€€€¹±¥¹•MÑå±”¡MÑÉ½­•MÑå±”¡±¥¹•]¥‘Ñ è€Ì°±¥¹•…Àè€¹É½Õ¹°±¥¹•)½¥¸è€¹É½Õ¹¤¤(€€€€€€€€€€€€€€€€€€€A½¥¹Ñ5…É¬¡àè€¹Ù…±Õ” ‹š^Û¦^Ðˆ°Í¹…ÁÍ¡½Ð¹…ÁÑÕÉ•‘Ð¤°äè€¹Ù…±Õ” ‹š:K–B4ˆ°Í¹…ÁÍ¡½Ð¹É…¹¬¤¤(€€€€€€€€€€€€€€€€€€€€€€€€¹™½É•É½Õ¹‘MÑå±”¡‰äè€¹Ù…±Õ” ‹–æÏ–>Àˆ°Í¹…ÁÍ¡½Ð¹Í½ÕÉ•9…µ”¤¤(€€€€€€€€€€€€€€€ô(€€€€€€€€€€€€€€€€¹¡…ÉÑeM…±”¡‘½µ…¥¸è€¹…ÕÑ½µ…Ñ¥Œ¡¥¹±Õ‘•Íi•É¼è™…±Í”°É•Ù•ÉÍ•èÑÉÕ”¤¤(€€€€€€€€€€€€€€€€¹¡…ÉÑeá¥Ììá¥Í5…É­Ì¡Á½Í¥Ñ¥½¸è€¹±•…‘¥¹œ¤ô(€€€€€€€€€€€€€€€€¹¡…ÉÑaá¥Ììá¥Í5…É­Ì¡Ù…±Õ•Ìè€¹…ÕÑ½µ…Ñ¥Œ¡‘•Í¥É•‘½Õ¹Ðè€Ð¤¤ô(€€€€€€€€€€€€€€€€¹Á…‘‘¥¹œ ÄÐ¤(€€€€€€€€€€€€€€€YMÑ…¬ì(€€€€€€€€€€€€€€€€€€€MÁ…•È ¤(€€€€€€€€€€€€€€€€€€€Q•áÐ ‹š:K–B7¢Ú+¦vƒ–&7¾ò3šnËžêÿ¢Ú+š:—¢þG¦†Û¦ ˆ¤(€€€€€€€€€€€€€€€€€€€€€€€€¹™½¹Ð¡ÁÁQ¡•µ”¹…ÁÑ¥½¹½¹Ð¤(€€€€€€€€€€€€€€€€€€€€€€€€¹™½É•É½Õ¹‘MÑå±”¡ÁÁQ¡•µ”¹Ñ•áÑQ•ÉÑ¥…Éä¤(€€€€€€€€€€€€€€€€€€€€€€€€¹Á…‘‘¥¹œ ¹‰½ÑÑ½´°€ÄÀ¤(€€€€€€€€€€€€€€€ô(€€€€€€€€€€€ô•±Í”ì(€€€€€€€€€€€€€€€Q•áÐ ‹šVÃš6»žž¿žÒ¿’â·¾ò3¢Ï–ÂG¦r¢š’â“š²‡¦¦nˆ¤(€€€€€€€€€€€€€€€€€€€€¹™½¹Ð¡ÁÁQ¡•µ”¹‰½‘å½¹Ð¤(€€€€€€€€€€€€€€€€€€€€¹™½É•É½Õ¹‘MÑå±”¡ÁÁQ¡•µ”¹Ñ•áÑM•½¹‘…Éä¤(€€€€€€€€€€€ô(€€€€€€€ô(€€€€€€€€¹™É…µ”¡¡•¥¡Ðè€ÈÈÀ¤(€€€ô)ô()ÁÉ¥Ù…Ñ”•áÑ•¹Í¥½¸I…‘…É¥±Ñ•Èì(€€€Ù…ÈÑ¥Ñ±”èMÑÉ¥¹œì(€€€€€€€ÍÝ¥Ñ Í•±˜ì(€€€€€€€…Í”€¹…±°èÉ•ÑÕÉ¸€‹–£¦ ˆ(€€€€€€€…Í”€¹É¥Í¥¹œèÉ•ÑÕÉ¸€‹’â+–6ˆ(€€€€€€€…Í”€¹¹•ÜèÉ•ÑÕÉ¸€‹šZÃ¢þlˆ(€€€€€€€…Í”€¹ÍÕÍÑ…¥¹•èÉ•ÑÕÉ¸€‹š2žî´ˆ(€€€€€€€…Í”€¹™½±±½Ý¥¹œèÉ•ÑÕÉ¸€‹–ÏšÎ ˆ(€€€€€€€ô(€€€ô((€€€Ù…ÈÍåÍÑ•µ%µ…”èMÑÉ¥¹œì(€€€€€€€ÍÝ¥Ñ Í•±˜ì(€€€€€€€…Í”€¹…±°èÉ•ÑÕÉ¸€‰±¥¹”¸Ì¹¡½É¥é½¹Ñ…°¹‘•É•…Í”ˆ(€€€€€€€…Í”€¹É¥Í¥¹œèÉ•ÑÕÉ¸€‰…ÉÉ½Ü¹ÕÀ¹É¥¡Ðˆ(€€€€€€€…Í”€¹¹•ÜèÉ•ÑÕÉ¸€‰ÍÁ…É­±•Ìˆ(€€€€€€€…Í”€¹ÍÕÍÑ…¥¹•èÉ•ÑÕÉ¸€‰±½¬ˆ(€€€€€€€…Í”€¹™½±±½Ý¥¹œèÉ•ÑÕÉ¸€‰ÍÑ…Èˆ(€€€€€€€ô(€€€ô)ô()ÍÑÉÕÐ…Ù½É¥Ñ•ÍY¥•ÜèY¥•Üì(€€€¹Ù¥É½¹µ•¹Ñ=‰©•ÐÁÉ¥Ù…Ñ”Ù…ÈÍÑ½É”è9•ÝÍMÑ½É”(€€€¹Ù¥É½¹µ•¹Ñ=‰©•ÐÁÉ¥Ù…Ñ”Ù…È¡½Ñ9•ÝÍMÑ½É”è!½Ñ9•ÝÍMÑ½É”(€€€¹Ù¥É½¹µ•¹Ñ=‰©•ÐÁÉ¥Ù…Ñ”Ù…ÈÉ•Á½ÉÑMÑ½É”èI•Á½ÉÑMÑ½É”(€€€¹Ù¥É½¹µ•¹Ñ=‰©•ÐÁÉ¥Ù…Ñ”Ù…È…É¡¥Ù•MÑ½É”èÉ¡¥Ù•MÑ½É”(€€€MÑ…Ñ”ÁÉ¥Ù…Ñ”Ù…ÈÍ¡½Ý¥¹M•ÑÑ¥¹Ì€ô™…±Í”((€€€Ù…È‰½‘äèÍ½µ”Y¥•Üì(€€€€€€€9…Ù¥…Ñ¥½¹MÑ…¬ì(€€€€€€€€€€€iMÑ…¬ì(€€€€€€€€€€€€€€€%¹Ñ•±±¥•¹•MÉ••¹	…­É½Õ¹ ¤(€€€€€€€€€€€€€€€MÉ½±±Y¥•Üì(€€€€€€€€€€€€€€€€€€€1…éåYMÑ…¬¡…±¥¹µ•¹Ðè€¹±•…‘¥¹œ°ÍÁ…¥¹œè€ÄØ¤ì(€€€€€€€€€€€€€€€€€€€€€€€…É¡¥Ù•¥±Ñ•È(€€€€€€€€€€€€€€€€€€€€€€€€¥˜…É¡¥Ù•MÑ½É”¹™¥±Ñ•É•‘%Ñ•µÌ¹¥ÍµÁÑäì(€€€€€€€€€€€€€€€€€€€€€€€€€€€€•…ÑÕÉ•µÁÑåMÑ…Ñ”¡¥½¸è€‰…É¡¥Ù•‰½àˆ°Ñ¥Ñ±”è€‹¢ÖšZg–êO¢þcšb¿ž¦ëžjˆ°µ•ÍÍ…”è€‹šRÛ¢^?¢Ú/–*ÿš"[š*—–F+¾ò3š"[–r£¢º‹¦b’â·–öKš†šZž®ƒ¾ò3–º’î³’òk–º'–£’þw–¶c–r£¢þg¦3Žˆ¤(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€¹™É…µ”¡µ…á]¥‘Ñ è€¹¥¹™¥¹¥Ñä¤(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€¹Á…‘‘¥¹œ ¹Ñ½À°€ÌÈ¤(€€€€€€€€€€€€€€€€€€€€€€€ô•±Í”ì(€€€€€€€€€€€€€€€€€€€€€€€€€€€½É… ¡…É¡¥Ù•MÑ½É”¹™¥±Ñ•É•‘%Ñ•µÌ¤ìÉ•Í½ÕÉ”¥¸(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€9…Ù¥…Ñ¥½¹1¥¹¬¡Ù…±Õ”èÉ•Í½ÕÉ”¤ì(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€É¡¥Ù•I•Í½ÕÉ•I½Ü¡É•Í½ÕÉ”èÉ•Í½ÕÉ”¤(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€ô(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€¹‰ÕÑÑ½¹MÑå±” ¹Á±…¥¸¤(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€¹½¹Ñ•áÑ5•¹Ôì(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€M¡…É•1¥¹¬¡¥Ñ•´èÉ•Í½ÕÉ”¹Í¡…É•Q•áÐ¤ì1…‰•° ‹–"’ê¬ˆ°ÍåÍÑ•µ%µ…”è€‰ÍÅÕ…É”¹…¹¹…ÉÉ½Ü¹ÕÀˆ¤ô(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€	ÕÑÑ½¸¡É½±”è€¹‘•ÍÑÉÕÑ¥Ù”¤ìQ…Í¬ì…Ý…¥Ð…É¡¥Ù•MÑ½É”¹‘•±•Ñ”¡É•Í½ÕÉ”¤ôô±…‰•°èì(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€1…‰•° ‹žžï–ë¢ÖšZg–êLˆ°ÍåÍÑ•µ%µ…”è€‰ÑÉ…Í ˆ¤(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€ô(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€ô(€€€€€€€€€€€€€€€€€€€€€€€€€€€ô(€€€€€€€€€€€€€€€€€€€€€€€ô(€€€€€€€€€€€€€€€€€€€ô(€€€€€€€€€€€€€€€€€€€€¹Á…‘‘¥¹œ ¹¡½É¥é½¹Ñ…°°€ÄØ¤(€€€€€€€€€€€€€€€€€€€€¹Á…‘‘¥¹œ ¹Ñ½À°€ÄÈ¤(€€€€€€€€€€€€€€€€€€€€¹Á…‘‘¥¹œ ¹‰½ÑÑ½´°€Èà¤(€€€€€€€€€€€€€€€ô(€€€€€€€€€€€ô(€€€€€€€€€€€€€¹¹…Ù¥…Ñ¥½¹Q¥Ñ±” ‹¢ÖšZg–êLˆ¤(€€€€€€€€€€€€¹¹…Ù¥…Ñ¥½¹	…ÉQ¥Ñ±•¥ÍÁ±…å5½‘” ¹¥¹±¥¹”¤(€€€€€€€€€€€€¹Ñ½½±‰…É	…­É½Õ¹¡ÁÁQ¡•µ”¹‰…­É½Õ¹°™½Èè€¹¹…Ù¥…Ñ¥½¹	…È¤(€€€€€€€€€€€€¹Ñ½½±‰…Èì(€€€€€€€€€€€€€€€Q½½±‰…É%Ñ•´¡Á±…•µ•¹Ðè€¹Ñ½Á	…ÉQÉ…¥±¥¹œ¤ì(€€€€€€€€€€€€€€€€€€€	ÕÑÑ½¸ìÍ¡½Ý¥¹M•ÑÑ¥¹Ì€ôÑÉÕ”ô±…‰•°èì(€€€€€€€€€€€€€€€€€€€€€€€Q½½±‰…É%½¹1…‰•°¡ÍåÍÑ•µ9…µ”è€‰•…ÉÍ¡…Á”ˆ°±…‰•°è€‹¢ºûžö¸ˆ¤(€€€€€€€€€€€€€€€€€€€ô(€€€€€€€€€€€€€€€€€€€€¹‰ÕÑÑ½¹MÑå±” ¹Á±…¥¸¤(€€€€€€€€€€€€€€€ô(€€€€€€€€€€€ô(€€€€€€€€€€€€¹Í•…É¡…‰±”¡Ñ•áÐè€‘…É¡¥Ù•MÑ½É”¹Í•…É¡Q•áÐ°ÁÉ½µÁÐè€‹šBsžÒ‹š‚¦ŠcŽšv—šêC–J3šFc¢šˆ¤(€€€€€€€€€€€€¹¹…Ù¥…Ñ¥½¹•ÍÑ¥¹…Ñ¥½¸¡™½ÈèÉ¡¥Ù•I•Í½ÕÉ”¹Í•±˜¤ìÉ•Í½ÕÉ”¥¸(€€€€€€€€€€€€€€€…É¡¥Ù••ÍÑ¥¹…Ñ¥½¸¡É•Í½ÕÉ”¤(€€€€€€€€€€€ô(€€€€€€€€€€€€¹Ñ…Í¬ì(€€€€€€€€€€€€€€€…Ý…¥Ð…É¡¥Ù•MÑ½É”¹Íå¹¡É½¹¥é”¡¹•ÝÌèÍÑ½É”¹¥Ñ•µÌ°Ñ½Á¥Ìè¡½Ñ9•ÝÍMÑ½É”¹Ñ½Á¥Ì°É•Á½ÉÑÌèÉ•Á½ÉÑMÑ½É”¹É•Á½ÉÑÌ¤(€€€€€€€€€€€ô(€€€€€€€€€€€€¹…±•ÉÐ ‹¢ÖšZg–êLˆ°¥ÍAÉ•Í•¹Ñ•è	¥¹‘¥¹œ¡•Ðèì…É¡¥Ù•MÑ½É”¹•ÉÉ½É5•ÍÍ…”€„ô¹¥°ô°Í•Ðèì¥˜€„Àì…É¡¥Ù•MÑ½É”¹•ÉÉ½É5•ÍÍ…”€ô¹¥°ôô¤¤ì(€€€€€€€€€€€€€€€	ÕÑÑ½¸ ‹ž†»–ºhˆ°É½±”è€¹…¹•°¤ì…É¡¥Ù•MÑ½É”¹•ÉÉ½É5•ÍÍ…”€ô¹¥°ô(€€€€€€€€€€€ôµ•ÍÍ…”èìQ•áÐ¡…É¡¥Ù•MÑ½É”¹•ÉÉ½É5•ÍÍ…”€üü€ˆˆ¤ô(€€€€€€€€€€€€¹Í¡••Ð¡¥ÍAÉ•Í•¹Ñ•è€‘Í¡½Ý¥¹M•ÑÑ¥¹Ì¤ìM•ÑÑ¥¹ÍY¥•Ü ¤ô(€€€€€€€ô(€€€ô((€€€ÁÉ¥Ù…Ñ”Ù…È…É¡¥Ù•!•…‘•ÈèÍ½µ”Y¥•Üì(€€€€€€€%¹Ñ•±±¥•¹•A…•!•…‘•È (€€€€€€€€€€€•å•‰É½Üè€‰1=01%	IIdˆ°(€€€€€€€€€€€Ñ¥Ñ±”è€‹’þw–¶cžrš¶¦7¢šžj’þ‡–>Üˆ°(€€€€€€€€€€€ÍÕ‰Ñ¥Ñ±”è€‹šZÃ¦^ïŽ¢Ú/–*ÿ–J3š*—–F+žî’â–öKš†¾ò3¦j?š^ÛšŽžÒ‹’â;–"’ê¬ˆ°(€€€€€€€€€€€¥½¸è€‰…É¡¥Ù•‰½à¹™¥±°ˆ(€€€€€€€€¤(€€€ô((€€€ÁÉ¥Ù…Ñ”Ù…È…É¡¥Ù•¥±Ñ•ÈèÍ½µ”Y¥•Üì(€€€€€€€MÉ½±±Y¥•Ü ¹¡½É¥é½¹Ñ…°°Í¡½ÝÍ%¹‘¥…Ñ½ÉÌè™…±Í”¤ì(€€€€€€€€€€€!MÑ…¬¡ÍÁ…¥¹œè€à¤ì(€€€€€€€€€€€€€€€••‘¥±Ñ•É¡¥À¡Ñ¥Ñ±”è€‹–£¦ p¡…É¡¥Ù•MÑ½É”¹¥Ñ•µÌ¹½Õ¹Ð¤ˆ°¥ÍM•±•Ñ•è…É¡¥Ù•MÑ½É”¹Í•±•Ñ•‘-¥¹€ôô¹¥°¤ì…É¡¥Ù•MÑ½É”¹Í•±•Ñ•‘-¥¹€ô¹¥°ô(€€€€€€€€€€€€€€€½É… ¡É¡¥Ù•I•Í½ÕÉ•-¥¹¹…±±…Í•Ì°¥èp¹Í•±˜¤ì­¥¹¥¸(€€€€€€€€€€€€€€€€€€€±•Ð½Õ¹Ð€ô…É¡¥Ù•MÑ½É”¹¥Ñ•µÌ¹™¥±Ñ•Èì€À¹­¥¹€ôô­¥¹ô¹½Õ¹Ð(€€€€€€€€€€€€€€€€€€€••‘¥±Ñ•É¡¥À¡Ñ¥Ñ±”è€‰p¡­¥¹¹Ñ¥Ñ±”¤p¡½Õ¹Ð¤ˆ°¥ÍM•±•Ñ•è…É¡¥Ù•MÑ½É”¹Í•±•Ñ•‘-¥¹€ôô­¥¹¤ì…É¡¥Ù•MÑ½É”¹Í•±•Ñ•‘-¥¹€ô­¥¹ô(€€€€€€€€€€€€€€€ô(€€€€€€€€€€€ô(€€€€€€€ô(€€€€€€€€¹…•ÍÍ¥‰¥±¥Ñå1…‰•° ‹¢ÖšZgžÆï–z/ž¶o¦$ˆ¤(€€€ô((€€€Y¥•Ý	Õ¥±‘•È(€€€ÁÉ¥Ù…Ñ”™Õ¹Œ…É¡¥Ù••ÍÑ¥¹…Ñ¥½¸¡|É•Í½ÕÉ”èÉ¡¥Ù•I•Í½ÕÉ”¤€´øÍ½µ”Y¥•Üì(€€€€€€€ÍÝ¥Ñ É•Í½ÕÉ”¹­¥¹ì(€€€€€€€…Í”€¹ÉÍÌè(€€€€€€€€€€€¥˜±•Ð¥Ñ•´€ôÍÑ½É”¹¥Ñ•µÌ¹™¥ÉÍÐ¡Ý¡•É”èì€À¹¥€ôôÉ•Í½ÕÉ”¹É•Í½ÕÉ•%ô¤ì9•ÝÍ•Ñ…¥±Y¥•Ü¡¥Ñ•´è¥Ñ•´¤ô(€€€€€€€€€€€•±Í”ìÉ¡¥Ù•M¹…ÁÍ¡½ÑY¥•Ü¡É•Í½ÕÉ”èÉ•Í½ÕÉ”¤ô(€€€€€€€…Í”€¹¡½Ñ±¥ÍÐè(€€€€€€€€€€€¥˜±•ÐÑ½Á¥Œ€ô¡½Ñ9•ÝÍMÑ½É”¹Ñ½Á¥Ì¹™¥ÉÍÐ¡Ý¡•É”èì€À¹¥€ôôÉ•Í½ÕÉ”¹É•Í½ÕÉ•%ô¤ì!½Ñ9•ÝÍQÉ•¹‘Y¥•Ü¡Ñ½Á¥ŒèÑ½Á¥Œ¤ô(€€€€€€€€€€€•±Í”ìÉ¡¥Ù•M¹…ÁÍ¡½ÑY¥•Ü¡É•Í½ÕÉ”èÉ•Í½ÕÉ”¤ô(€€€€€€€…Í”€¹É•Á½ÉÐè(€€€€€€€€€€€¥˜±•Ð¥€ôUU%¡ÕÕ¥‘MÑÉ¥¹œèÉ•Í½ÕÉ”¹É•Í½ÕÉ•%¤°É•Á½ÉÑMÑ½É”¹É•Á½ÉÑÌ¹½¹Ñ…¥¹Ì¡Ý¡•É”èì€À¹¥€ôô¥ô¤ìI•Á½ÉÑ•Ñ…¥±Y¥•Ü¡É•Á½ÉÑ%è¥¤ô(€€€€€€€€€€€•±Í”ìÉ¡¥Ù•M¹…ÁÍ¡½ÑY¥•Ü¡É•Í½ÕÉ”èÉ•Í½ÕÉ”¤ô(€€€€€€€ô(€€€ô)ô()ÁÉ¥Ù…Ñ”ÍÑÉÕÐÉ¡¥Ù•I•Í½ÕÉ•I½ÜèY¥•Üì(€€€¹Ù¥É½¹µ•¹Ð¡p¹‘å¹…µ¥QåÁ•M¥é”¤ÁÉ¥Ù…Ñ”Ù…È‘å¹…µ¥QåÁ•M¥é”(€€€±•ÐÉ•Í½ÕÉ”èÉ¡¥Ù•I•Í½ÕÉ”((€€€Ù…È‰½‘äèÍ½µ”Y¥•Üì(€€€€€€€!MÑ…¬¡ÍÁ…¥¹œè€ÄÈ¤ì(€€€€€€€€€€€%µ…”¡ÍåÍÑ•µ9…µ”èÉ•Í½ÕÉ”¹­¥¹¹ÍåÍÑ•µ%µ…”¤(€€€€€€€€€€€€€€€€¹™½¹Ð ¹ÍåÍÑ•´¡Í¥é”è€Äà°Ý•¥¡Ðè€¹Í•µ¥‰½±¤¤(€€€€€€€€€€€€€€€€¹™½É•É½Õ¹‘MÑå±”¡ÁÁQ¡•µ”¹å…¸¤(€€€€€€€€€€€€€€€€¹™É…µ”¡Ý¥‘Ñ è€ÐÈ°¡•¥¡Ðè€ÐÈ¤(€€€€€€€€€€€€€€€€¹‰…­É½Õ¹¡ÁÁQ¡•µ”¹å…¸¹½Á…¥Ñä À¸ÄÈ¤°¥¸èI½Õ¹‘•‘I•Ñ…¹±”¡½É¹•ÉI…‘¥ÕÌè€ÄÈ°ÍÑå±”è€¹½¹Ñ¥¹Õ½ÕÌ¤¤(€€€€€€€€€€€€€€€€¹…•ÍÍ¥‰¥±¥Ñå!¥‘‘•¸¡ÑÉÕ”¤(€€€€€€€€€€€YMÑ…¬¡…±¥¹µ•¹Ðè€¹±•…‘¥¹œ°ÍÁ…¥¹œè€Ô¤ì(€€€€€€€€€€€€€€€Q•áÐ¡É•Í½ÕÉ”¹Ñ¥Ñ±”¤¹™½¹Ð¡ÁÁQ¡•µ”¹…É‘Q¥Ñ±•½¹Ð¤¹™½É•É½Õ¹‘MÑå±”¡ÁÁQ¡•µ”¹Ñ•áÑAÉ¥µ…Éä¤¹±¥¹•1¥µ¥Ð¡‘å¹…µ¥QåÁ•M¥é”¹¥Í•ÍÍ¥‰¥±¥ÑåM¥é”€ü€Ð€è€È¤(€€€€€€€€€€€€€€€Q•áÐ ‰p¡É•Í½ÕÉ”¹­¥¹¹Ñ¥Ñ±”¤ƒ
+Üp¡É•Í½ÕÉ”¹Í½ÕÉ”¤ˆ¤¹™½¹Ð¡ÁÁQ¡•µ”¹…ÁÑ¥½¹½¹Ð¤¹™½É•É½Õ¹‘MÑå±”¡ÁÁQ¡•µ”¹Ñ•áÑM•½¹‘…Éä¤¹±¥¹•1¥µ¥Ð¡‘å¹…µ¥QåÁ•M¥é”¹¥Í•ÍÍ¥‰¥±¥ÑåM¥é”€ü€È€è€Ä¤(€€€€€€€€€€€€€€€Q•áÐ¡É•Í½ÕÉ”¹…ÁÑÕÉ•‘Ð°™½Éµ…Ðè€¹É•±…Ñ¥Ù”¡ÁÉ•Í•¹Ñ…Ñ¥½¸è€¹¹…µ•¤¤¹™½¹Ð¡ÁÁQ¡•µ”¹…ÁÑ¥½¹½¹Ð¤¹™½É•É½Õ¹‘MÑå±”¡ÁÁQ¡•µ”¹Ñ•áÑQ•ÉÑ¥…Éä¤(€€€€€€€€€€€ô(€€€€€€€€€€€MÁ…•È¡µ¥¹1•¹Ñ è€Ð¤(€€€€€€€€€€€%µ…”¡ÍåÍÑ•µ9…µ”è€‰¡•ÙÉ½¸¹É¥¡Ðˆ¤¹™½É•É½Õ¹‘MÑå±”¡ÁÁQ¡•µ”¹Ñ•áÑQ•ÉÑ¥…Éä¤¹…•ÍÍ¥‰¥±¥Ñå!¥‘‘•¸¡ÑÉÕ”¤(€€€€€€€ô(€€€€€€€€¹Á…‘‘¥¹œ ÄÐ¤(€€€€€€€€¹¥¹Ñ•±±¥•¹•…É¡Ñ¥¹ÐèÁÁQ¡•µ”¹å…¸°½É¹•ÉI…‘¥ÕÌè€ÄØ¤(€€€€€€€€¹…•ÍÍ¥‰¥±¥Ñå±•µ•¹Ð¡¡¥±‘É•¸è€¹½µ‰¥¹”¤(€€€€€€€€¹…•ÍÍ¥‰¥±¥Ñå1…‰•° ‰p¡É•Í½ÕÉ”¹­¥¹¹Ñ¥Ñ±”§¾ò1p¡É•Í½ÕÉ”¹Ñ¥Ñ±”§¾ò3šv—šê@p¡É•Í½ÕÉ”¹Í½ÕÉ”¤ˆ¤(€€€ô)ô()ÁÉ¥Ù…Ñ”ÍÑÉÕÐÉ¡¥Ù•M¹…ÁÍ¡½ÑY¥•ÜèY¥•Üì(€€€±•ÐÉ•Í½ÕÉ”èÉ¡¥Ù•I•Í½ÕÉ”((€€€Ù…È‰½‘äèÍ½µ”Y¥•Üì(€€€€€€€%¹Ñ•±±¥•¹•A…”ì(€€€€€€€€€€€MÉ½±±Y¥•Üì(€€€€€€€€€€€€€€€YMÑ…¬¡…±¥¹µ•¹Ðè€¹±•…‘¥¹œ°ÍÁ…¥¹œè€ÄØ¤ì(€€€€€€€€€€€€€€€€€€€MÑ…ÑÕÍ	…‘”¡Ñ¥Ñ±”èÉ•Í½ÕÉ”¹­¥¹¹Ñ¥Ñ±”°ÍåÍÑ•µ%µ…”èÉ•Í½ÕÉ”¹­¥¹¹ÍåÍÑ•µ%µ…”°Ñ¥¹ÐèÁÁQ¡•µ”¹å…¸¤(€€€€€€€€€€€€€€€€€€€Q•áÐ¡É•Í½ÕÉ”¹Ñ¥Ñ±”¤¹™½¹Ð¡ÁÁQ¡•µ”¹Ñ¥Ñ±•½¹Ð¤¹™½É•É½Õ¹‘MÑå±”¡ÁÁQ¡•µ”¹Ñ•áÑAÉ¥µ…Éä¤(€€€€€€€€€€€€€€€€€€€Q•áÐ¡É•Í½ÕÉ”¹Í½ÕÉ”¤¹™½¹Ð¡ÁÁQ¡•µ”¹…ÁÑ¥½¹½¹Ð¤¹™½É•É½Õ¹‘MÑå±”¡ÁÁQ¡•µ”¹Ñ•áÑM•½¹‘…Éä¤(€€€€€€€€€€€€€€€€€€€¥˜±•ÐÍÕµµ…Éä€ôÉ•Í½ÕÉ”¹ÍÕµµ…ÉäìQ•áÐ¡ÍÕµµ…Éä¤¹™½¹Ð¡ÁÁQ¡•µ”¹‰½‘å½¹Ð¤¹™½É•É½Õ¹‘MÑå±”¡ÁÁQ¡•µ”¹Ñ•áÑM•½¹‘…Éä¤ô(€€€€€€€€€€€€€€€€€€€¥˜±•Ð‰½‘ä€ôÉ•Í½ÕÉ”¹‰½‘ä°€…‰½‘ä¹¥ÍµÁÑäì(€€€€€€€€€€€€€€€€€€€€€€€Q•áÐ¡‰½‘ä¤¹™½¹Ð¡ÁÁQ¡•µ”¹É•…‘¥¹½¹Ð¤¹™½É•É½Õ¹‘MÑå±”¡ÁÁQ¡•µ”¹Ñ•áÑM•½¹‘…Éä¤¹±¥¹•MÁ…¥¹œ Ø¤(€€€€€€€€€€€€€€€€€€€ô(€€€€€€€€€€€€€€€€€€€YMÑ…¬¡…±¥¹µ•¹Ðè€¹±•…‘¥¹œ°ÍÁ…¥¹œè€ÄÀ¤ì(€€€€€€€€€€€€€€€€€€€€€€€1…‰•° ‹–ÞË–öKš†¾ò#’â7–>¿–>c¾ò$ˆ°ÍåÍÑ•µ%µ…”è€‰±½¬¹Í¡¥•±¹™¥±°ˆ¤¹™½É•É½Õ¹‘MÑå±”¡ÁÁQ¡•µ”¹‰É…¹‘5…•¹Ñ„¤(€€€€€€€€€€€€€€€€€€€€€€€1…‰•±•‘½¹Ñ•¹Ð ‹––ºçš^Û¦^Ðˆ°Ù…±Õ”èÉ•Í½ÕÉ”¹…ÁÑÕÉ•‘Ð¹™½Éµ…ÑÑ•¡‘…Ñ”è€¹…‰‰É•Ù¥…Ñ•°Ñ¥µ”è€¹Í¡½ÉÑ•¹•¤¤(€€€€€€€€€€€€€€€€€€€€€€€1…‰•±•‘½¹Ñ•¹Ð ‹–öKš†š^Û¦^Ðˆ°Ù…±Õ”è€¡É•Í½ÕÉ”¹…É¡¥Ù•‘Ð€üüÉ•Í½ÕÉ”¹…ÁÑÕÉ•‘Ð¤¹™½Éµ…ÑÑ•¡‘…Ñ”è€¹…‰‰É•Ù¥…Ñ•°Ñ¥µ”è€¹Í¡½ÉÑ•¹•¤¤(€€€€€€€€€€€€€€€€€€€€€€€1…‰•±•‘½¹Ñ•¹Ð ‹–þ¯žŸž&#šr°ˆ°Ù…±Õ”èÉ•Í½ÕÉ”¹Í¹…ÁÍ¡½ÑY•ÉÍ¥½¸€üü€‹š^Ÿž& ˆ¤(€€€€€€€€€€€€€€€€€€€€€€€¥˜±•ÐÍ¥é”€ôÉ•Í½ÕÉ”¹½¹Ñ•¹ÑM¥é”ì1…‰•±•‘½¹Ñ•¹Ð ‹––ºç–’Ÿ–Â<ˆ°Ù…±Õ”è	åÑ•½Õ¹Ñ½Éµ…ÑÑ•È¹ÍÑÉ¥¹œ¡™É½µ	åÑ•½Õ¹Ðè%¹ÐØÐ¡Í¥é”¤°½Õ¹ÑMÑå±”è€¹™¥±”¤¤ô(€€€€€€€€€€€€€€€€€€€€€€€¥˜±•Ð¡•­ÍÕ´€ôÉ•Í½ÕÉ”¹¡•­ÍÕ´ì1…‰•±•‘½¹Ñ•¹Ð ‰M!´ÈÔØˆ°Ù…±Õ”èMÑÉ¥¹œ¡¡•­ÍÕ´¹ÁÉ•™¥à ÄÈ¤¤€¬€‹Š˜ˆ¤ô(€€€€€€€€€€€€€€€€€€€ô(€€€€€€€€€€€€€€€€€€€€¹™½¹Ð¡ÁÁQ¡•µ”¹…ÁÑ¥½¹½¹Ð¤(€€€€€€€€€€€€€€€€€€€€¹Á…‘‘¥¹œ ÄØ¤(€€€€€€€€€€€€€€€€€€€€¹¥¹Ñ•±±¥•¹•…É¡Ñ¥¹ÐèÁÁQ¡•µ”¹‰É…¹‘5…•¹Ñ„°½É¹•ÉI…‘¥ÕÌè€ÄØ¤(€€€€€€€€€€€€€€€€€€€¥˜±•ÐÕÉ°€ôÉ•Í½ÕÉ”¹ÕÉ°ì1¥¹¬¡‘•ÍÑ¥¹…Ñ¥½¸èÕÉ°¤ì1…‰•° ‹š&O–ò–:šZˆ°ÍåÍÑ•µ%µ…”è€‰…ÉÉ½Ü¹ÕÀ¹É¥¡Ðˆ¤ô¹‰ÕÑÑ½¹MÑå±”¡=ÕÑ±¥¹•	ÕÑÑ½¹MÑå±” ¤¤ô(€€€€€€€€€€€€€€€€€€€M¡…É•1¥¹¬¡¥Ñ•´èÉ•Í½ÕÉ”¹Í¡…É•Q•áÐ¤ì1…‰•° ‹–"’ê¯¢ÖšZdˆ°ÍåÍÑ•µ%µ…”è€‰ÍÅÕ…É”¹…¹¹…ÉÉ½Ü¹ÕÀˆ¤¹™É…µ”¡µ…á]¥‘Ñ è€¹¥¹™¥¹¥Ñä¤ô(€€€€€€€€€€€€€€€€€€€€€€€€¹‰ÕÑÑ½¹MÑå±”¡•¹Ñ	ÕÑÑ½¹MÑå±” ¤¤¹™É…µ”¡µ¥¹!•¥¡Ðè€ÐÐ¤(€€€€€€€€€€€€€€€ô(€€€€€€€€€€€€€€€€¹™É…µ”¡µ…á]¥‘Ñ è€¹¥¹™¥¹¥Ñä°…±¥¹µ•¹Ðè€¹±•…‘¥¹œ¤(€€€€€€€€€€€€€€€€¹Á…‘‘¥¹œ ÄØ¤(€€€€€€€€€€€ô(€€€€€€€ô(€€€€€€€€¹¹…Ù¥…Ñ¥½¹Q¥Ñ±” ‹–öKš†–þ¯žœˆ¤(€€€€€€€€¹¹…Ù¥…Ñ¥½¹	…ÉQ¥Ñ±•¥ÍÁ±…å5½‘” ¹¥¹±¥¹”¤(€€€€€€€€¹Ñ½½±‰…É	…­É½Õ¹¡ÁÁQ¡•µ”¹‰…­É½Õ¹°™½Èè€¹¹…Ù¥…Ñ¥½¹	…È¤(€€€ô)ô()ÍÑÉÕÐI•Á½ÉÑ•¹Ñ•ÉY¥•ÜèY¥•Üì(€€€¹Ù¥É½¹µ•¹Ñ=‰©•ÐÁÉ¥Ù…Ñ”Ù…ÈÍÑ½É”è9•ÝÍMÑ½É”(€€€¹Ù¥É½¹µ•¹Ñ=‰©•ÐÁÉ¥Ù…Ñ”Ù…È¡½Ñ9•ÝÍMÑ½É”è!½Ñ9•ÝÍMÑ½É”(€€€¹Ù¥É½¹µ•¹Ñ=‰©•ÐÁÉ¥Ù…Ñ”Ù…ÈÍ•ÑÑ¥¹ÍMÑ½É”èM•ÑÑ¥¹ÍMÑ½É”(€€€¹Ù¥É½¹µ•¹Ñ=‰©•ÐÁÉ¥Ù…Ñ”Ù…ÈÉ•Á½ÉÑMÑ½É”èI•Á½ÉÑMÑ½É”(€€€MÑ…Ñ”ÁÉ¥Ù…Ñ”Ù…ÈÍ¡½Ý¥¹I•Á½ÉÑ•¹•É…Ñ½È€ô™…±Í”((€€€Ù…È‰½‘äèÍ½µ”Y¥•Üì(€€€€€€€9…Ù¥…Ñ¥½¹MÑ…¬ì(€€€€€€€€€€€iMÑ…¬ì(€€€€€€€€€€€€€€€%¹Ñ•±±¥•¹•MÉ••¹	…­É½Õ¹ ¤(€€€€€€€€€€€€€€€1¥¹•…ÉÉ…‘¥•¹Ð¡½±½ÉÌèmÁÁQ¡•µ”¹‰É…¹‘%¹‘¥¼¹½Á…¥Ñä À¸ÄÈ¤°€¹±•…Ét°ÍÑ…ÉÑA½¥¹Ðè€¹Ñ½Á1•…‘¥¹œ°•¹‘A½¥¹Ðè€¹•¹Ñ•È¤(€€€€€€€€€€€€€€€€€€€€¹¥¹½É•ÍM…™•É•„ ¤(€€€€€€€€€€€€€€€MÉ½±±Y¥•Üì(€€€€€€€€€€€€€€€€€€€1…éåYMÑ…¬¡…±¥¹µ•¹Ðè€¹±•…‘¥¹œ°ÍÁ…¥¹œè€ÄØ¤ì(€€€€€€€€€€€€€€€€€€€€€€€É•Á½ÉÑ%¹ÑÉ¼(€€€€€€€€€€€€€€€€€€€€€€€É•Á½ÉÑMÑ…ÑÕÍMÑÉ¥À(€€€€€€€€€€€€€€€€€€€€€€€É•Á½ÉÑQ½½±‰…È(€€€€€€€€€€€€€€€€€€€€€€€¥˜É•Á½ÉÑMÑ½É”¹¥Í1½…‘¥¹œì(€€€€€€€€€€€€€€€€€€€€€€€€€€€•…ÑÕÉ•1½…‘¥¹MÑ…Ñ”¡Ñ¥Ñ±”è€‹š¶–r£–*ƒ¢ö÷š*—–F(ˆ°µ•ÍÍ…”è€‹–B3š¶—šr³šrëš*—–F+žÒ‹–òW’â;–þ¯žœˆ¤(€€€€€€€€€€€€€€€€€€€€€€€ô•±Í”¥˜É•Á½ÉÑMÑ½É”¹™¥±Ñ•É•‘I•Á½ÉÑÌ¹¥ÍµÁÑäì(€€€€€€€€€€€€€€€€€€€€€€€€€€€•…ÑÕÉ•µÁÑåMÑ…Ñ”¡¥½¸è€‰‘½Œ¹Ñ•áÐ¹µ…¹¥™å¥¹±…ÍÌˆ°Ñ¥Ñ±”è€‹šjš^ƒš*—–F(ˆ°µ•ÍÍ…”è€‹žRš"C’â’î÷š*—–F+–B;¾ò3–º’òk–në–ºk’þw–¶c–öOš^ÛžjšZÃ¦^ï–þ¯žŸŽˆ°…Ñ¥½¹Q¥Ñ±”è€‹žRš"Cž²³’â’î÷š*—–F(ˆ¤ì(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€Í¡½Ý¥¹I•Á½ÉÑ•¹•É…Ñ½È€ôÑÉÕ”(€€€€€€€€€€€€€€€€€€€€€€€€€€€ô(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€¹™É…µ”¡µ…á]¥‘Ñ è€¹¥¹™¥¹¥Ñä¤(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€¹Á…‘‘¥¹œ ¹Ñ½À°€ÌÈ¤(€€€€€€€€€€€€€€€€€€€€€€€ô•±Í”ì(€€€€€€€€€€€€€€€€€€€€€€€€€€€½É… ¡É•Á½ÉÑMÑ½É”¹™¥±Ñ•É•‘I•Á½ÉÑÌ¤ìÉ•Á½ÉÐ¥¸(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€9…Ù¥…Ñ¥½¹1¥¹¬ì(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€I•Á½ÉÑ•Ñ…¥±Y¥•Ü¡É•Á½ÉÑ%èÉ•Á½ÉÐ¹¥¤(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€ô±…‰•°èì(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€I•Á½ÉÑMÕµµ…Éå…É¡É•Á½ÉÐèÉ•Á½ÉÐ¤(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€ô(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€¹‰ÕÑÑ½¹MÑå±” ¹Á±…¥¸¤(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€¹½¹Ñ•áÑ5•¹Ôì(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€	ÕÑÑ½¸ì(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€Q…Í¬ì…Ý…¥ÐÉ•Á½ÉÑMÑ½É”¹Ñ½±•…Ù½É¥Ñ”¡¥èÉ•Á½ÉÐ¹¥¤ô(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€ô±…‰•°èì(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€1…‰•°¡É•Á½ÉÐ¹¥Í…Ù½É¥Ñ”€ü€‹–>[šÚ#šRÛ¢^<ˆ€è€‹šRÛ¢^<ˆ°ÍåÍÑ•µ%µ…”èÉ•Á½ÉÐ¹¥Í…Ù½É¥Ñ”€ü€‰ÍÑ…È¹Í±…Í ˆ€è€‰ÍÑ…Èˆ¤(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€ô(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€	ÕÑÑ½¸¡É½±”è€¹‘•ÍÑÉÕÑ¥Ù”¤ì(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€Q…Í¬ì…Ý…¥ÐÉ•Á½ÉÑMÑ½É”¹‘•±•Ñ”¡¥èÉ•Á½ÉÐ¹¥¤ô(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€ô±…‰•°èì(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€1…‰•° ‹–"ƒ¦f“š*—–F(ˆ°ÍåÍÑ•µ%µ…”è€‰ÑÉ…Í ˆ¤(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€ô(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€ô(€€€€€€€€€€€€€€€€€€€€€€€€€€€ô(€€€€€€€€€€€€€€€€€€€€€€€ô(€€€€€€€€€€€€€€€€€€€ô(€€€€€€€€€€€€€€€€€€€€¹Á…‘‘¥¹œ ¹¡½É¥é½¹Ñ…°°€ÄØ¤(€€€€€€€€€€€€€€€€€€€€¹Á…‘‘¥¹œ ¹Ñ½À°€ÄÈ¤(€€€€€€€€€€€€€€€€€€€€¹Á…‘‘¥¹œ ¹‰½ÑÑ½´°€Èà¤(€€€€€€€€€€€€€€€ô(€€€€€€€€€€€ô(€€€€€€€€€€€€¹¹…Ù¥…Ñ¥½¹Q¥Ñ±” ‹š*—–F(ˆ¤(€€€€€€€€€€€€¹¹…Ù¥…Ñ¥½¹	…ÉQ¥Ñ±•¥ÍÁ±…å5½‘” ¹¥¹±¥¹”¤(€€€€€€€€€€€€¹Ñ½½±‰…É	…­É½Õ¹¡ÁÁQ¡•µ”¹‰…­É½Õ¹°™½Èè€¹¹…Ù¥…Ñ¥½¹	…È¤(€€€€€€€€€€€€¹Ñ½½±‰…Èì(€€€€€€€€€€€€€€€Q½½±‰…É%Ñ•´¡Á±…•µ•¹Ðè€¹Ñ½Á	…ÉQÉ…¥±¥¹œ¤ì(€€€€€€€€€€€€€€€€€€€	ÕÑÑ½¸ìÍ¡½Ý¥¹I•Á½ÉÑ•¹•É…Ñ½È€ôÑÉÕ”ô±…‰•°èì(€€€€€€€€€€€€€€€€€€€€€€€Q½½±‰…É%½¹1…‰•°¡ÍåÍÑ•µ9…µ”è€‰Á±ÕÌˆ°±…‰•°è€‹žRš"Cš*—–F(ˆ¤(€€€€€€€€€€€€€€€€€€€ô(€€€€€€€€€€€€€€€ô(€€€€€€€€€€€ô(€€€€€€€€€€€€¹Í¡••Ð¡¥ÍAÉ•Í•¹Ñ•è€‘Í¡½Ý¥¹I•Á½ÉÑ•¹•É…Ñ½È¤ì(€€€€€€€€€€€€€€€I•Á½ÉÑ•¹•É…Ñ½ÉM¡••ÐìÑåÁ”°Ý¥¹‘½ÝMÑ…ÉÐ°¥¹±Õ‘•IML°¥¹±Õ‘•!½Ñ±¥ÍÐ°±•¹Ñ °‘•ÁÑ °±…¹Õ…”¥¸(€€€€€€€€€€€€€€€€€€€Q…Í¬ì(€€€€€€€€€€€€€€€€€€€€€€€…Ý…¥ÐÍÑ½É”¹É•™É•Í ¡Í¡½ÝÉÉ½Èè™…±Í”°…ÕÑ½I•Á½ÉÐè™…±Í”¤(€€€€€€€€€€€€€€€€€€€€€€€…Ý…¥Ð¡½Ñ9•ÝÍMÑ½É”¹É•™É•Í ¡Í•ÑÑ¥¹ÌèÍ•ÑÑ¥¹ÍMÑ½É”¹Í•ÑÑ¥¹Ì°Í¡½ÝÉÉ½Èè™…±Í”¤(€€€€€€€€€€€€€€€€€€€€€€€Ù…ÈÉ•Á½ÉÑM•ÑÑ¥¹Ì€ôÍ•ÑÑ¥¹ÍMÑ½É”¹Í•ÑÑ¥¹Ì(€€€€€€€€€€€€€€€€€€€€€€€É•Á½ÉÑM•ÑÑ¥¹Ì¹…¥¹…±åÍ¥Ì¹±…¹Õ…”€ô±…¹Õ…”(€€€€€€€€€€€€€€€€€€€€€€€É•Á½ÉÑM•ÑÑ¥¹Ì¹…¥¹…±åÍ¥Ì¹µ…á9•ÝÍ½É¹…±åÍ¥Ì€ôlØÀ°€ÄÔÀ°€ÌÀÁum‘•ÁÑ¡t(€€€€€€€€€€€€€€€€€€€€€€€É•Á½ÉÑM•ÑÑ¥¹Ì¹É•Á½ÉÐ¹µ…á9•ÝÍA•É-•åÝ½É€ôlÔ°€À°€ÌÁum±•¹Ñ¡t(€€€€€€€€€€€€€€€€€€€€€€€±•ÐÉÍÍ%Ñ•µÌ€ô¥¹±Õ‘•IML€üÍÑ½É”¹¥Ñ•µÌ¹™¥±Ñ•Èì¥Ñ•´¥¸(€€€€€€€€€€€€€€€€€€€€€€€€€€€Ý¥¹‘½ÝMÑ…ÉÐ¹µ…Àì€¡¥Ñ•´¹ÁÕ‰±¥Í¡•‘Ð€üü€¹‘¥ÍÑ…¹ÑA…ÍÐ¤€øô€Àô€üüÑÉÕ”(€€€€€€€€€€€€€€€€€€€€€€€ô€èmt(€€€€€€€€€€€€€€€€€€€€€€€±•Ð¡½Ñ%Ñ•µÌ€ô¥¹±Õ‘•!½Ñ±¥ÍÐ€ü¡½Ñ9•ÝÍMÑ½É”¹¥Ñ•µÌ¹™¥±Ñ•Èì¥Ñ•´¥¸(€€€€€€€€€€€€€€€€€€€€€€€€€€€Ý¥¹‘½ÝMÑ…ÉÐ¹µ…Àì€¡¥Ñ•´¹ÁÕ‰±¥Í¡•‘Ð€üü€¹‘¥ÍÑ…¹ÑA…ÍÐ¤€øô€Àô€üüÑÉÕ”(€€€€€€€€€€€€€€€€€€€€€€€ô€èmt(€€€€€€€€€€€€€€€€€€€€€€€…Ý…¥ÐÉ•Á½ÉÑMÑ½É”¹•¹•É…Ñ”¡ÑåÁ”èÑåÁ”°Í•ÑÑ¥¹ÌèÉ•Á½ÉÑM•ÑÑ¥¹Ì°¥Ñ•µÌèÉÍÍ%Ñ•µÌ°¡½Ñ±¥ÍÑ%Ñ•µÌè¡½Ñ%Ñ•µÌ°Ý¥¹‘½ÝMÑ…ÉÐèÝ¥¹‘½ÝMÑ…ÉÐ°‘¥…¹½ÍÑ¥ÌèÉ•Á½ÉÑMÑ½É”¹‘¥…¹½ÍÑ¥Ì¡¹•ÝÌèÍÑ½É”°¡½Ñ9•ÝÌè¡½Ñ9•ÝÍMÑ½É”¤¤(€€€€€€€€€€€€€€€€€€€ô(€€€€€€€€€€€€€€€ô(€€€€€€€€€€€ô(€€€€€€€€€€€€¹½Ù•É±…äì(€€€€€€€€€€€€€€€¥˜É•Á½ÉÑMÑ½É”¹¥Í•¹•É…Ñ¥¹œì(€€€€€€€€€€€€€€€€€€€iMÑ…¬ì(€€€€€€€€€€€€€€€€€€€€€€€½±½È¹‰±…¬¹½Á…¥Ñä À¸Èà¤¹¥¹½É•ÍM…™•É•„ ¤(€€€€€€€€€€€€€€€€€€€€€€€•…ÑÕÉ•1½…‘¥¹MÑ…Ñ”¡Ñ¥Ñ±”è€‹š¶–r£žRš"Cš*—–F(ˆ°µ•ÍÍ…”è€‹¦¦nŽž¶o¦'Ž–"šzC–æÛ’þw–¶cšr³šrë–þ¯žœˆ¤(€€€€€€€€€€€€€€€€€€€€€€€€€€€€¹™É…µ”¡µ…á]¥‘Ñ è€ÌÈÀ¤(€€€€€€€€€€€€€€€€€€€€€€€€€€€€¹Á…‘‘¥¹œ ÈÐ¤(€€€€€€€€€€€€€€€€€€€ô(€€€€€€€€€€€€€€€€€€€€¹ÑÉ…¹Í¥Ñ¥½¸ ¹½Á…¥Ñä¤(€€€€€€€€€€€€€€€ô(€€€€€€€€€€€ô(€€€€€€€€€€€€¹…¹¥µ…Ñ¥½¸¡ÁÁ¹¥µ…Ñ¥½¸¹ÍÑ…¹‘…É°Ù…±Õ”èÉ•Á½ÉÑMÑ½É”¹¥Í•¹•É…Ñ¥¹œ¤(€€€€€€€€€€€€¹Í•¹Í½Éå••‘‰…¬ ¹ÍÕ•ÍÌ°ÑÉ¥•ÈèÉ•Á½ÉÑMÑ½É”¹É•Á½ÉÑÌ¹½Õ¹Ð¤(€€€€€€€€€€€€¹…±•ÉÐ ‹š*—–F+šN7’öpˆ°¥ÍAÉ•Í•¹Ñ•è	¥¹‘¥¹œ¡•ÐèìÉ•Á½ÉÑMÑ½É”¹•ÉÉ½É5•ÍÍ…”€„ô¹¥°ô°Í•Ðèì¥˜€„ÀìÉ•Á½ÉÑMÑ½É”¹•ÉÉ½É5•ÍÍ…”€ô¹¥°ôô¤¤ì(€€€€€€€€€€€€€€€	ÕÑÑ½¸ ‹¦7šZÃ–*ƒ¢öôˆ¤ìQ…Í¬ì…Ý…¥ÐÉ•Á½ÉÑMÑ½É”¹±½… ¤ôô(€€€€€€€€€€€€€€€	ÕÑÑ½¸ ‹ž†»–ºhˆ°É½±”è€¹…¹•°¤ìÉ•Á½ÉÑMÑ½É”¹•ÉÉ½É5•ÍÍ…”€ô¹¥°ô(€€€€€€€€€€€ôµ•ÍÍ…”èì(€€€€€€€€€€€€€€€Q•áÐ¡É•Á½ÉÑMÑ½É”¹•ÉÉ½É5•ÍÍ…”€üü€ˆˆ¤(€€€€€€€€€€€ô(€€€€€€€€€€€€¹Ñ…Í¬ì…Ý…¥ÐÉ•Á½ÉÑMÑ½É”¹±½… ¤ô(€€€€€€€ô(€€€ô((€€€ÁÉ¥Ù…Ñ”Ù…ÈÉ•Á½ÉÑMÑ…ÑÕÍMÑÉ¥ÀèÍ½µ”Y¥•Üì(€€€€€€€Y¥•ÝQ¡…Ñ¥ÑÌ¡¥¸è€¹¡½É¥é½¹Ñ…°¤ì(€€€€€€€€€€€!MÑ…¬¡ÍÁ…¥¹œè€à¤ìÉ•Á½ÉÑ5•ÑÉ¥Ìô(€€€€€€€€€€€YMÑ…¬¡ÍÁ…¥¹œè€à¤ìÉ•Á½ÉÑ5•ÑÉ¥Ìô(€€€€€€€ô(€€€ô((€€€Y¥•Ý	Õ¥±‘•È(€€€ÁÉ¥Ù…Ñ”Ù…ÈÉ•Á½ÉÑ5•ÑÉ¥ÌèÍ½µ”Y¥•Üì(€€€€€€€AÉ•µ¥Õµ5•ÑÉ¥…É¡Ù…±Õ”è€‰p¡É•Á½ÉÑMÑ½É”¹É•Á½ÉÑÌ¹½Õ¹Ð¤ˆ°±…‰•°è€‹–£¦£š*—–F(ˆ°¥½¸è€‰‘½Œ¹Ñ•áÐˆ°Ñ¥¹ÐèÁÁQ¡•µ”¹‰É…¹‘å…¸¤(€€€€€€€AÉ•µ¥Õµ5•ÑÉ¥…É¡Ù…±Õ”è€‰p¡É•Á½ÉÑMÑ½É”¹É•Á½ÉÑÌ¹™¥±Ñ•È¡p¹¥Í…Ù½É¥Ñ”¤¹½Õ¹Ð¤ˆ°±…‰•°è€‹–ÞËšRÛ¢^<ˆ°¥½¸è€‰ÍÑ…È¹™¥±°ˆ°Ñ¥¹ÐèÁÁQ¡•µ”¹å•±±½Ü¤(€€€€€€€AÉ•µ¥Õµ5•ÑÉ¥…É¡Ù…±Õ”è€‰p¡É•Á½ÉÑMÑ½É”¹É•Á½ÉÑÌ¹™¥±Ñ•Èì€À¹ÑåÁ”€ôô€¹‘…¥±äô¹½Õ¹Ð¤ˆ°±…‰•°è€‹š^—š*”ˆ°¥½¸è€‰…±•¹‘…Èˆ°Ñ¥¹ÐèÁÁQ¡•µ”¹‰É…¹‘5…•¹Ñ„¤(€€€ô((€€€ÁÉ¥Ù…Ñ”Ù…ÈÉ•Á½ÉÑQ½½±‰…ÈèÍ½µ”Y¥•Üì(€€€€€€€YMÑ…¬¡…±¥¹µ•¹Ðè€¹±•…‘¥¹œ°ÍÁ…¥¹œè€ÄÀ¤ì(€€€€€€€€€€€!MÑ…¬¡ÍÁ…¥¹œè€à¤ì(€€€€€€€€€€€€€€€%µ…”¡ÍåÍÑ•µ9…µ”è€‰±¥¹”¸Ì¹¡½É¥é½¹Ñ…°¹‘•É•…Í”¹¥É±”¹™¥±°ˆ¤(€€€€€€€€€€€€€€€€€€€€¹™½É•É½Õ¹‘MÑå±”¡ÁÁQ¡•µ”¹‰É…¹‘å…¸¤(€€€€€€€€€€€€€€€Q•áÐ ‹š*—–F+šŽžÒˆˆ¤(€€€€€€€€€€€€€€€€€€€€¹™½¹Ð¡ÁÁQ¡•µ”¹¡•…‘±¥¹•½¹Ð¤(€€€€€€€€€€€€€€€€€€€€¹™½É•É½Õ¹‘MÑå±”¡ÁÁQ¡•µ”¹Ñ•áÑAÉ¥µ…Éä¤(€€€€€€€€€€€€€€€MÁ…•È ¤(€€€€€€€€€€€€€€€Q•áÐ¡É•Á½ÉÑMÑ½É”¹™…Ù½É¥Ñ•Í=¹±ä€ü€‹’îšRÛ¢^<ˆ€èÉ•Á½ÉÑMÑ½É”¹Í•±•Ñ•‘QåÁ”ü¹‘¥ÍÁ±…å9…µ”€üü€‹–£¦£žÆï–z,ˆ¤(€€€€€€€€€€€€€€€€€€€€¹™½¹Ð¡ÁÁQ¡•µ”¹…ÁÑ¥½¹½¹Ð¤(€€€€€€€€€€€€€€€€€€€€¹™½É•É½Õ¹‘MÑå±”¡ÁÁQ¡•µ”¹Ñ•áÑM•½¹‘…Éä¤(€€€€€€€€€€€ô(€€€€€€€€€€€!MÑ…¬¡ÍÁ…¥¹œè€à¤ì(€€€€€€€€€€€€€€€!MÑ…¬¡ÍÁ…¥¹œè€à¤ì(€€€€€€€€€€€€€€€€€€€%µ…”¡ÍåÍÑ•µ9…µ”è€‰µ…¹¥™å¥¹±…ÍÌˆ¤(€€€€€€€€€€€€€€€€€€€€€€€€¹™½É•É½Õ¹‘MÑå±”¡ÁÁQ¡•µ”¹‰É…¹‘å…¸¤(€€€€€€€€€€€€€€€€€€€Q•áÑ¥•± ‹šBsžÒ‹š*—–F+š‚¦Š`ˆ°Ñ•áÐè€‘É•Á½ÉÑMÑ½É”¹Í•…É¡Q•áÐ¤(€€€€€€€€€€€€€€€€€€€€€€€€¹Ñ•áÑ¥•±‘MÑå±” ¹Á±…¥¸¤(€€€€€€€€€€€€€€€€€€€¥˜€…É•Á½ÉÑMÑ½É”¹Í•…É¡Q•áÐ¹¥ÍµÁÑäì(€€€€€€€€€€€€€€€€€€€€€€€	ÕÑÑ½¸ìÉ•Á½ÉÑMÑ½É”¹Í•…É¡Q•áÐ€ô€ˆˆô±…‰•°èì(€€€€€€€€€€€€€€€€€€€€€€€€€€€%µ…”¡ÍåÍÑ•µ9…µ”è€‰áµ…É¬¹¥É±”¹™¥±°ˆ¤(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€¹™½É•É½Õ¹‘MÑå±”¡ÁÁQ¡•µ”¹Ñ•áÑQ•ÉÑ¥…Éä¤(€€€€€€€€€€€€€€€€€€€€€€€ô(€€€€€€€€€€€€€€€€€€€ô(€€€€€€€€€€€€€€€ô(€€€€€€€€€€€€€€€€¹Á…‘‘¥¹œ ¹¡½É¥é½¹Ñ…°°€ÄÈ¤(€€€€€€€€€€€€€€€€¹Á…‘‘¥¹œ ¹Ù•ÉÑ¥…°°€ÄÄ¤(€€€€€€€€€€€€€€€€¹¥¹Ñ•±±¥•¹•…É¡Ñ¥¹ÐèÁÁQ¡•µ”¹‰É…¹‘å…¸°½É¹•ÉI…‘¥ÕÌè€ÄÈ¤(€€€€€€€€€€€€€€€5•¹Ôì(€€€€€€€€€€€€€€€€€€€	ÕÑÑ½¸ ‹–£¦£žÆï–z,ˆ¤ìÉ•Á½ÉÑMÑ½É”¹Í•±•Ñ•‘QåÁ”€ô¹¥°ô(€€€€€€€€€€€€€€€€€€€½É… ¡I•Á½ÉÑQåÁ”¹…±±…Í•Ì°¥èp¹Í•±˜¤ìÑåÁ”¥¸(€€€€€€€€€€€€€€€€€€€€€€€	ÕÑÑ½¸¡ÑåÁ”¹‘¥ÍÁ±…å9…µ”¤ìÉ•Á½ÉÑMÑ½É”¹Í•±•Ñ•‘QåÁ”€ôÑåÁ”ô(€€€€€€€€€€€€€€€€€€€ô(€€€€€€€€€€€€€€€€€€€¥Ù¥‘•È ¤(€€€€€€€€€€€€€€€€€€€Q½±” ‹’îšRÛ¢^<ˆ°¥Í=¸è€‘É•Á½ÉÑMÑ½É”¹™…Ù½É¥Ñ•Í=¹±ä¤(€€€€€€€€€€€€€€€ô±…‰•°èì(€€€€€€€€€€€€€€€€€€€%µ…”¡ÍåÍÑ•µ9…µ”èÉ•Á½ÉÑMÑ½É”¹Í•±•Ñ•‘QåÁ”€ôô¹¥°€˜˜€…É•Á½ÉÑMÑ½É”¹™…Ù½É¥Ñ•Í=¹±ä€ü€‰±¥¹”¸Ì¹¡½É¥é½¹Ñ…°¹‘•É•…Í”¹¥É±”ˆ€è€‰±¥¹”¸Ì¹¡½É¥é½¹Ñ…°¹‘•É•…Í”¹¥É±”¹™¥±°ˆ¤(€€€€€€€€€€€€€€€€€€€€€€€€¹™½¹Ð ¹Ñ¥Ñ±”Ì¤(€€€€€€€€€€€€€€€€€€€€€€€€¹™½É•É½Õ¹‘MÑå±”¡ÁÁQ¡•µ”¹å…¸¤(€€€€€€€€€€€€€€€€€€€€€€€€¹™É…µ”¡Ý¥‘Ñ è€ÐÈ°¡•¥¡Ðè€ÐÈ¤(€€€€€€€€€€€€€€€€€€€€€€€€¹¥¹Ñ•±±¥•¹•…É¡Ñ¥¹ÐèÁÁQ¡•µ”¹‰É…¹‘å…¸°½É¹•ÉI…‘¥ÕÌè€ÄÈ¤(€€€€€€€€€€€€€€€ô(€€€€€€€€€€€ô(€€€€€€€ô(€€€ô((€€€ÁÉ¥Ù…Ñ”Ù…ÈÉ•Á½ÉÑ%¹ÑÉ¼èÍ½µ”Y¥•Üì(€€€€€€€%¹Ñ•±±¥•¹•A…•!•…‘•È (€€€€€€€€€€€•å•‰É½Üè€‰IA=IPI!%Yˆ°(€€€€€€€€€€€Ñ¥Ñ±”è€‹šr³–rÃšš*—š†š† ˆ°(€€€€€€€€€€€ÍÕ‰Ñ¥Ñ±”è€‹’þw–¶c¦¦nš^Û–"ïžjšZÃ¦^ï–þ¯žŸ–J3–"šzCžîOšzpˆ°(€€€€€€€€€€€¥½¸è€‰‘½Œ¹Ñ•áÐ¹µ…¹¥™å¥¹±…ÍÌˆ°(€€€€€€€€€€€…ÍÍ•Ñ9…µ”è€‰QÉ•¹‘I…‘…ÈµI•Á½ÉÑÍ!•É¼ˆ(€€€€€€€€¤(€€€ô)ô()ÍÑÉÕÐ½µÁ…Ñ••‘…ÉèY¥•Üì(€€€±•Ð¥Ñ•´è9•ÝÍ%Ñ•´(€€€¹Ù¥É½¹µ•¹Ñ=‰©•ÐÁÉ¥Ù…Ñ”Ù…ÈÍÑ½É”è9•ÝÍMÑ½É”((€€€Ù…È‰½‘äèÍ½µ”Y¥•Üì(€€€€€€€!MÑ…¬¡…±¥¹µ•¹Ðè€¹Ñ½À°ÍÁ…¥¹œè€ÄÈ¤ì(€€€€€€€€€€€¥É±” ¤(€€€€€€€€€€€€€€€€¹™¥±°¡¥Ñ•´¹¥ÍI•…€üÁÁQ¡•µ”¹Ñ•áÑQ•ÉÑ¥…Éä€èÁÁQ¡•µ”¹å…¸¤(€€€€€€€€€€€€€€€€¹™É…µ”¡Ý¥‘Ñ è€à°¡•¥¡Ðè€à¤(€€€€€€€€€€€€€€€€¹Á…‘‘¥¹œ ¹Ñ½À°€Ø¤(€€€€€€€€€€€YMÑ…¬¡…±¥¹µ•¹Ðè€¹±•…‘¥¹œ°ÍÁ…¥¹œè€Ô¤ì(€€€€€€€€€€€€€€€!MÑ…¬ì(€€€€€€€€€€€€€€€€€€€Q•áÐ¡¥Ñ•´¹Í½ÕÉ”¹ÕÁÁ•É…Í• ¤¤(€€€€€€€€€€€€€€€€€€€€€€€€¹™½¹Ð¡ÁÁQ¡•µ”¹…ÁÑ¥½¹½¹Ð¤(€€€€€€€€€€€€€€€€€€€€€€€€¹ÑÉ…­¥¹œ À¸à¤(€€€€€€€€€€€€€€€€€€€€€€€€¹™½É•É½Õ¹‘MÑå±”¡ÁÁQ¡•µ”¹å…¸¤(€€€€€€€€€€€€€€€€€€€MÁ…•È ¤(€€€€€€€€€€€€€€€€€€€¥˜¥Ñ•´¹¥Í…Ù½É¥Ñ”ì%µ…”¡ÍåÍÑ•µ9…µ”è€‰ÍÑ…È¹™¥±°ˆ¤¹™½É•É½Õ¹‘MÑå±”¡ÁÁQ¡•µ”¹å•±±½Ü¤ô(€€€€€€€€€€€€€€€ô(€€€€€€€€€€€€€€€Q•áÐ¡¥Ñ•´¹ÑÉ…¹Í±…Ñ•‘Q¥Ñ±”€üü¥Ñ•´¹Ñ¥Ñ±”¤(€€€€€€€€€€€€€€€€€€€€¹™½¹Ð¡ÁÁQ¡•µ”¹¡•…‘±¥¹•½¹Ð¤(€€€€€€€€€€€€€€€€€€€€¹™½É•É½Õ¹‘MÑå±”¡ÁÁQ¡•µ”¹Ñ•áÑAÉ¥µ…Éä¤(€€€€€€€€€€€€€€€€€€€€¹µÕ±Ñ¥±¥¹•Q•áÑ±¥¹µ•¹Ð ¹±•…‘¥¹œ¤(€€€€€€€€€€€€€€€€€€€€¹±¥¹•1¥µ¥Ð È¤(€€€€€€€€€€€€€€€¥˜¥Ñ•´¹ÑÉ…¹Í±…Ñ•‘Q¥Ñ±”€„ô¹¥°ì(€€€€€€€€€€€€€€€€€€€1…‰•° ‹–ÞËžþï¢¾Dˆ°ÍåÍÑ•µ%µ…”è€‰¡…É…Ñ•È¹‰½½¬¹±½Í•ˆ¤(€€€€€€€€€€€€€€€€€€€€€€€€¹™½¹Ð¡ÁÁQ¡•µ”¹…ÁÑ¥½¹½¹Ð¤(€€€€€€€€€€€€€€€€€€€€€€€€¹™½É•É½Õ¹‘MÑå±”¡ÁÁQ¡•µ”¹‰É…¹‘%¹‘¥¼¤(€€€€€€€€€€€€€€€ô(€€€€€€€€€€€€€€€!MÑ…¬¡ÍÁ…¥¹œè€Ø¤ì(€€€€€€€€€€€€€€€€€€€Q•áÐ¡¥Ñ•´¹ÁÕ‰±¥Í¡•‘Ðü¹É•±…Ñ¥Ù••ÍÉ¥ÁÑ¥½¸€üü€‹–"k–"hˆ¤(€€€€€€€€€€€€€€€€€€€Q•áÐ ‹
+Üˆ¤(€€€€€€€€€€€€€€€€€€€Q•áÐ¡¥Ñ•´¹¥ÍI•…€ü€‹–ÞË¢¾ìˆ€è€‹šr«¢¾ìˆ¤(€€€€€€€€€€€€€€€€€€€¥˜¥Ñ•´¹ÍÕµµ…Éä€„ô¹¥°ì(€€€€€€€€€€€€€€€€€€€€€€€Q•áÐ ‹
+Üˆ¤(€€€€€€€€€€€€€€€€€€€€€€€1…‰•° ‹–ÞËšFc¢šˆ°ÍåÍÑ•µ%µ…”è€‰ÍÁ…É­±•Ìˆ¤(€€€€€€€€€€€€€€€€€€€ô(€€€€€€€€€€€€€€€ô(€€€€€€€€€€€€€€€€¹™½¹Ð¡ÁÁQ¡•µ”¹…ÁÑ¥½¹½¹Ð¤(€€€€€€€€€€€€€€€€¹™½É•É½Õ¹‘MÑå±”¡ÁÁQ¡•µ”¹Ñ•áÑQ•ÉÑ¥…Éä¤(€€€€€€€€€€€ô(€€€€€€€ô(€€€€€€€€¹Á…‘‘¥¹œ ÄÈ¤(€€€€€€€€¹¥¹Ñ•±±¥•¹•…É¡Ñ¥¹Ðè¥Ñ•´¹¥ÍI•…€üÁÁQ¡•µ”¹Ñ•áÑQ•ÉÑ¥…Éä€èÁÁQ¡•µ”¹å…¸°½É¹•ÉI…‘¥ÕÌè€ÄØ¤(€€€€€€€€¹½¹Ñ•áÑ5•¹Ôì(€€€€€€€€€€€	ÕÑÑ½¸ì(€€€€€€€€€€€€€€€Q…Í¬ì…Ý…¥ÐÍÑ½É”¹Ñ½±•…Ù½É¥Ñ”¡¥Ñ•´¤ô(€€€€€€€€€€€ô±…‰•°èì(€€€€€€€€€€€€€€€1…‰•°¡¥Ñ•´¹¥Í…Ù½É¥Ñ”€ü€‹–>[šÚ#šRÛ¢^<ˆ€è€‹šRÛ¢^<ˆ°ÍåÍÑ•µ%µ…”è¥Ñ•´¹¥Í…Ù½É¥Ñ”€ü€‰ÍÑ…È¹Í±…Í ˆ€è€‰ÍÑ…Èˆ¤(€€€€€€€€€€€ô(€€€€€€€€€€€¥˜€…¥Ñ•´¹¥ÍI•…ì(€€€€€€€€€€€€€€€	ÕÑÑ½¸ì(€€€€€€€€€€€€€€€€€€€Q…Í¬ì…Ý…¥ÐÍÑ½É”¹µ…É­I•…¡¥Ñ•´¤ô(€€€€€€€€€€€€€€€ô±…‰•°èì(€€€€€€€€€€€€€€€€€€€1…‰•° ‹š‚¢ºÃ–ÞË¢¾ìˆ°ÍåÍÑ•µ%µ…”è€‰¡•­µ…É¬¹¥É±”ˆ¤(€€€€€€€€€€€€€€€ô(€€€€€€€€€€€ô(€€€€€€€ô(€€€ô)ô()ÍÑÉÕÐ••‘¥±Ñ•É¡¥ÀèY¥•Üì(€€€±•ÐÑ¥Ñ±”èMÑÉ¥¹œ(€€€±•Ð¥ÍM•±•Ñ•è	½½°(€€€±•Ð…Ñ¥½¸è€ ¤€´øY½¥((€€€Ù…È‰½‘äèÍ½µ”Y¥•Üì(€€€€€€€	ÕÑÑ½¸¡…Ñ¥½¸è…Ñ¥½¸¤ì(€€€€€€€€€€€%¹Ñ•±±¥•¹•¥±Ñ•É¡¥À¡Ñ¥Ñ±”°¥ÍM•±•Ñ•è¥ÍM•±•Ñ•¤(€€€€€€€ô(€€€€€€€€¹‰ÕÑÑ½¹MÑå±” ¹Á±…¥¸¤(€€€ô)ô()ÍÑÉÕÐ%¹Í¥¡ÑA…¹•°ñ½¹Ñ•¹ÐèY¥•ÜøèY¥•Üì(€€€±•ÐÑ¥Ñ±”èMÑÉ¥¹œ(€€€±•Ð¥½¸èMÑÉ¥¹œ(€€€±•ÐÑ¥¹Ðè½±½È(€€€±•Ð½¹Ñ•¹Ðè½¹Ñ•¹Ð((€€€¥¹¥Ð¡Ñ¥Ñ±”èMÑÉ¥¹œ°¥½¸èMÑÉ¥¹œ°Ñ¥¹Ðè½±½È°Y¥•Ý	Õ¥±‘•È½¹Ñ•¹Ðè€ ¤€´ø½¹Ñ•¹Ð¤ì(€€€€€€€Í•±˜¹Ñ¥Ñ±”€ôÑ¥Ñ±”(€€€€€€€Í•±˜¹¥½¸€ô¥½¸(€€€€€€€Í•±˜¹Ñ¥¹Ð€ôÑ¥¹Ð(€€€€€€€Í•±˜¹½¹Ñ•¹Ð€ô½¹Ñ•¹Ð ¤(€€€ô((€€€Ù…È‰½‘äèÍ½µ”Y¥•Üì(€€€€€€€YMÑ…¬¡…±¥¹µ•¹Ðè€¹±•…‘¥¹œ°ÍÁ…¥¹œè€ÄÀ¤ì(€€€€€€€€€€€1…‰•°¡Ñ¥Ñ±”°ÍåÍÑ•µ%µ…”è¥½¸¤(€€€€€€€€€€€€€€€€¹™½¹Ð¡ÁÁQ¡•µ”¹¡•…‘±¥¹•½¹Ð¤(€€€€€€€€€€€€€€€€¹™½É•É½Õ¹‘MÑå±”¡Ñ¥¹Ð¤(€€€€€€€€€€€½¹Ñ•¹Ð(€€€€€€€ô(€€€€€€€€¹Á…‘‘¥¹œ ÄÌ¤(€€€€€€€€¹™É…µ”¡µ…á]¥‘Ñ è€¹¥¹™¥¹¥Ñä°…±¥¹µ•¹Ðè€¹±•…‘¥¹œ¤(€€€€€€€€¹¥¹Ñ•±±¥•¹•…É¡Ñ¥¹ÐèÑ¥¹Ð°½É¹•ÉI…‘¥ÕÌè€Äà¤(€€€ô)ô()ÍÑÉÕÐ%¹Í¥¡Ñ5•ÑÉ¥ŒèY¥•Üì(€€€±•ÐÙ…±Õ”èMÑÉ¥¹œ(€€€±•Ð±…‰•°èMÑÉ¥¹œ(€€€±•ÐÑ¥¹Ðè½±½È((€€€Ù…È‰½‘äèÍ½µ”Y¥•Üì(€€€€€€€YMÑ…¬¡…±¥¹µ•¹Ðè€¹±•…‘¥¹œ°ÍÁ…¥¹œè€Ð¤ì(€€€€€€€€€€€Q•áÐ¡Ù…±Õ”¤¹™½¹Ð¡ÁÁQ¡•µ”¹É…¹­½¹Ð¤¹™½É•É½Õ¹‘MÑå±”¡Ñ¥¹Ð¤(€€€€€€€€€€€Q•áÐ¡±…‰•°¤¹™½¹Ð¡ÁÁQ¡•µ”¹…ÁÑ¥½¹½¹Ð¤¹™½É•É½Õ¹‘MÑå±”¡ÁÁQ¡•µ”¹Ñ•áÑQ•ÉÑ¥…Éä¤(€€€€€€€ô(€€€€€€€€¹™É…µ”¡µ…á]¥‘Ñ è€¹¥¹™¥¹¥Ñä°…±¥¹µ•¹Ðè€¹±•…‘¥¹œ¤(€€€ô)ô()ÁÉ¥Ù…Ñ”ÍÑÉÕÐ••‘MÕµµ…Éå5•ÑÉ¥ŒèY¥•Üì(€€€±•ÐÙ…±Õ”èMÑÉ¥¹œ(€€€±•Ð±…‰•°èMÑÉ¥¹œ(€€€±•ÐÑ¥¹Ðè½±½È((€€€Ù…È‰½‘äèÍ½µ”Y¥•Üì(€€€€€€€YMÑ…¬¡…±¥¹µ•¹Ðè€¹±•…‘¥¹œ°ÍÁ…¥¹œè€Ì¤ì(€€€€€€€€€€€Q•áÐ¡Ù…±Õ”¤(€€€€€€€€€€€€€€€€¹™½¹Ð¡ÁÁQ¡•µ”¹É…¹­½¹Ð¤(€€€€€€€€€€€€€€€€¹™½É•É½Õ¹‘MÑå±”¡Ñ¥¹Ð¤(€€€€€€€€€€€Q•áÐ¡±…‰•°¤(€€€€€€€€€€€€€€€€¹™½¹Ð¡ÁÁQ¡•µ”¹…ÁÑ¥½¹½¹Ð¤(€€€€€€€€€€€€€€€€¹™½É•É½Õ¹‘MÑå±”¡ÁÁQ¡•µ”¹Ñ•áÑQ•ÉÑ¥…Éä¤(€€€€€€€€€€€€€€€€¹±¥¹•1¥µ¥Ð Ä¤(€€€€€€€ô(€€€€€€€€¹™É…µ”¡µ…á]¥‘Ñ è€¹¥¹™¥¹¥Ñä°…±¥¹µ•¹Ðè€¹±•…‘¥¹œ¤(€€€ô)ô()ÁÉ¥Ù…Ñ”ÍÑÉÕÐ±½Ý1…å½ÕÐèY¥•Üì(€€€±•Ð¥Ñ•µÌèmMÑÉ¥¹t((€€€Ù…È‰½‘äèÍ½µ”Y¥•Üì(€€€€€€€MÉ½±±Y¥•Ü ¹¡½É¥é½¹Ñ…°°Í¡½ÝÍ%¹‘¥…Ñ½ÉÌè™…±Í”¤ì(€€€€€€€€€€€!MÑ…¬¡ÍÁ…¥¹œè€à¤ì(€€€€€€€€€€€€€€€½É… ¡¥Ñ•µÌ°¥èp¹Í•±˜¤ì¥Ñ•´¥¸(€€€€€€€€€€€€€€€€€€€Q•áÐ¡¥Ñ•´¤(€€€€€€€€€€€€€€€€€€€€€€€€¹™½¹Ð¡ÁÁQ¡•µ”¹…ÁÑ¥½¹½¹Ð¤(€€€€€€€€€€€€€€€€€€€€€€€€¹™½É•É½Õ¹‘MÑå±”¡ÁÁQ¡•µ”¹‰…­É½Õ¹¤(€€€€€€€€€€€€€€€€€€€€€€€€¹Á…‘‘¥¹œ ¹¡½É¥é½¹Ñ…°°€ÄÄ¤(€€€€€€€€€€€€€€€€€€€€€€€€¹Á…‘‘¥¹œ ¹Ù•ÉÑ¥…°°€Ü¤(€€€€€€€€€€€€€€€€€€€€€€€€¹‰…­É½Õ¹¡ÁÁQ¡•µ”¹å•±±½Ü¤(€€€€€€€€€€€€€€€€€€€€€€€€¹±¥ÁM¡…Á”¡…ÁÍÕ±” ¤¤(€€€€€€€€€€€€€€€ô(€€€€€€€€€€€ô(€€€€€€€ô(€€€ô)ô()ÍÑÉÕÐM½ÕÉ•!•…±Ñ¡	…¹¹•ÈèY¥•Üì(€€€±•ÐÑ¥Ñ±”èMÑÉ¥¹œ(€€€±•Ð‘•Ñ…¥°èMÑÉ¥¹œ(€€€±•ÐÑ¥¹Ðè½±½È((€€€Ù…È‰½‘äèÍ½µ”Y¥•Üì(€€€€€€€!MÑ…¬¡…±¥¹µ•¹Ðè€¹Ñ½À°ÍÁ…¥¹œè€ÄÀ¤ì(€€€€€€€€€€€%µ…”¡ÍåÍÑ•µ9…µ”è€‰•á±…µ…Ñ¥½¹µ…É¬¹ÑÉ¥…¹±”¹™¥±°ˆ¤(€€€€€€€€€€€€€€€€¹™½É•É½Õ¹‘MÑå±”¡Ñ¥¹Ð¤(€€€€€€€€€€€YMÑ…¬¡…±¥¹µ•¹Ðè€¹±•…‘¥¹œ°ÍÁ…¥¹œè€Ì¤ì(€€€€€€€€€€€€€€€Q•áÐ¡Ñ¥Ñ±”¤¹™½¹Ð¡ÁÁQ¡•µ”¹¡•…‘±¥¹•½¹Ð¤¹™½É•É½Õ¹‘MÑå±”¡ÁÁQ¡•µ”¹Ñ•áÑAÉ¥µ…Éä¤(€€€€€€€€€€€€€€€Q•áÐ¡‘•Ñ…¥°¤¹™½¹Ð¡ÁÁQ¡•µ”¹…ÁÑ¥½¹½¹Ð¤¹™½É•É½Õ¹‘MÑå±”¡ÁÁQ¡•µ”¹Ñ•áÑM•½¹‘…Éä¤¹±¥¹•1¥µ¥Ð Ì¤(€€€€€€€€€€€ô(€€€€€€€€€€€MÁ…•È¡µ¥¹1•¹Ñ è€À¤(€€€€€€€ô(€€€€€€€€¹Á…‘‘¥¹œ ÄÈ¤(€€€€€€€€¹‰…­É½Õ¹¡Ñ¥¹Ð¹½Á…¥Ñä À¸Àä¤¤(€€€€€€€€¹½Ù•É±…ä¡I½Õ¹‘•‘I•Ñ…¹±”¡½É¹•ÉI…‘¥ÕÌè€ÄÐ°ÍÑå±”è€¹½¹Ñ¥¹Õ½ÕÌ¤¹ÍÑÉ½­”¡Ñ¥¹Ð¹½Á…¥Ñä À¸Èà¤°±¥¹•]¥‘Ñ è€Ä¤¤(€€€€€€€€¹±¥ÁM¡…Á”¡I½Õ¹‘•‘I•Ñ…¹±”¡½É¹•ÉI…‘¥ÕÌè€ÄÐ°ÍÑå±”è€¹½¹Ñ¥¹Õ½ÕÌ¤¤(€€€ô)ô()ÍÑÉÕÐ•…ÑÕÉ•µÁÑåMÑ…Ñ”èY¥•Üì(€€€¹Ù¥É½¹µ•¹Ð¡p¹‘å¹…µ¥QåÁ•M¥é”¤ÁÉ¥Ù…Ñ”Ù…È‘å¹…µ¥QåÁ•M¥é”(€€€¹Ù¥É½¹µ•¹Ð¡p¹…•ÍÍ¥‰¥±¥ÑåI•‘Õ•5½Ñ¥½¸¤ÁÉ¥Ù…Ñ”Ù…ÈÉ•‘Õ•5½Ñ¥½¸(€€€±•Ð¥½¸èMÑÉ¥¹œ(€€€±•ÐÑ¥Ñ±”èMÑÉ¥¹œ(€€€±•Ðµ•ÍÍ…”èMÑÉ¥¹œ(€€€±•Ð…Ñ¥½¹Q¥Ñ±”èMÑÉ¥¹œü(€€€±•Ð…Ñ¥½¸è€  ¤€´øY½¥¤ü((€€€¥¹¥Ð¡¥½¸èMÑÉ¥¹œ°Ñ¥Ñ±”èMÑÉ¥¹œ°µ•ÍÍ…”èMÑÉ¥¹œ°…Ñ¥½¹Q¥Ñ±”èMÑÉ¥¹œü€ô¹¥°°…Ñ¥½¸è€  ¤€´øY½¥¤ü€ô¹¥°¤ì(€€€€€€€Í•±˜¹¥½¸€ô¥½¸(€€€€€€€Í•±˜¹Ñ¥Ñ±”€ôÑ¥Ñ±”(€€€€€€€Í•±˜¹µ•ÍÍ…”€ôµ•ÍÍ…”(€€€€€€€Í•±˜¹…Ñ¥½¹Q¥Ñ±”€ô…Ñ¥½¹Q¥Ñ±”(€€€€€€€Í•±˜¹…Ñ¥½¸€ô…Ñ¥½¸(€€€ô((€€€Ù…È‰½‘äèÍ½µ”Y¥•Üì(€€€€€€€YMÑ…¬¡ÍÁ…¥¹œè€ÄÈ¤ì(€€€€€€€€€€€¥˜€…‘å¹…µ¥QåÁ•M¥é”¹¥Í•ÍÍ¥‰¥±¥ÑåM¥é”ì(€€€€€€€€€€€€€€€%µ…” ‰QÉ•¹‘I…‘…ÈµµÁÑåMÑ…Ñ”ˆ¤(€€€€€€€€€€€€€€€€€€€€¹É•Í¥é…‰±” ¤(€€€€€€€€€€€€€€€€€€€€¹Í…±•‘Q½¥Ð ¤(€€€€€€€€€€€€€€€€€€€€¹™É…µ”¡µ…á]¥‘Ñ è€ÄÐÀ°µ…á!•¥¡Ðè€àØ¤(€€€€€€€€€€€€€€€€€€€€¹±¥ÁM¡…Á”¡I½Õ¹‘•‘I•Ñ…¹±”¡½É¹•ÉI…‘¥ÕÌè€ÄÐ°ÍÑå±”è€¹½¹Ñ¥¹Õ½ÕÌ¤¤(€€€€€€€€€€€€€€€€€€€€¹½Ù•É±…äì(€€€€€€€€€€€€€€€€€€€€€€€1¥¹•…ÉÉ…‘¥•¹Ð¡½±½ÉÌèl¹±•…È°ÁÁQ¡•µ”¹‰…­É½Õ¹¹½Á…¥Ñä À¸ÈÈ¥t°ÍÑ…ÉÑA½¥¹Ðè€¹Ñ½À°•¹‘A½¥¹Ðè€¹‰½ÑÑ½´¤(€€€€€€€€€€€€€€€€€€€€€€€€€€€€¹±¥ÁM¡…Á”¡I½Õ¹‘•‘I•Ñ…¹±”¡½É¹•ÉI…‘¥ÕÌè€ÄÐ°ÍÑå±”è€¹½¹Ñ¥¹Õ½ÕÌ¤¤(€€€€€€€€€€€€€€€€€€€ô(€€€€€€€€€€€€€€€€€€€€¹…•ÍÍ¥‰¥±¥Ñå!¥‘‘•¸¡ÑÉÕ”¤(€€€€€€€€€€€ô(€€€€€€€€€€€%µ…”¡ÍåÍÑ•µ9…µ”è¥½¸¤(€€€€€€€€€€€€€€€€¹™½¹Ð ¹ÍåÍÑ•´¡Í¥é”è€ÈÈ°Ý•¥¡Ðè€¹±¥¡Ð¤¤(€€€€€€€€€€€€€€€€¹™½É•É½Õ¹‘MÑå±”¡ÁÁQ¡•µ”¹‰É…¹‘å…¸¤(€€€€€€€€€€€Q•áÐ¡Ñ¥Ñ±”¤(€€€€€€€€€€€€€€€€¹™½¹Ð¡ÁÁQ¡•µ”¹Í•Ñ¥½¹Q¥Ñ±•½¹Ð¤(€€€€€€€€€€€€€€€€¹™½É•É½Õ¹‘MÑå±”¡ÁÁQ¡•µ”¹Ñ•áÑAÉ¥µ…Éä¤(€€€€€€€€€€€Q•áÐ¡µ•ÍÍ…”¤(€€€€€€€€€€€€€€€€¹™½¹Ð¡ÁÁQ¡•µ”¹‰½‘å½¹Ð¤(€€€€€€€€€€€€€€€€¹™½É•É½Õ¹‘MÑå±”¡ÁÁQ¡•µ”¹Ñ•áÑM•½¹‘…Éä¤(€€€€€€€€€€€€€€€€¹µÕ±Ñ¥±¥¹•Q•áÑ±¥¹µ•¹Ð ¹•¹Ñ•È¤(€€€€€€€€€€€€€€€€¹™¥á•‘M¥é”¡¡½É¥é½¹Ñ…°è™…±Í”°Ù•ÉÑ¥…°èÑÉÕ”¤(€€€€€€€€€€€¥˜±•Ð…Ñ¥½¹Q¥Ñ±”°±•Ð…Ñ¥½¸ì(€€€€€€€€€€€€€€€	ÕÑÑ½¸¡…Ñ¥½¸è…Ñ¥½¸¤ì(€€€€€€€€€€€€€€€€€€€1…‰•°¡…Ñ¥½¹Q¥Ñ±”°ÍåÍÑ•µ%µ…”è€‰…ÉÉ½Ü¹±½­Ý¥Í”ˆ¤(€€€€€€€€€€€€€€€€€€€€€€€€¹™É…µ”¡µ…á]¥‘Ñ è‘å¹…µ¥QåÁ•M¥é”¹¥Í•ÍÍ¥‰¥±¥ÑåM¥é”€ü€¹¥¹™¥¹¥Ñä€è€ÈÐÀ¤(€€€€€€€€€€€€€€€ô(€€€€€€€€€€€€€€€€¹‰ÕÑÑ½¹MÑå±”¡•¹Ñ	ÕÑÑ½¹MÑå±” ¤¤(€€€€€€€€€€€ô(€€€€€€€ô(€€€€€€€€¹Á…‘‘¥¹œ Äà¤(€€€€€€€€¹™É…µ”¡µ…á]¥‘Ñ è€¹¥¹™¥¹¥Ñä¤(€€€€€€€€¹¥¹Ñ•±±¥•¹•…É¡Ñ¥¹ÐèÁÁQ¡•µ”¹‰É…¹‘å…¸°½É¹•ÉI…‘¥ÕÌè€ÈÈ¤(€€€€€€€€¹ÑÉ…¹Í¥Ñ¥½¸¡É•‘Õ•5½Ñ¥½¸€ü€¹½Á…¥Ñä€è€¹½Á…¥Ñä¹½µ‰¥¹•¡Ý¥Ñ è€¹Í…±”¡Í…±”è€À¸äÜ¤¤¤(€€€ô)ô()ÍÑÉÕÐ•…ÑÕÉ•1½…‘¥¹MÑ…Ñ”èY¥•Üì(€€€¹Ù¥É½¹µ•¹Ð¡p¹…•ÍÍ¥‰¥±¥ÑåI•‘Õ•5½Ñ¥½¸¤ÁÉ¥Ù…Ñ”Ù…ÈÉ•‘Õ•5½Ñ¥½¸(€€€±•ÐÑ¥Ñ±”èMÑÉ¥¹œ(€€€±•Ðµ•ÍÍ…”èMÑÉ¥¹œ((€€€Ù…È‰½‘äèÍ½µ”Y¥•Üì(€€€€€€€YMÑ…¬¡ÍÁ…¥¹œè€ÄÐ¤ì(€€€€€€€€€€€AÉ½É•ÍÍY¥•Ü ¤¹½¹ÑÉ½±M¥é” ¹±…É”¤¹Ñ¥¹Ð¡ÁÁQ¡•µ”¹‰É…¹‘å…¸¤(€€€€€€€€€€€Q•áÐ¡Ñ¥Ñ±”¤¹™½¹Ð¡ÁÁQ¡•µ”¹Í•Ñ¥½¹Q¥Ñ±•½¹Ð¤¹™½É•É½Õ¹‘MÑå±”¡ÁÁQ¡•µ”¹Ñ•áÑAÉ¥µ…Éä¤(€€€€€€€€€€€Q•áÐ¡µ•ÍÍ…”¤¹™½¹Ð¡ÁÁQ¡•µ”¹…ÁÑ¥½¹½¹Ð¤¹™½É•É½Õ¹‘MÑå±”¡ÁÁQ¡•µ”¹Ñ•áÑM•½¹‘…Éä¤¹µÕ±Ñ¥±¥¹•Q•áÑ±¥¹µ•¹Ð ¹•¹Ñ•È¤(€€€€€€€ô(€€€€€€€€¹Á…‘‘¥¹œ ÈØ¤(€€€€€€€€¹™É…µ”¡µ…á]¥‘Ñ è€¹¥¹™¥¹¥Ñä¤(€€€€€€€€¹¥¹Ñ•±±¥•¹•…É¡Ñ¥¹ÐèÁÁQ¡•µ”¹‰É…¹‘å…¸°½É¹•ÉI…‘¥ÕÌè€ÈÈ¤(€€€€€€€€¹ÑÉ…¹Í¥Ñ¥½¸¡É•‘Õ•5½Ñ¥½¸€ü€¹½Á…¥Ñä€è€¹½Á…¥Ñä¹½µ‰¥¹•¡Ý¥Ñ è€¹Í…±”¡Í…±”è€À¸äà¤¤¤(€€€€€€€€¹…•ÍÍ¥‰¥±¥Ñå±•µ•¹Ð¡¡¥±‘É•¸è€¹½µ‰¥¹”¤(€€€€€€€€¹…•ÍÍ¥‰¥±¥Ñå1…‰•° ‰p¡Ñ¥Ñ±”§¾ò1p¡µ•ÍÍ…”¤ˆ¤(€€€ô)ô()ÁÉ¥Ù…Ñ”ÍÑÉÕÐ••‘%¹™½M¡••ÐèY¥•Üì(€€€±•Ð™••‘½Õ¹Ðè%¹Ð(€€€¹Ù¥É½¹µ•¹Ð¡p¹‘¥Íµ¥ÍÌ¤ÁÉ¥Ù…Ñ”Ù…È‘¥Íµ¥ÍÌ((€€€Ù…È‰½‘äèÍ½µ”Y¥•Üì(€€€€€€€9…Ù¥…Ñ¥½¹MÑ…¬ì(€€€€€€€€€€€YMÑ…¬¡ÍÁ…¥¹œè€ÄØ¤ì(€€€€€€€€€€€€€€€%µ…” ‰QÉ•¹‘I…‘…Èµ]•‰¡½½¬ˆ¤(€€€€€€€€€€€€€€€€€€€€¹É•Í¥é…‰±” ¤(€€€€€€€€€€€€€€€€€€€€¹Í…±•‘Q½¥±° ¤(€€€€€€€€€€€€€€€€€€€€¹™É…µ”¡¡•¥¡Ðè€ÄÔÀ¤(€€€€€€€€€€€€€€€€€€€€¹±¥ÁÁ• ¤(€€€€€€€€€€€€€€€€€€€€¹±¥ÁM¡…Á”¡I½Õ¹‘•‘I•Ñ…¹±”¡½É¹•ÉI…‘¥ÕÌè€ÈÀ°ÍÑå±”è€¹½¹Ñ¥¹Õ½ÕÌ¤¤(€€€€€€€€€€€€€€€%µ…”¡ÍåÍÑ•µ9…µ”è€‰…¹Ñ•¹¹„¹É…‘¥½Ý…Ù•Ì¹±•™Ð¹…¹¹É¥¡Ðˆ¤(€€€€€€€€€€€€€€€€€€€€¹™½¹Ð ¹ÍåÍÑ•´¡Í¥é”è€ÌÐ°Ý•¥¡Ðè€¹±¥¡Ð¤¤(€€€€€€€€€€€€€€€€€€€€¹™½É•É½Õ¹‘MÑå±”¡ÁÁQ¡•µ”¹å…¸¤(€€€€€€€€€€€€€€€Q•áÐ ‹–ÞË–B¿žR p¡™••‘½Õ¹Ð¤ƒ’â«¢º‹¦bšê@ˆ¤(€€€€€€€€€€€€€€€€€€€€¹™½¹Ð¡ÁÁQ¡•µ”¹Í•Ñ¥½¹Q¥Ñ±•½¹Ð¤(€€€€€€€€€€€€€€€€€€€€¹™½É•É½Õ¹‘MÑå±”¡ÁÁQ¡•µ”¹Ñ•áÑAÉ¥µ…Éä¤(€€€€€€€€€€€€€€€Q•áÐ ‰IMLƒ’â8Ñ½´ƒ––ºç’òk–r£–"ßšZÃš^Û–æÛ–>Gš*O–>[¾ò3–æÛ’þw–¶c–"Ãšr³–rÃšš*—–êOŽˆ¤(€€€€€€€€€€€€€€€€€€€€¹™½¹Ð¡ÁÁQ¡•µ”¹‰½‘å½¹Ð¤(€€€€€€€€€€€€€€€€€€€€¹™½É•É½Õ¹‘MÑå±”¡ÁÁQ¡•µ”¹Ñ•áÑM•½¹‘…Éä¤(€€€€€€€€€€€€€€€€€€€€¹µÕ±Ñ¥±¥¹•Q•áÑ±¥¹µ•¹Ð ¹•¹Ñ•È¤(€€€€€€€€€€€€€€€€€€€€¹Á…‘‘¥¹œ ¹¡½É¥é½¹Ñ…°°€ÈÐ¤(€€€€€€€€€€€€€€€MÁ…•È ¤(€€€€€€€€€€€ô(€€€€€€€€€€€€¹Á…‘‘¥¹œ ¹Ñ½À°€Ðà¤(€€€€€€€€€€€€¹™É…µ”¡µ…á]¥‘Ñ è€¹¥¹™¥¹¥Ñä¤(€€€€€€€€€€€€¹‰…­É½Õ¹¡%¹Ñ•±±¥•¹•MÉ••¹	…­É½Õ¹ ¤¤(€€€€€€€€€€€€¹Ñ½½±‰…Èì(€€€€€€€€€€€€€€€Q½½±‰…É%Ñ•´¡Á±…•µ•¹Ðè€¹½¹™¥Éµ…Ñ¥½¹Ñ¥½¸¤ì	ÕÑÑ½¸ ‹–º3š"@ˆ¤ì‘¥Íµ¥ÍÌ ¤ôô(€€€€€€€€€€€ô(€€€€€€€ô(€€€€€€€€¹Ñ¥¹Ð¡ÁÁQ¡•µ”¹å…¸¤(€€€ô)ô(

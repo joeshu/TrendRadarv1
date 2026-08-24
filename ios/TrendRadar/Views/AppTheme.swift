@@ -34,18 +34,18 @@ enum AppTheme {
     static let readerText = adaptive(light: UIColor(red: 0.19, green: 0.15, blue: 0.10, alpha: 1), dark: UIColor(red: 0.92, green: 0.86, blue: 0.73, alpha: 1))
 
     // Product typography: Chinese uses the native system sans-serif; rounded is reserved for brand eyebrow labels.
-    static let pageTitleFont = Font.system(size: 28, weight: .semibold, design: .default)
-    static let titleFont = Font.system(size: 24, weight: .semibold, design: .default)
-    static let sectionTitleFont = Font.system(size: 19, weight: .medium, design: .default)
-    static let headlineFont = Font.system(size: 16, weight: .medium, design: .default)
-    static let cardTitleFont = Font.system(size: 16, weight: .medium, design: .default)
-    static let bodyFont = Font.system(size: 15, weight: .regular, design: .default)
-    static let readingFont = Font.system(size: 16, weight: .regular, design: .default).leading(.loose)
-    static let captionFont = Font.system(size: 12, weight: .regular, design: .default)
-    static let metadataFont = Font.system(size: 11, weight: .medium, design: .default)
-    static let brandLabelFont = Font.caption2.bold()
-    static let numericFont = Font.system(size: 21, weight: .semibold, design: .rounded).monospacedDigit()
-    static let rankFont = Font.system(size: 20, weight: .semibold, design: .rounded).monospacedDigit()
+    static let pageTitleFont = Font.custom("PingFangSC-Semibold", fixedSize: 24)
+    static let titleFont = Font.custom("PingFangSC-Semibold", fixedSize: 21)
+    static let sectionTitleFont = Font.custom("PingFangSC-Medium", fixedSize: 17)
+    static let headlineFont = Font.custom("PingFangSC-Medium", fixedSize: 15)
+    static let cardTitleFont = Font.custom("PingFangSC-Medium", fixedSize: 15)
+    static let bodyFont = Font.custom("PingFangSC-Regular", fixedSize: 14)
+    static let readingFont = Font.custom("PingFangSC-Regular", fixedSize: 16).leading(.loose)
+    static let captionFont = Font.custom("PingFangSC-Regular", fixedSize: 12)
+    static let metadataFont = Font.custom("PingFangSC-Regular", fixedSize: 11)
+    static let brandLabelFont = Font.custom("PingFangSC-Semibold", fixedSize: 10)
+    static let numericFont = Font.custom("DINAlternate-Bold", fixedSize: 20).monospacedDigit()
+    static let rankFont = Font.custom("DINAlternate-Bold", fixedSize: 19).monospacedDigit()
 
     static let accentGradient = LinearGradient(
         colors: [electricBlue, violet, brandMagenta],

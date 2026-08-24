@@ -809,6 +809,38 @@ final class NewsItemTests: XCTestCase {
         XCTAssertEqual(json["generation_method"] as? String, "本地规则")
     }
 
+    func testLegacyReportEvidenceFallsBackToPersistedSnapshots() {
+        let report = ReportGenerationService().generate(
+            request: ReportGenerationRequest(
+                batchID: "legacy-evidence",
+                type: .manual,
+                trigger: .manual,
+                generatedAt: Date(timeIntervalSince1970: 10_000),
+                settings: AppSettings()
+            ),
+            items: [NewsItem(id: "legacy-1", title: "Legacy item", source: "Feed")]
+        )
+        let legacyReport = ReportDetail(
+            id: report.id,
+            title: report.title,
+            type: report.type,
+            trigger: report.trigger,
+            generatedAt: report.generatedAt,
+            status: report.status,
+            statistics: report.statistics,
+            settingsSnapshot: report.settingsSnapshot,
+            aiAnalysis: report.aiAnalysis,
+            sections: report.sections,
+            isFavorite: report.isFavorite,
+            failureMessage: report.failureMessage
+        )
+
+        let evidence = ReportPresentationModel(report: legacyReport).evidence
+        XCTAssertEqual(evidence.sampleCount, 1)
+        XCTAssertEqual(evidence.matchedCount, 1)
+        XCTAssertEqual(evidence.citedItemCount, 1)
+    }
+
     func testReportMarkdownRendererHonorsConfiguredRegionOrder() {
         var settings = AppSettings()
         settings.display.regionOrder = ["rss", "hotlist", "ai_analysis"]

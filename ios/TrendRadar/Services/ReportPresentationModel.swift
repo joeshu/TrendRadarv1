@@ -38,14 +38,16 @@ struct ReportPresentationModel: Sendable {
 
     var evidence: ReportEvidenceSummary {
         let itemIDs = Set(report.sections.flatMap(\.items).map(\.id))
+        let sampleCount = max(report.metadata.collectedItemCount, itemIDs.count)
+        let matchedCount = max(report.metadata.matchedItemCount, itemIDs.count)
         let analysisMethod = report.aiAnalysis.flatMap { analysis -> String? in
             guard analysis.hasContent else { return nil }
             let model = (analysis.model ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
             return model.isEmpty ? "增强分析" : "增强分析 · \(model)"
         }
         return ReportEvidenceSummary(
-            sampleCount: report.metadata.collectedItemCount,
-            matchedCount: report.metadata.matchedItemCount,
+            sampleCount: sampleCount,
+            matchedCount: matchedCount,
             sourceCount: report.statistics.sourceCount,
             failedSourceCount: report.diagnostics?.failures.count ?? 0,
             citedItemCount: itemIDs.count,

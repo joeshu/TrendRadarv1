@@ -10,6 +10,7 @@ final class ReportStore: ObservableObject {
     @Published private(set) var isLoading = false
     @Published private(set) var isGenerating = false
     @Published private(set) var latestAIAnalysis: ReportAIAnalysis?
+    @Published private(set) var latestGeneratedReportID: UUID?
     @Published var errorMessage: String?
 
     private let localStore = LocalStore.shared
@@ -74,6 +75,8 @@ final class ReportStore: ObservableObject {
         guard !completedBatches.contains(resolvedBatchID) else { return }
         guard !isGenerating else { return }
         isGenerating = true
+        errorMessage = nil
+        latestGeneratedReportID = nil
         defer { isGenerating = false }
         let request = ReportGenerationRequest(batchID: resolvedBatchID, type: type, trigger: trigger, generatedAt: Date(), settings: settings, windowStart: windowStart, newItemIDs: [], diagnostics: diagnostics)
         do {
@@ -88,12 +91,13 @@ final class ReportStore: ObservableObject {
                 }
                 let standaloneContent = aiService.standaloneContent(hotlistItems: snapshotHotlist, rssItems: snapshotRSS, settings: settings)
                 report.aiAnalysis = await aiService.reportAnalysis(hotlistItems: snapshotHotlist, rssItems: snapshotRSS, settings: settings, reportType: type.displayName, standaloneContent: standaloneContent)
-                latestAIAnalysis = report.aiAnalysis
                 report.aiAnalysis?.citations = report.sections.flatMap(\.items).compactMap { item in
                     InsightCitation(itemID: item.id, title: item.title, source: item.source, url: item.url)
                 }
             }
             try await localStore.save(report)
+            latestGeneratedReportID = report.id
+            latestAIAnalysis = report.aiAnalysis
             completedBatches.insert(resolvedBatchID)
             let delivery = await ReportDeliveryService().deliver(report: report, settings: settings)
             if let message = delivery.failureMessage {
@@ -103,6 +107,11 @@ final class ReportStore: ObservableObject {
         } catch {
             errorMessage = "报告保存失败：\(error.localizedDescription)"
         }
+    }
+
+    func latestGeneratedDetail() async -> ReportDetail? {
+        guard let latestGeneratedReportID else { return nil }
+        return await localStore.loadReport(id: latestGeneratedReportID)
     }
 
     func detail(id: UUID) async -> ReportDetail? {

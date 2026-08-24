@@ -166,7 +166,6 @@ struct ReportDetailView: View {
             if let report {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 16) {
-                        PageVisualBanner(assetName: "TrendRadar-ReportsHero", height: 128)
                         PremiumPanel(tint: AppTheme.brandCyan) { detailHeader(report) }
                         PremiumPanel(tint: AppTheme.brandIndigo) { statistics(report) }
                         evidencePanel(report)
