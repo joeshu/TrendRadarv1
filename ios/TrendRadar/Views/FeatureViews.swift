@@ -835,7 +835,7 @@ struct HotNewsTrendView: View {
                 }
             }
         }
-            .navigationTitle("排名时间线")
+        .navigationTitle("排名时间线")
         .navigationBarTitleDisplayMode(.inline)
         .task { points = await hotNewsStore.trend(for: topic.id) }
     }
