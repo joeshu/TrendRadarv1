@@ -32,6 +32,11 @@ final class ReportStore: ObservableObject {
         isLoading = true
         defer { isLoading = false }
         reports = await localStore.loadReportSummaries()
+        if let latest = reports.first {
+            latestAIAnalysis = await localStore.loadReport(id: latest.id)?.aiAnalysis
+        } else {
+            latestAIAnalysis = nil
+        }
     }
 
     func clearCache() async throws {
