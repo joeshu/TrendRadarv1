@@ -133,17 +133,51 @@ struct ReportSettings: Codable, Equatable, Sendable {
     var maxNewsPerKeyword = 0
 }
 
+enum AppAppearance: String, Codable, CaseIterable, Identifiable, Sendable {
+    case system
+    case dark
+    case light
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .system: return "跟随系统"
+        case .dark: return "深色"
+        case .light: return "浅色"
+        }
+    }
+}
+
+enum AppFontStyle: String, Codable, CaseIterable, Identifiable, Sendable {
+    case system
+    case rounded
+    case serif
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .system: return "系统黑体"
+        case .rounded: return "圆体"
+        case .serif: return "阅读宋体"
+        }
+    }
+}
+
 struct DisplaySettings: Codable, Equatable, Sendable {
     var showHotlist = true
     var showNewItems = false
     var showRSS = true
     var showStandalone = false
     var showAIAnalysis = true
-    /// 总览字体倍率，保留连续值便于细调。
+    var appearance = AppAppearance.dark
+    var fontStyle = AppFontStyle.system
+    /// 全局字体倍率，映射到系统 Dynamic Type 等级。
     var fontScale = 1.0
-    /// 总览 UI 整体倍率，控制卡片、图标和留白。
+    /// 全局 UI 密度，控制表单行高和控件尺寸。
     var uiScale = 1.0
-    /// 总览卡片之间的垂直间距。
+    /// 主页面卡片之间的垂直间距。
     var cardSpacing = 14.0
     var regionOrder: [String] = ["new_items", "hotlist", "rss", "standalone", "ai_analysis"]
     var standalonePlatforms: [String] = ["zhihu", "wallstreetcn-hot"]
@@ -152,6 +186,7 @@ struct DisplaySettings: Codable, Equatable, Sendable {
 
     private enum CodingKeys: String, CodingKey {
         case showHotlist, showNewItems, showRSS, showStandalone, showAIAnalysis
+        case appearance, fontStyle
         case fontScale, uiScale, cardSpacing, regionOrder, standalonePlatforms
         case standaloneRSSFeeds, standaloneMaxItems
     }
@@ -165,6 +200,8 @@ struct DisplaySettings: Codable, Equatable, Sendable {
         showRSS = try c.decodeIfPresent(Bool.self, forKey: .showRSS) ?? true
         showStandalone = try c.decodeIfPresent(Bool.self, forKey: .showStandalone) ?? false
         showAIAnalysis = try c.decodeIfPresent(Bool.self, forKey: .showAIAnalysis) ?? true
+        appearance = try c.decodeIfPresent(AppAppearance.self, forKey: .appearance) ?? .dark
+        fontStyle = try c.decodeIfPresent(AppFontStyle.self, forKey: .fontStyle) ?? .system
         fontScale = min(max(try c.decodeIfPresent(Double.self, forKey: .fontScale) ?? 1.0, 0.85), 1.30)
         uiScale = min(max(try c.decodeIfPresent(Double.self, forKey: .uiScale) ?? 1.0, 0.90), 1.15)
         cardSpacing = min(max(try c.decodeIfPresent(Double.self, forKey: .cardSpacing) ?? 14.0, 8), 24)

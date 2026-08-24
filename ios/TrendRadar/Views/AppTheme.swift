@@ -32,11 +32,11 @@ enum AppTheme {
     static let textTertiary = adaptive(light: UIColor(red: 0.43, green: 0.51, blue: 0.60, alpha: 1), dark: UIColor(red: 0.57, green: 0.65, blue: 0.75, alpha: 1))
 
     // Product typography: Chinese uses the native system sans-serif; rounded is reserved for brand eyebrow labels.
-    static let titleFont = Font.system(.title, design: .default, weight: .semibold)
-    static let headlineFont = Font.system(.headline, design: .default, weight: .semibold)
-    static let bodyFont = Font.system(.body, design: .default)
-    static let captionFont = Font.system(.caption, design: .default, weight: .regular)
-    static let rankFont = Font.system(.title2, design: .default, weight: .bold)
+    static let titleFont = Font.title.weight(.semibold)
+    static let headlineFont = Font.headline.weight(.semibold)
+    static let bodyFont = Font.body
+    static let captionFont = Font.caption
+    static let rankFont = Font.title2.bold()
 
     static let accentGradient = LinearGradient(
         colors: [electricBlue, violet, brandMagenta],
@@ -46,9 +46,9 @@ enum AppTheme {
 
     static let screenGradient = LinearGradient(
         colors: [
-            Color(red: 0.018, green: 0.035, blue: 0.065),
-            Color(red: 0.025, green: 0.055, blue: 0.10),
-            Color(red: 0.055, green: 0.035, blue: 0.105)
+            adaptive(light: UIColor(red: 0.94, green: 0.97, blue: 0.995, alpha: 1), dark: UIColor(red: 0.018, green: 0.035, blue: 0.065, alpha: 1)),
+            adaptive(light: UIColor(red: 0.97, green: 0.98, blue: 1.0, alpha: 1), dark: UIColor(red: 0.025, green: 0.055, blue: 0.10, alpha: 1)),
+            adaptive(light: UIColor(red: 0.965, green: 0.945, blue: 0.99, alpha: 1), dark: UIColor(red: 0.055, green: 0.035, blue: 0.105, alpha: 1))
         ],
         startPoint: .topLeading,
         endPoint: .bottomTrailing

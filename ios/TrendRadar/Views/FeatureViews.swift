@@ -87,7 +87,6 @@ struct FeedsView: View {
             .navigationTitle("订阅")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(AppTheme.background, for: .navigationBar)
-            .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { showingSourceManager = true } label: {
@@ -226,7 +225,6 @@ struct SubscriptionSourceManager: View {
             .navigationTitle("订阅源")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(AppTheme.background, for: .navigationBar)
-            .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
@@ -245,7 +243,6 @@ struct SubscriptionSourceManager: View {
                     editingFeed = nil
                 }
             }
-            .preferredColorScheme(.dark)
             .tint(AppTheme.cyan)
         }
     }
@@ -407,7 +404,6 @@ struct InsightView: View {
             .navigationTitle("洞察")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(AppTheme.background, for: .navigationBar)
-            .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     NavigationLink {
@@ -1188,7 +1184,6 @@ struct FavoritesView: View {
              .navigationTitle("资料库")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(AppTheme.background, for: .navigationBar)
-            .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { showingSettings = true } label: { Image(systemName: "gearshape") }
@@ -1355,7 +1350,6 @@ struct ReportCenterView: View {
             .navigationTitle("报告")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(AppTheme.background, for: .navigationBar)
-            .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { showingReportGenerator = true } label: {
@@ -1689,7 +1683,6 @@ private struct FeedInfoSheet: View {
                 ToolbarItem(placement: .confirmationAction) { Button("完成") { dismiss() } }
             }
         }
-        .preferredColorScheme(.dark)
         .tint(AppTheme.cyan)
     }
 }

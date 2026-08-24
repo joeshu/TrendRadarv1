@@ -41,7 +41,6 @@ struct DiscoverHubView: View {
             .navigationTitle("发现")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(AppTheme.background, for: .navigationBar)
-            .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { showingFeeds = true } label: { Image(systemName: "slider.horizontal.3") }

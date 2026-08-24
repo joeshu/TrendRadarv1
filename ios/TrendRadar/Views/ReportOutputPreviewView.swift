@@ -45,7 +45,6 @@ struct ReportOutputPreviewView: View {
         .navigationTitle("报告输出预览")
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(AppTheme.background, for: .navigationBar)
-        .toolbarColorScheme(.dark, for: .navigationBar)
         .overlay {
             if report == nil {
                 ContentUnavailableView("暂无报告", systemImage: "doc.text", description: Text("先生成一份报告后再预览最终输出。"))

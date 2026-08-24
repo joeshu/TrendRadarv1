@@ -17,7 +17,7 @@ struct OverviewView: View {
         NavigationStack {
             IntelligencePage {
                 ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 24) {
+                    LazyVStack(alignment: .leading, spacing: settingsStore.settings.display.cardSpacing) {
                         header
                         briefing
                         metrics

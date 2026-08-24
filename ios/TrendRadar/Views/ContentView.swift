@@ -30,7 +30,7 @@ struct RadarView: View {
             ZStack {
                 IntelligenceScreenBackground()
                 ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 18) {
+                    LazyVStack(alignment: .leading, spacing: settingsStore.settings.display.cardSpacing) {
                         overviewHeader
                         refreshStatus
                         sourcePicker
@@ -78,7 +78,6 @@ struct RadarView: View {
                 }
             }
             .toolbarBackground(AppTheme.background, for: .navigationBar)
-            .toolbarColorScheme(.dark, for: .navigationBar)
             .searchable(text: $searchText, prompt: "搜索标题或来源")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
@@ -344,7 +343,6 @@ struct ContentView: View {
         .tint(AppTheme.electricBlue)
         .toolbarBackground(AppTheme.card.opacity(0.94), for: .tabBar)
         .toolbarBackground(.visible, for: .tabBar)
-        .preferredColorScheme(.dark)
         .safeAreaInset(edge: .top, spacing: 0) {
             if bootstrapper.startupState.status != .normal {
                 RecoveryBanner(
@@ -530,7 +528,6 @@ struct NewsDetailView: View {
             }
         }
         .toolbarBackground(AppTheme.background, for: .navigationBar)
-        .toolbarColorScheme(.dark, for: .navigationBar)
         .navigationTitle("情报详情")
         .navigationBarTitleDisplayMode(.inline)
     }

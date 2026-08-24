@@ -47,7 +47,6 @@ struct ReportGeneratorSheet: View {
                     Button("生成") { onGenerate(selectedType); dismiss() }
                 }
             }
-            .preferredColorScheme(.dark)
             .tint(AppTheme.cyan)
         }
     }
@@ -196,7 +195,6 @@ struct ReportDetailView: View {
         .navigationTitle("报告详情")
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(AppTheme.background, for: .navigationBar)
-        .toolbarColorScheme(.dark, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 if let report {

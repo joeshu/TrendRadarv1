@@ -321,7 +321,6 @@ struct SettingsView: View {
                     .navigationBarTitleDisplayMode(.inline)
                     .scrollContentBackground(.hidden)
                     .background(IntelligenceScreenBackground())
-                    .preferredColorScheme(.dark)
                     .tint(AppTheme.cyan)
                     .navigationDestination(for: SettingsCategory.self) { category in
                         categoryDestination(category)
@@ -342,10 +341,8 @@ struct SettingsView: View {
             .navigationTitle(category.title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(AppTheme.background, for: .navigationBar)
-            .toolbarColorScheme(.dark, for: .navigationBar)
             .scrollContentBackground(.hidden)
             .background(IntelligenceScreenBackground())
-            .preferredColorScheme(.dark)
             .tint(AppTheme.cyan)
         )
     }
@@ -550,6 +547,21 @@ struct SettingsView: View {
 
     private var displaySection: some View {
         Section("展示区域") {
+            Picker("外观主题", selection: $settingsStore.settings.display.appearance) {
+                ForEach(AppAppearance.allCases) { appearance in
+                    Text(appearance.title).tag(appearance)
+                }
+            }
+            .pickerStyle(.segmented)
+            Picker("字体风格", selection: $settingsStore.settings.display.fontStyle) {
+                ForEach(AppFontStyle.allCases) { style in
+                    Text(style.title).tag(style)
+                }
+            }
+            TypographyPreview(
+                style: settingsStore.settings.display.fontStyle,
+                scale: settingsStore.settings.display.fontScale
+            )
             Toggle("热榜区域", isOn: $settingsStore.settings.display.showHotlist)
             Toggle("新增热点区域", isOn: $settingsStore.settings.display.showNewItems)
             Toggle("RSS 区域", isOn: $settingsStore.settings.display.showRSS)
@@ -564,20 +576,20 @@ struct SettingsView: View {
                         .monospacedDigit()
                 }
                 Slider(value: $settingsStore.settings.display.fontScale, in: 0.85...1.30, step: 0.05)
-                Text("调整总览页标题、正文、数字和辅助文字。")
+                Text("应用到所有页面，并保留 iOS 动态字体与辅助功能支持。")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
-                    Text("界面 UI 大小")
+                    Text("界面密度")
                     Spacer()
                     Text(uiScaleLabel)
                         .foregroundStyle(.secondary)
                         .monospacedDigit()
                 }
                 Slider(value: $settingsStore.settings.display.uiScale, in: 0.90...1.15, step: 0.05)
-                Text("调整卡片、图标、按钮和整体留白。")
+                Text("调整表单行高、按钮和系统控件尺寸。")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -590,7 +602,9 @@ struct SettingsView: View {
                 }
                 Slider(value: $settingsStore.settings.display.cardSpacing, in: 8...24, step: 1)
             }
-            Button("恢复默认界面大小") {
+            Button("恢复默认显示设置") {
+                settingsStore.settings.display.appearance = .dark
+                settingsStore.settings.display.fontStyle = .system
                 settingsStore.settings.display.fontScale = 1.0
                 settingsStore.settings.display.uiScale = 1.0
                 settingsStore.settings.display.cardSpacing = 14.0
@@ -954,6 +968,38 @@ struct SettingsView: View {
     }
 }
 
+private struct TypographyPreview: View {
+    let style: AppFontStyle
+    let scale: Double
+
+    private var design: Font.Design {
+        switch style {
+        case .system: return .default
+        case .rounded: return .rounded
+        case .serif: return .serif
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            Text("趋势情报预览")
+                .font(.system(size: 18 * scale, weight: .semibold, design: design))
+                .foregroundStyle(AppTheme.textPrimary)
+            Text("标题清晰、正文耐读、数字层级明确")
+                .font(.system(size: 14 * scale, weight: .regular, design: design))
+                .foregroundStyle(AppTheme.textSecondary)
+            Text("#01  ·  12 个来源  ·  刚刚更新")
+                .font(.system(size: 12 * scale, weight: .medium, design: .monospaced))
+                .foregroundStyle(AppTheme.brandCyan)
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .intelligenceCard(tint: AppTheme.brandCyan, cornerRadius: 16)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("字体效果预览")
+    }
+}
+
 private struct ConfigStatusPill: View {
     let title: String
     let tint: Color
@@ -1013,7 +1059,6 @@ struct FeedEditorView: View {
             .navigationTitle("编辑 RSS")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(AppTheme.background, for: .navigationBar)
-            .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
@@ -1027,7 +1072,6 @@ struct FeedEditorView: View {
                     }
                 }
             }
-            .preferredColorScheme(.dark)
             .tint(AppTheme.cyan)
         }
     }

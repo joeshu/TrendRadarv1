@@ -1012,4 +1012,29 @@ final class NewsItemTests: XCTestCase {
 
         XCTAssertThrowsError(try WebhookPayloadRenderer().render(report: report, template: "{not-json}", batchContent: "body", batchIndex: 1, batchTotal: 1))
     }
+
+    func testDisplayThemeAndTypographyRoundTrip() throws {
+        var settings = AppSettings()
+        settings.display.appearance = .light
+        settings.display.fontStyle = .serif
+        settings.display.fontScale = 1.2
+        settings.display.uiScale = 1.1
+        settings.display.cardSpacing = 20
+
+        let restored = try JSONDecoder().decode(AppSettings.self, from: JSONEncoder().encode(settings))
+
+        XCTAssertEqual(restored.display.appearance, .light)
+        XCTAssertEqual(restored.display.fontStyle, .serif)
+        XCTAssertEqual(restored.display.fontScale, 1.2)
+        XCTAssertEqual(restored.display.uiScale, 1.1)
+        XCTAssertEqual(restored.display.cardSpacing, 20)
+    }
+
+    func testLegacyDisplaySettingsUseVisualDefaults() throws {
+        let restored = try JSONDecoder().decode(DisplaySettings.self, from: Data("{}".utf8))
+
+        XCTAssertEqual(restored.appearance, .dark)
+        XCTAssertEqual(restored.fontStyle, .system)
+        XCTAssertEqual(restored.fontScale, 1.0)
+    }
 }
