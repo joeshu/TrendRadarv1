@@ -528,6 +528,58 @@ final class NewsItemTests: XCTestCase {
         XCTAssertTrue(markdown.contains("报告 ID："))
     }
 
+    func testReportGenerationPersistsTopicStatsAndCompletenessMetadata() {
+        var settings = AppSettings()
+        settings.keywords = ["[人工智能] AI"]
+        settings.timezone = "Asia/Shanghai"
+        let diagnostics = ReportDiagnostics(
+            failures: [ReportSourceFailure(sourceType: .rss, source: "示例源", message: "超时")],
+            collectedAt: Date(timeIntervalSince1970: 100)
+        )
+        let report = ReportGenerationService().generate(
+            request: ReportGenerationRequest(
+                batchID: "report-metadata",
+                type: .manual,
+                trigger: .manual,
+                generatedAt: Date(timeIntervalSince1970: 100),
+                settings: settings,
+                diagnostics: diagnostics
+            ),
+            items: [
+                NewsItem(id: "ai-1", title: "AI 新模型发布", source: "Feed A"),
+                NewsItem(id: "other-1", title: "其他内容", source: "Feed B")
+            ]
+        )
+
+        XCTAssertEqual(report.metadata.schemaVersion, 1)
+        XCTAssertEqual(report.metadata.collectedItemCount, 2)
+        XCTAssertEqual(report.metadata.matchedItemCount, 1)
+        XCTAssertTrue(report.metadata.isPartial)
+        XCTAssertEqual(report.topicStats.first?.name, "人工智能")
+        XCTAssertEqual(report.topicStats.first?.count, 1)
+    }
+
+    func testReportOutputsShareTopicStatsAndSchemaMetadata() throws {
+        var settings = AppSettings()
+        settings.keywords = ["AI"]
+        let report = ReportGenerationService().generate(
+            request: ReportGenerationRequest(batchID: "shared-report-output", type: .manual, trigger: .manual, generatedAt: Date(timeIntervalSince1970: 100), settings: settings),
+            items: [NewsItem(id: "ai-output", title: "AI 行业动态", source: "Feed")]
+        )
+
+        let markdown = ReportMarkdownRenderer().render(report)
+        let html = ReportHTMLFormatter().render(report)
+        let payload = try WebhookPayloadRenderer().render(report: report, template: "", batchContent: markdown, batchIndex: 1, batchTotal: 1)
+        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: payload) as? [String: Any])
+
+        XCTAssertTrue(markdown.contains("热点词汇统计"))
+        XCTAssertTrue(markdown.contains("协议 v1"))
+        XCTAssertTrue(html.contains("热点词汇统计"))
+        XCTAssertTrue(html.contains("协议 v1"))
+        XCTAssertEqual(json["schema_version"] as? Int, 1)
+        XCTAssertEqual(json["data_complete"] as? Bool, true)
+    }
+
     func testReportMarkdownRendererHonorsConfiguredRegionOrder() {
         var settings = AppSettings()
         settings.display.regionOrder = ["rss", "hotlist", "ai_analysis"]

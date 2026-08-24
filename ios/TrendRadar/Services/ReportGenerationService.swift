@@ -47,6 +47,7 @@ struct ReportGenerationService: Sendable {
         }
         let sections = makeSections(items: matchingItems, hotlistItems: matchingHotlistItems, groups: groups, settings: request.settings)
         let displayedItems = sections.flatMap(\.items)
+        let topicStats = makeTopicStats(groups: groups, items: displayedItems)
         let sourceCount = Set(displayedItems.map(\.source)).count
         let statistics = ReportStatistics(
             newsCount: displayedItems.count,
@@ -76,8 +77,43 @@ struct ReportGenerationService: Sendable {
             isFavorite: false,
             failureMessage: nil,
             newItems: displayedItems.filter { request.newItemIDs.contains($0.id) },
-            diagnostics: request.diagnostics
+            diagnostics: request.diagnostics,
+            topicStats: topicStats,
+            metadata: ReportMetadata(
+                schemaVersion: 1,
+                appVersion: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.1.0",
+                timeZone: request.settings.timezone,
+                windowStart: window,
+                collectedItemCount: items.count + hotlistItems.count,
+                matchedItemCount: matchingItems.count + matchingHotlistItems.count,
+                isPartial: !(request.diagnostics?.failures.isEmpty ?? true)
+            )
         )
+    }
+
+    private func makeTopicStats(groups: [KeywordGroup], items: [ReportItemSnapshot]) -> [ReportTopicStat] {
+        guard !items.isEmpty else { return [] }
+        return groups.compactMap { group in
+            let matched = items.filter { group.matches($0.title) }
+            guard !matched.isEmpty else { return nil }
+            let percentage = Double(matched.count) / Double(items.count)
+            let level: String
+            switch percentage {
+            case 0.25...: level = "高"
+            case 0.10..<0.25: level = "中"
+            default: level = "观察"
+            }
+            return ReportTopicStat(
+                name: group.displayName,
+                count: matched.count,
+                percentage: percentage,
+                level: level,
+                itemIDs: matched.map(\.id)
+            )
+        }.sorted { left, right in
+            if left.count != right.count { return left.count > right.count }
+            return left.name.localizedCompare(right.name) == .orderedAscending
+        }
     }
 
     private func defaultWindowStart(for type: ReportType, generatedAt: Date, settings: AppSettings) -> Date? {

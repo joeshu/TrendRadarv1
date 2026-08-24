@@ -46,6 +46,17 @@ jobs:
           /usr/libexec/PlistBuddy -c 'Print :BGTaskSchedulerPermittedIdentifiers:0' TrendRadar/Resources/Info.plist
           /usr/libexec/PlistBuddy -c 'Print :UIBackgroundModes:0' TrendRadar/Resources/Info.plist
 
+      - name: Run unit tests
+        working-directory: ios
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project TrendRadar.xcodeproj \
+            -scheme TrendRadar \
+            -sdk iphonesimulator \
+            -destination 'platform=iOS Simulator,name=iPhone 16' \
+            test 2>&1 | tee build-tests.log
+
       - name: Build unsigned app
         working-directory: ios
         run: |

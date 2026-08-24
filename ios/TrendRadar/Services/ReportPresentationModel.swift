@@ -55,8 +55,11 @@ struct ReportMarkdownRenderer: Sendable {
             "- 热榜 \(report.statistics.hotlistCount) 条 · \(report.statistics.hotlistPlatformCount) 个平台",
             "- RSS \(report.statistics.rssCount) 条 · \(report.statistics.rssSourceCount) 个来源",
             "- 未读 \(report.statistics.unreadCount) 条 · 收藏 \(report.statistics.favoriteCount) 条",
-            "- 命中关键词 \(report.statistics.keywordCount) 个"
+            "- 命中关键词 \(report.statistics.keywordCount) 个",
+            "- 数据完整度：\(report.metadata.isPartial ? "部分完成" : "完整") · 原始采集 \(report.metadata.collectedItemCount) 条 · 命中 \(report.metadata.matchedItemCount) 条"
         ]
+
+        appendTopicStats(report.topicStats, to: &lines)
 
         var renderedSectionIDs = Set<String>()
         for region in model.regionOrder {
@@ -85,7 +88,20 @@ struct ReportMarkdownRenderer: Sendable {
         lines.append("")
         lines.append("---")
         lines.append("报告 ID：`\(report.id.uuidString)` · 共 \(report.sections.flatMap(\.items).count) 条")
+        lines.append("协议 v\(report.metadata.schemaVersion) · App \(report.metadata.appVersion) · 时区 \(report.metadata.timeZone)")
         return lines.joined(separator: "\n")
+    }
+
+    private func appendTopicStats(_ stats: [ReportTopicStat], to lines: inout [String]) {
+        guard !stats.isEmpty else { return }
+        lines.append("")
+        lines.append("## 🔥 热点词汇统计")
+        lines.append("")
+        lines.append("| 热点 | 数量 | 占比 | 热度 |")
+        lines.append("|---|---:|---:|---| ")
+        for stat in stats {
+            lines.append("| \(stat.name) | \(stat.count) | \(percent(stat.percentage)) | \(stat.level) |")
+        }
     }
 
     private func appendDiagnostics(_ diagnostics: ReportDiagnostics?, to lines: inout [String]) {

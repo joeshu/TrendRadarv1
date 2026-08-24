@@ -395,6 +395,43 @@ struct ReportDiagnostics: Codable, Equatable, Hashable, Sendable {
     }
 }
 
+struct ReportTopicStat: Codable, Equatable, Hashable, Identifiable, Sendable {
+    var id: String { name }
+    var name: String
+    var count: Int
+    var percentage: Double
+    var level: String
+    var itemIDs: [String]
+}
+
+struct ReportMetadata: Codable, Equatable, Hashable, Sendable {
+    var schemaVersion: Int
+    var appVersion: String
+    var timeZone: String
+    var windowStart: Date?
+    var collectedItemCount: Int
+    var matchedItemCount: Int
+    var isPartial: Bool
+
+    init(
+        schemaVersion: Int = 1,
+        appVersion: String = "0.1.0",
+        timeZone: String = "Asia/Shanghai",
+        windowStart: Date? = nil,
+        collectedItemCount: Int = 0,
+        matchedItemCount: Int = 0,
+        isPartial: Bool = false
+    ) {
+        self.schemaVersion = schemaVersion
+        self.appVersion = appVersion
+        self.timeZone = timeZone
+        self.windowStart = windowStart
+        self.collectedItemCount = collectedItemCount
+        self.matchedItemCount = matchedItemCount
+        self.isPartial = isPartial
+    }
+}
+
 struct ReportDetail: Codable, Equatable, Hashable, Identifiable, Sendable {
     let id: UUID
     var title: String
@@ -410,8 +447,10 @@ struct ReportDetail: Codable, Equatable, Hashable, Identifiable, Sendable {
     var failureMessage: String?
     var newItems: [ReportItemSnapshot]
     var diagnostics: ReportDiagnostics?
+    var topicStats: [ReportTopicStat]
+    var metadata: ReportMetadata
 
-    init(id: UUID, title: String, type: ReportType, trigger: ReportTrigger, generatedAt: Date, status: ReportStatus, statistics: ReportStatistics, settingsSnapshot: ReportSettingsSnapshot, aiAnalysis: ReportAIAnalysis?, sections: [ReportSection], isFavorite: Bool, failureMessage: String?, newItems: [ReportItemSnapshot] = [], diagnostics: ReportDiagnostics? = nil) {
+    init(id: UUID, title: String, type: ReportType, trigger: ReportTrigger, generatedAt: Date, status: ReportStatus, statistics: ReportStatistics, settingsSnapshot: ReportSettingsSnapshot, aiAnalysis: ReportAIAnalysis?, sections: [ReportSection], isFavorite: Bool, failureMessage: String?, newItems: [ReportItemSnapshot] = [], diagnostics: ReportDiagnostics? = nil, topicStats: [ReportTopicStat] = [], metadata: ReportMetadata = ReportMetadata()) {
         self.id = id
         self.title = title
         self.type = type
@@ -426,9 +465,11 @@ struct ReportDetail: Codable, Equatable, Hashable, Identifiable, Sendable {
         self.failureMessage = failureMessage
         self.newItems = newItems
         self.diagnostics = diagnostics
+        self.topicStats = topicStats
+        self.metadata = metadata
     }
 
-    private enum CodingKeys: String, CodingKey { case id, title, type, trigger, generatedAt, status, statistics, settingsSnapshot, aiAnalysis, sections, isFavorite, failureMessage, newItems, diagnostics }
+    private enum CodingKeys: String, CodingKey { case id, title, type, trigger, generatedAt, status, statistics, settingsSnapshot, aiAnalysis, sections, isFavorite, failureMessage, newItems, diagnostics, topicStats, metadata }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -446,6 +487,8 @@ struct ReportDetail: Codable, Equatable, Hashable, Identifiable, Sendable {
         failureMessage = try c.decodeIfPresent(String.self, forKey: .failureMessage)
         newItems = try c.decodeIfPresent([ReportItemSnapshot].self, forKey: .newItems) ?? []
         diagnostics = try c.decodeIfPresent(ReportDiagnostics.self, forKey: .diagnostics)
+        topicStats = try c.decodeIfPresent([ReportTopicStat].self, forKey: .topicStats) ?? []
+        metadata = try c.decodeIfPresent(ReportMetadata.self, forKey: .metadata) ?? ReportMetadata(timeZone: "Asia/Shanghai")
     }
 
     func encode(to encoder: Encoder) throws {
@@ -456,6 +499,7 @@ struct ReportDetail: Codable, Equatable, Hashable, Identifiable, Sendable {
         try c.encodeIfPresent(aiAnalysis, forKey: .aiAnalysis); try c.encode(sections, forKey: .sections)
         try c.encode(isFavorite, forKey: .isFavorite); try c.encodeIfPresent(failureMessage, forKey: .failureMessage)
         try c.encode(newItems, forKey: .newItems); try c.encodeIfPresent(diagnostics, forKey: .diagnostics)
+        try c.encode(topicStats, forKey: .topicStats); try c.encode(metadata, forKey: .metadata)
     }
 
     var summary: ReportSummary {

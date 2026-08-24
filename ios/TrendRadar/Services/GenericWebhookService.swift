@@ -55,10 +55,12 @@ struct WebhookPayloadRenderer: Sendable {
         let source = template.trimmingCharacters(in: .whitespacesAndNewlines)
         if source.isEmpty {
             return try JSONSerialization.data(withJSONObject: [
+                "schema_version": report.metadata.schemaVersion,
                 "title": report.title,
                 "content": batchContent,
                 "report_type": report.type.rawValue,
                 "generated_at": values["generated_at"] ?? "",
+                "data_complete": !report.metadata.isPartial,
                 "batch_index": batchIndex,
                 "batch_total": batchTotal
             ], options: [.sortedKeys])
