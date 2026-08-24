@@ -13,6 +13,33 @@ private actor RetryAttemptCounter {
 final class NewsItemTests: XCTestCase {
     private let feed = RSSFeed(id: "test", name: "Test Feed", url: URL(string: "https://example.com/rss")!)
 
+    func testPipelineExecutionReportRoundTripsDiagnostics() throws {
+        let requestID = UUID()
+        let report = PipelineExecutionReport(
+            requestID: requestID,
+            trigger: .background,
+            startedAt: Date(timeIntervalSince1970: 100),
+            finishedAt: Date(timeIntervalSince1970: 103),
+            stageResults: [
+                PipelineStageResult(name: "collector", success: false, message: "timeout", duration: 3)
+            ],
+            reportID: nil,
+            deliveryStatus: .notAttempted
+        )
+
+        let restored = try JSONDecoder().decode(
+            PipelineExecutionReport.self,
+            from: JSONEncoder().encode(report)
+        )
+
+        XCTAssertEqual(restored.requestID, requestID)
+        XCTAssertEqual(restored.trigger, .background)
+        XCTAssertEqual(restored.stageResults.first?.name, "collector")
+        XCTAssertEqual(restored.stageResults.first?.message, "timeout")
+        XCTAssertEqual(restored.deliveryStatus, .notAttempted)
+        XCTAssertEqual(restored.duration, 3)
+    }
+
     func testNewsItemHasStableIdentifier() {
         let item = NewsItem(title: "Test", source: "Unit Test")
         XCTAssertFalse(item.id.isEmpty)

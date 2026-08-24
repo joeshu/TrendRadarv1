@@ -5,46 +5,84 @@ actor RefreshPipelineExecutor {
 
     private var running = false
 
-    func execute(context: PipelineExecutionContext) async throws -> RefreshPipelineResult {
+    func execute(context: PipelineExecutionContext) async throws -> RefreshPipelineExecutionResult {
         guard !running else {
-            return RefreshPipelineResult(status: .skipped, context: context)
+            return RefreshPipelineExecutionResult(status: .skipped, context: context)
         }
 
         running = true
         defer { running = false }
 
-        try Task.checkCancellation()
+        var stageResults: [PipelineStageResult] = []
+        var reportID: String?
+        var deliveryStatus: DeliveryStatus = .notAttempted
 
-        let settings = loadSettings()
-        let input = RefreshPipelineInput(
-            settings: settings,
-            trigger: context.trigger
-        )
+        do {
+            try Task.checkCancellation()
 
-        let collected = try await CollectorStage().execute(input)
-        try Task.checkCancellation()
+            let settings = loadSettings()
+            let input = RefreshPipelineInput(
+                settings: settings,
+                trigger: context.trigger
+            )
 
-        let filtered = try await FilterStage().execute(collected)
-        try Task.checkCancellation()
+            let collected = try await runStage("collector", results: &stageResults) {
+                try await CollectorStage().execute(input)
+            }
+            try Task.checkCancellation()
 
-        let persisted = try await PersistStage().execute(filtered)
-        try Task.checkCancellation()
+            let filtered = try await runStage("filter", results: &stageResults) {
+                try await FilterStage().execute(collected)
+            }
+            try Task.checkCancellation()
 
-        var reportCreated = false
-        var deliveryCompleted = false
+            let persisted = try await runStage("persist", results: &stageResults) {
+                try await PersistStage().execute(filtered)
+            }
+            try Task.checkCancellation()
 
-        if let report = try await ReportStage().execute(items: persisted, settings: settings) {
-            reportCreated = true
-            let delivery = await DeliveryStage().execute(report: report, settings: settings)
-            deliveryCompleted = delivery.failureMessage == nil
+            let report = try await runStage("report", results: &stageResults) {
+                try await ReportStage().execute(items: persisted, settings: settings)
+            }
+            if let report {
+                await PipelineReportBridge.persist(report)
+                reportID = report.id.uuidString
+                let deliveryStartedAt = Date()
+                let delivery = await DeliveryStage().execute(report: report, settings: settings)
+                let deliveryMessage = delivery.failureMessage
+                deliveryStatus = deliveryMessage == nil ? .delivered : .failed
+                stageResults.append(PipelineStageResult(
+                    name: "delivery",
+                    success: deliveryMessage == nil,
+                    message: deliveryMessage,
+                    duration: Date().timeIntervalSince(deliveryStartedAt)
+                ))
+            }
+
+            let executionReport = makeReport(
+                context: context,
+                stageResults: stageResults,
+                reportID: reportID,
+                deliveryStatus: deliveryStatus
+            )
+            await PipelineDiagnosticsStore.shared.save(executionReport)
+
+            return RefreshPipelineExecutionResult(
+                status: .completed,
+                context: context,
+                reportCreated: reportID != nil,
+                deliveryCompleted: deliveryStatus == .delivered
+            )
+        } catch {
+            let executionReport = makeReport(
+                context: context,
+                stageResults: stageResults,
+                reportID: reportID,
+                deliveryStatus: deliveryStatus
+            )
+            await PipelineDiagnosticsStore.shared.save(executionReport)
+            throw error
         }
-
-        return RefreshPipelineResult(
-            status: .completed,
-            context: context,
-            reportCreated: reportCreated,
-            deliveryCompleted: deliveryCompleted
-        )
     }
 
     private func loadSettings() -> AppSettings {
@@ -54,9 +92,52 @@ actor RefreshPipelineExecutor {
         }
         return settings
     }
+
+    private func runStage<Output>(
+        _ name: String,
+        results: inout [PipelineStageResult],
+        operation: () async throws -> Output
+    ) async throws -> Output {
+        let startedAt = Date()
+        do {
+            let output = try await operation()
+            results.append(PipelineStageResult(
+                name: name,
+                success: true,
+                message: nil,
+                duration: Date().timeIntervalSince(startedAt)
+            ))
+            return output
+        } catch {
+            results.append(PipelineStageResult(
+                name: name,
+                success: false,
+                message: error.localizedDescription,
+                duration: Date().timeIntervalSince(startedAt)
+            ))
+            throw error
+        }
+    }
+
+    private func makeReport(
+        context: PipelineExecutionContext,
+        stageResults: [PipelineStageResult],
+        reportID: String?,
+        deliveryStatus: DeliveryStatus
+    ) -> PipelineExecutionReport {
+        PipelineExecutionReport(
+            requestID: context.requestID,
+            trigger: context.trigger,
+            startedAt: context.startedAt,
+            finishedAt: Date(),
+            stageResults: stageResults,
+            reportID: reportID,
+            deliveryStatus: deliveryStatus
+        )
+    }
 }
 
-struct RefreshPipelineResult: Sendable {
+struct RefreshPipelineExecutionResult: Sendable {
     enum Status: Sendable {
         case completed
         case skipped

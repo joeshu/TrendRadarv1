@@ -2,7 +2,7 @@ import Foundation
 
 struct PipelineExecutionReport: Sendable, Codable {
     let requestID: UUID
-    let trigger: PipelineTrigger
+    let trigger: RefreshTrigger
     let startedAt: Date
     let finishedAt: Date
     let stageResults: [PipelineStageResult]

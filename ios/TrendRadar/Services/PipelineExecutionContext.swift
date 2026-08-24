@@ -12,7 +12,7 @@ struct PipelineExecutionContext: Sendable {
     }
 }
 
-enum RefreshTrigger: String, Sendable {
+enum RefreshTrigger: String, Sendable, Codable {
     case foreground
     case background
     case manual
