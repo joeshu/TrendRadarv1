@@ -144,23 +144,21 @@ struct ReportDetailView: View {
                                 }
                             }
                         }
-                        if let report {
-                            Button {
-                                // The toolbar menu remains available for Markdown/HTML export.
-                            } label: {
-                                Label("导出报告", systemImage: "square.and.arrow.up")
-                                    .font(.system(size: 17, weight: .semibold))
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 14)
-                                    .foregroundStyle(.white)
-                                    .background(AppTheme.brandIndigo)
-                                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                            }
-                            .buttonStyle(.plain)
-                            .contextMenu {
-                                ShareLink(item: ReportFormatter().render(report, format: .markdown)) {
-                                    Label("分享 Markdown", systemImage: "doc.text")
-                                }
+                        Button {
+                            // The toolbar menu remains available for Markdown/HTML export.
+                        } label: {
+                            Label("导出报告", systemImage: "square.and.arrow.up")
+                                .font(.system(size: 17, weight: .semibold))
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 14)
+                                .foregroundStyle(.white)
+                                .background(AppTheme.brandIndigo)
+                                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        }
+                        .buttonStyle(.plain)
+                        .contextMenu {
+                            ShareLink(item: ReportFormatter().render(report, format: .markdown)) {
+                                Label("分享 Markdown", systemImage: "doc.text")
                             }
                         }
                     }
