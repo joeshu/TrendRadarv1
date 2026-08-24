@@ -16,7 +16,14 @@ struct TrendRadarApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            appContent
+        }
+    }
+
+    private var appContent: some View {
+        AppTheme.fontScale = settingsStore.settings.display.fontScale
+        return ContentView()
+                .font(AppTheme.bodyFont)
                 .environmentObject(store)
                 .environmentObject(settingsStore)
                 .environmentObject(reportStore)
@@ -24,8 +31,7 @@ struct TrendRadarApp: App {
                 .environmentObject(bootstrapper)
                 .environmentObject(archiveStore)
                 .preferredColorScheme(preferredColorScheme)
-                .dynamicTypeSize(dynamicTypeSize)
-                .fontDesign(fontDesign)
+                .dynamicTypeSize(.medium)
                 .controlSize(controlSize)
                 .environment(\.appHighContrast, settingsStore.settings.display.highContrast)
                 .environment(\.appReduceTransparency, settingsStore.settings.display.reduceTransparency)
@@ -38,7 +44,6 @@ struct TrendRadarApp: App {
                         hotNewsStore: hotNewsStore
                     )
                 }
-        }
     }
 
     private var preferredColorScheme: ColorScheme? {
@@ -46,28 +51,6 @@ struct TrendRadarApp: App {
         case .system: return nil
         case .dark: return .dark
         case .light: return .light
-        }
-    }
-
-    private var fontDesign: Font.Design {
-        switch settingsStore.settings.display.fontStyle {
-        case .system: return .default
-        case .rounded: return .rounded
-        case .serif: return .serif
-        }
-    }
-
-    private var dynamicTypeSize: DynamicTypeSize {
-        switch settingsStore.settings.display.fontScale {
-        case ..<0.90: return .small
-        case ..<0.98: return .medium
-        case ..<1.05: return .large
-        case ..<1.10: return .xLarge
-        case ..<1.15: return .xxLarge
-        case ..<1.20: return .xxxLarge
-        case ..<1.25: return .accessibility1
-        case ..<1.30: return .accessibility2
-        default: return .accessibility3
         }
     }
 

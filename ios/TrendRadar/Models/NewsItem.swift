@@ -198,7 +198,7 @@ struct DisplaySettings: Codable, Equatable, Sendable {
     var fontStyle = AppFontStyle.system
     var highContrast = false
     var reduceTransparency = false
-    /// 全局字体倍率，映射到系统 Dynamic Type 等级。
+    /// HarmonyOS Sans 全局字体倍率，由应用自身控制，不受系统粗体文本影响。
     var fontScale = 1.0
     /// 全局 UI 密度，控制表单行高和控件尺寸。
     var uiScale = 1.0
@@ -229,7 +229,7 @@ struct DisplaySettings: Codable, Equatable, Sendable {
         fontStyle = try c.decodeIfPresent(AppFontStyle.self, forKey: .fontStyle) ?? .system
         highContrast = try c.decodeIfPresent(Bool.self, forKey: .highContrast) ?? false
         reduceTransparency = try c.decodeIfPresent(Bool.self, forKey: .reduceTransparency) ?? false
-        fontScale = min(max(try c.decodeIfPresent(Double.self, forKey: .fontScale) ?? 1.0, 0.85), 1.30)
+        fontScale = min(max(try c.decodeIfPresent(Double.self, forKey: .fontScale) ?? 1.0, 0.70), 1.45)
         uiScale = min(max(try c.decodeIfPresent(Double.self, forKey: .uiScale) ?? 1.0, 0.90), 1.15)
         cardSpacing = min(max(try c.decodeIfPresent(Double.self, forKey: .cardSpacing) ?? 14.0, 8), 24)
         regionOrder = try c.decodeIfPresent([String].self, forKey: .regionOrder) ?? ["new_items", "hotlist", "rss", "standalone", "ai_analysis"]

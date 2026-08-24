@@ -1140,4 +1140,11 @@ final class NewsItemTests: XCTestCase {
         XCTAssertFalse(restored.reduceTransparency)
         XCTAssertEqual(restored.fontScale, 1.0)
     }
+
+    func testHarmonyFontScaleSupportsFullConfiguredRange() throws {
+        let minimum = try JSONDecoder().decode(DisplaySettings.self, from: Data(#"{"fontScale":0.2}"#.utf8))
+        let maximum = try JSONDecoder().decode(DisplaySettings.self, from: Data(#"{"fontScale":2.0}"#.utf8))
+        XCTAssertEqual(minimum.fontScale, 0.70)
+        XCTAssertEqual(maximum.fontScale, 1.45)
+    }
 }

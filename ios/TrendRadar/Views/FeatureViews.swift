@@ -389,7 +389,7 @@ struct FeedReaderView: View {
                             .foregroundStyle(AppTheme.electricBlue)
                         ForEach(Array(paragraphs.enumerated()), id: \.offset) { index, paragraph in
                             Text(paragraph)
-                                .font(.system(size: 17 * readerFontScale, design: readerSepia ? .serif : .default))
+                                .font(.custom("HarmonyOS_Sans_SC_Regular", fixedSize: 17 * readerFontScale))
                                 .foregroundStyle(readerSepia ? AppTheme.readerText : AppTheme.textSecondary)
                                 .lineSpacing(readerLineSpacing)
                                 .onAppear { readingProgress = max(readingProgress, Double(index + 1) / Double(max(1, paragraphs.count))) }
@@ -416,7 +416,7 @@ struct FeedReaderView: View {
             ToolbarItemGroup(placement: .topBarTrailing) {
                 Menu {
                     Picker("字号", selection: $readerFontScale) {
-                        Text("小").tag(0.9); Text("标准").tag(1.0); Text("大").tag(1.15); Text("特大").tag(1.3)
+                        Text("最小").tag(0.75); Text("小").tag(0.9); Text("标准").tag(1.0); Text("大").tag(1.2); Text("最大").tag(1.45)
                     }
                     Picker("行距", selection: $readerLineSpacing) {
                         Text("紧凑").tag(4.0); Text("标准").tag(7.0); Text("宽松").tag(11.0)

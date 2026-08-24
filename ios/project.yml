@@ -26,6 +26,7 @@ targets:
     resources:
       - path: TrendRadar/Resources/Brand
       - path: TrendRadar/Resources/Assets.xcassets
+      - path: TrendRadar/Resources/Fonts
       - path: ../config/ai_analysis_prompt.txt
       - path: ../config/ai_filter/prompt.txt
       - path: ../config/ai_filter/extract_prompt.txt

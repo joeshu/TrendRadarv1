@@ -41,5 +41,12 @@
 	<array>
 		<string>fetch</string>
 	</array>
+	<key>UIAppFonts</key>
+	<array>
+		<string>HarmonyOS_Sans_SC_Thin.ttf</string>
+		<string>HarmonyOS_Sans_SC_Light.ttf</string>
+		<string>HarmonyOS_Sans_SC_Regular.ttf</string>
+		<string>HarmonyOS_Sans_SC_Medium.ttf</string>
+	</array>
 </dict>
 </plist>

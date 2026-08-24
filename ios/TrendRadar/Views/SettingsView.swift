@@ -562,20 +562,13 @@ struct SettingsView: View {
                 }
             }
             .pickerStyle(.segmented)
-            Picker("字体风格", selection: $settingsStore.settings.display.fontStyle) {
-                ForEach(AppFontStyle.allCases) { style in
-                    Text(style.title).tag(style)
-                }
-            }
+            LabeledContent("内置字体", value: "HarmonyOS Sans SC")
             AppearancePreview(
                 appearance: settingsStore.settings.display.appearance,
                 highContrast: settingsStore.settings.display.highContrast,
                 reduceTransparency: settingsStore.settings.display.reduceTransparency
             )
-            TypographyPreview(
-                style: settingsStore.settings.display.fontStyle,
-                scale: settingsStore.settings.display.fontScale
-            )
+            TypographyPreview(scale: settingsStore.settings.display.fontScale)
             Toggle("高对比度", isOn: $settingsStore.settings.display.highContrast)
             Text("增强卡片边界与内容区分，适合强光环境。")
                 .font(AppTheme.captionFont)
@@ -597,10 +590,20 @@ struct SettingsView: View {
                         .foregroundStyle(.secondary)
                         .monospacedDigit()
                 }
-                Slider(value: $settingsStore.settings.display.fontScale, in: 0.85...1.30, step: 0.05)
-                Text("应用到所有页面，并保留 iOS 动态字体与辅助功能支持。")
+                Slider(value: $settingsStore.settings.display.fontScale, in: 0.70...1.45, step: 0.05)
+                HStack {
+                    Text("最小 70%")
+                    Spacer()
+                    Text("最大 145%")
+                }
+                .font(AppTheme.metadataFont)
+                .foregroundStyle(AppTheme.textTertiary)
+                Text("应用到全部界面与内容；阅读器正文仍可单独调整。")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                Text("内置 Thin、Light、Regular、Medium 四档，许可说明随应用一并提供。")
+                    .font(AppTheme.metadataFont)
+                    .foregroundStyle(AppTheme.textTertiary)
             }
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
@@ -1092,27 +1095,18 @@ private struct AppearancePreview: View {
 }
 
 private struct TypographyPreview: View {
-    let style: AppFontStyle
     let scale: Double
-
-    private var design: Font.Design {
-        switch style {
-        case .system: return .default
-        case .rounded: return .rounded
-        case .serif: return .serif
-        }
-    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 7) {
             Text("趋势情报预览")
-                .font(.system(size: 18 * scale, weight: .semibold, design: design))
+                .font(.custom("HarmonyOS_Sans_SC_Medium", fixedSize: 18 * scale))
                 .foregroundStyle(AppTheme.textPrimary)
             Text("标题清晰、正文耐读、数字层级明确")
-                .font(.system(size: 14 * scale, weight: .regular, design: design))
+                .font(.custom("HarmonyOS_Sans_SC_Regular", fixedSize: 14 * scale))
                 .foregroundStyle(AppTheme.textSecondary)
             Text("#01  ·  12 个来源  ·  刚刚更新")
-                .font(.system(size: 12 * scale, weight: .medium, design: .monospaced))
+                .font(.custom("HarmonyOS_Sans_SC_Light", fixedSize: 12 * scale).monospacedDigit())
                 .foregroundStyle(AppTheme.brandCyan)
         }
         .padding(14)

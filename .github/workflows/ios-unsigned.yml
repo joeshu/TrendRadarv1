@@ -32,6 +32,9 @@ jobs:
             brew install xcodegen
           fi
 
+      - name: Install HarmonyOS Sans SC fonts
+        run: bash ios/scripts/install-harmony-fonts.sh
+
       - name: Generate Xcode project
         working-directory: ios
         run: xcodegen generate

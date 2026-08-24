@@ -2,6 +2,11 @@ import SwiftUI
 import UIKit
 
 enum AppTheme {
+    static var fontScale: CGFloat = 1.0
+
+    private static func font(_ name: String, size: CGFloat) -> Font {
+        .custom(name, fixedSize: size * min(max(fontScale, 0.70), 1.45))
+    }
     // White technology surface: cool paper white, ink typography, electric cyan accents.
     static let background = adaptive(light: UIColor(red: 0.965, green: 0.978, blue: 0.992, alpha: 1), dark: UIColor(red: 0.035, green: 0.055, blue: 0.085, alpha: 1))
     static let card = adaptive(light: .white, dark: UIColor(red: 0.045, green: 0.068, blue: 0.105, alpha: 1))
@@ -33,19 +38,19 @@ enum AppTheme {
     static let readerSurface = adaptive(light: UIColor(red: 0.98, green: 0.94, blue: 0.84, alpha: 1), dark: UIColor(red: 0.20, green: 0.17, blue: 0.12, alpha: 1))
     static let readerText = adaptive(light: UIColor(red: 0.19, green: 0.15, blue: 0.10, alpha: 1), dark: UIColor(red: 0.92, green: 0.86, blue: 0.73, alpha: 1))
 
-    // Product typography: Chinese uses the native system sans-serif; rounded is reserved for brand eyebrow labels.
-    static let pageTitleFont = Font.custom("PingFangSC-Semibold", fixedSize: 24)
-    static let titleFont = Font.custom("PingFangSC-Semibold", fixedSize: 21)
-    static let sectionTitleFont = Font.custom("PingFangSC-Medium", fixedSize: 17)
-    static let headlineFont = Font.custom("PingFangSC-Medium", fixedSize: 15)
-    static let cardTitleFont = Font.custom("PingFangSC-Medium", fixedSize: 15)
-    static let bodyFont = Font.custom("PingFangSC-Regular", fixedSize: 14)
-    static let readingFont = Font.custom("PingFangSC-Regular", fixedSize: 16).leading(.loose)
-    static let captionFont = Font.custom("PingFangSC-Regular", fixedSize: 12)
-    static let metadataFont = Font.custom("PingFangSC-Regular", fixedSize: 11)
-    static let brandLabelFont = Font.custom("PingFangSC-Semibold", fixedSize: 10)
-    static let numericFont = Font.custom("DINAlternate-Bold", fixedSize: 20).monospacedDigit()
-    static let rankFont = Font.custom("DINAlternate-Bold", fixedSize: 19).monospacedDigit()
+    // Product typography: bundled HarmonyOS Sans SC with app-controlled scaling.
+    static var pageTitleFont: Font { font("HarmonyOS_Sans_SC_Medium", size: 24) }
+    static var titleFont: Font { font("HarmonyOS_Sans_SC_Medium", size: 21) }
+    static var sectionTitleFont: Font { font("HarmonyOS_Sans_SC_Medium", size: 17) }
+    static var headlineFont: Font { font("HarmonyOS_Sans_SC_Regular", size: 15) }
+    static var cardTitleFont: Font { font("HarmonyOS_Sans_SC_Medium", size: 15) }
+    static var bodyFont: Font { font("HarmonyOS_Sans_SC_Regular", size: 14) }
+    static var readingFont: Font { font("HarmonyOS_Sans_SC_Regular", size: 16).leading(.loose) }
+    static var captionFont: Font { font("HarmonyOS_Sans_SC_Light", size: 12) }
+    static var metadataFont: Font { font("HarmonyOS_Sans_SC_Thin", size: 11) }
+    static var brandLabelFont: Font { font("HarmonyOS_Sans_SC_Medium", size: 10) }
+    static var numericFont: Font { font("HarmonyOS_Sans_SC_Medium", size: 20).monospacedDigit() }
+    static var rankFont: Font { font("HarmonyOS_Sans_SC_Medium", size: 19).monospacedDigit() }
 
     static let accentGradient = LinearGradient(
         colors: [electricBlue, violet, brandMagenta],
