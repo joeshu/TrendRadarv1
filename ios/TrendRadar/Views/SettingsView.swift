@@ -987,22 +987,29 @@ struct FeedEditorView: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section("RSS 基本信息") {
-                    TextField("唯一 ID", text: $id)
-                        .textInputAutocapitalization(.never).autocorrectionDisabled()
-                    TextField("显示名称", text: $name)
-                    TextField("订阅地址", text: $url)
-                        .textInputAutocapitalization(.never).autocorrectionDisabled()
-                    Toggle("启用此源", isOn: $isEnabled)
-                }
-                Section("新鲜度") {
-                    Stepper("单源最大年龄：\(maxAgeDays == 0 ? "跟随全局" : "\(maxAgeDays) 天")", value: $maxAgeDays, in: 0...30)
-                    TextField("主题分组", text: $group)
+            ZStack {
+                AppTheme.background.ignoresSafeArea()
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 18) {
+                        editorSection(title: "RSS 基本信息", icon: "dot.radiowaves.left.and.right") {
+                            editorField("唯一 ID", text: $id, systemImage: "number")
+                            editorField("显示名称", text: $name, systemImage: "textformat")
+                            editorField("订阅地址", text: $url, systemImage: "link", autocorrect: false)
+                            Toggle("启用此源", isOn: $isEnabled)
+                        }
+                        editorSection(title: "采集策略", icon: "slider.horizontal.3") {
+                            Stepper("单源最大年龄：\(maxAgeDays == 0 ? "跟随全局" : "\(maxAgeDays) 天")", value: $maxAgeDays, in: 0...30)
+                            editorField("主题分组", text: $group, systemImage: "folder")
+                        }
+                    }
+                    .padding(16)
+                    .padding(.bottom, 30)
                 }
             }
             .navigationTitle("编辑 RSS")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(AppTheme.background, for: .navigationBar)
+            .toolbarColorScheme(.light, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
@@ -1011,7 +1018,7 @@ struct FeedEditorView: View {
                         let normalizedURL = url.trimmingCharacters(in: .whitespacesAndNewlines)
                         guard !normalizedID.isEmpty, !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
                               URL(string: normalizedURL) != nil else { return }
-                         onSave(ConfigFeed(id: normalizedID, name: name, url: normalizedURL, isEnabled: isEnabled, maxAgeDays: maxAgeDays, group: group.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "未分组" : group))
+                        onSave(ConfigFeed(id: normalizedID, name: name, url: normalizedURL, isEnabled: isEnabled, maxAgeDays: maxAgeDays, group: group.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "未分组" : group))
                         dismiss()
                     }
                 }
@@ -1019,5 +1026,29 @@ struct FeedEditorView: View {
             .preferredColorScheme(.light)
             .tint(AppTheme.cyan)
         }
+    }
+
+    private func editorSection<Content: View>(title: String, icon: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label(title, systemImage: icon).font(.system(size: 17, weight: .semibold)).foregroundStyle(AppTheme.textPrimary)
+            content()
+        }
+        .padding(16)
+        .background(AppTheme.card)
+        .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(AppTheme.cardBorder, lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+    }
+
+    private func editorField(_ title: String, text: Binding<String>, systemImage: String, autocorrect: Bool = true) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: systemImage).foregroundStyle(AppTheme.brandCyan).frame(width: 22)
+            TextField(title, text: text)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled(!autocorrect)
+        }
+        .padding(.horizontal, 12)
+        .frame(minHeight: 46)
+        .background(AppTheme.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 }
