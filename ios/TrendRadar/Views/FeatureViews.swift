@@ -523,7 +523,7 @@ struct InsightView: View {
                             Text("独立源点速览")
                                 .font(AppTheme.headlineFont)
                                 .foregroundStyle(AppTheme.brandIndigo)
-                            ForEach(analysis.standaloneSummaries.keys.sorted(), id: \\.self) { source in
+                            ForEach(analysis.standaloneSummaries.keys.sorted(), id: \.self) { source in
                                 if let content = analysis.standaloneSummaries[source], !content.isEmpty {
                                     insightReportBlock(title: source, content: content)
                                 }
