@@ -338,7 +338,7 @@ struct ContentView: View {
                 .tabItem { Label("设置", systemImage: "gearshape.fill") }
         }
         .tint(AppTheme.brandCyan)
-        .toolbarBackground(.thinMaterial, for: .tabBar)
+        .toolbarBackground(.ultraThinMaterial, for: .tabBar)
         .preferredColorScheme(.light)
     }
 }

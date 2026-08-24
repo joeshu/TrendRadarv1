@@ -622,7 +622,7 @@ struct HotNewsView: View {
                         }
                     }
                     .padding(20)
-                    .padding(.bottom, 110)
+                    .padding(.bottom, 150)
                 }
             }
             .navigationTitle("热榜")
@@ -925,7 +925,7 @@ struct ReportCenterView: View {
                         }
                     }
                     .padding(20)
-                    .padding(.bottom, 110)
+                    .padding(.bottom, 150)
                 }
             }
             .navigationTitle("报告")

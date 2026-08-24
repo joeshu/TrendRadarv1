@@ -9,7 +9,7 @@ struct PremiumPanel<Content: View>: View {
     }
     var body: some View {
         content
-            .padding(16)
+            .padding(17)
             .background {
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
                     .fill(AppTheme.card)

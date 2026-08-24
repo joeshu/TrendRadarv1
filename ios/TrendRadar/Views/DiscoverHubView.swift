@@ -33,7 +33,9 @@ struct DiscoverHubView: View {
                             Text("洞察").tag(1)
                         }.pickerStyle(.segmented)
                         if mode == 0 { feedContent } else { insightContent }
-                    }.padding(20).padding(.bottom, 110)
+                    }
+                    .padding(20)
+                    .padding(.bottom, 150)
                 }
             }
             .navigationTitle("发现")
