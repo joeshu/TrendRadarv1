@@ -342,6 +342,8 @@ struct SettingsView: View {
             }
             .navigationTitle(category.title)
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(AppTheme.background, for: .navigationBar)
+            .toolbarColorScheme(.light, for: .navigationBar)
             .scrollContentBackground(.hidden)
             .background(AppTheme.background)
             .preferredColorScheme(.light)

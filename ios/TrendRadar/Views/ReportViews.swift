@@ -7,16 +7,40 @@ struct ReportGeneratorSheet: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section("报告类型") {
-                    Picker("类型", selection: $selectedType) {
-                        ForEach(ReportType.allCases, id: \.self) { type in
-                            Text(type.displayName).tag(type)
+            ZStack {
+                AppTheme.background.ignoresSafeArea()
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 18) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("生成一份新的趋势报告")
+                                .font(.system(size: 24, weight: .bold))
+                                .foregroundStyle(AppTheme.textPrimary)
+                            Text("先采集当前热榜与 RSS，再按配置生成可保存的新闻快照。")
+                                .font(AppTheme.bodyFont)
+                                .foregroundStyle(AppTheme.textSecondary)
                         }
+                        .padding(.horizontal, 4)
+                        VStack(alignment: .leading, spacing: 14) {
+                            Label("报告类型", systemImage: "doc.text.magnifyingglass")
+                                .font(.system(size: 17, weight: .semibold))
+                                .foregroundStyle(AppTheme.textPrimary)
+                            Picker("类型", selection: $selectedType) {
+                                ForEach(ReportType.allCases, id: \.self) { type in
+                                    Text(type.displayName).tag(type)
+                                }
+                            }
+                            .pickerStyle(.segmented)
+                            Text("报告会保存生成时的热榜、RSS、筛选结果与 AI 分析。")
+                                .font(AppTheme.captionFont)
+                                .foregroundStyle(AppTheme.textSecondary)
+                        }
+                        .padding(18)
+                        .background(AppTheme.card)
+                        .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(AppTheme.cardBorder, lineWidth: 1))
+                        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                     }
-                    Text("生成时会先在手机端采集热榜与 RSS，再按当前筛选、排序和 AI 设置形成报告。")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    .padding(16)
+                    .padding(.bottom, 30)
                 }
             }
             .navigationTitle("生成报告")
