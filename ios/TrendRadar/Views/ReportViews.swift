@@ -110,6 +110,7 @@ struct ReportDetailView: View {
                     LazyVStack(alignment: .leading, spacing: 16) {
                         PremiumPanel(tint: AppTheme.brandCyan) { detailHeader(report) }
                         PremiumPanel(tint: AppTheme.brandIndigo) { statistics(report) }
+                        evidencePanel(report)
                         if let analysis = report.aiAnalysis, analysis.hasContent {
                             PremiumPanel(tint: AppTheme.brandMagenta) {
                                 VStack(alignment: .leading, spacing: 12) {
@@ -157,7 +158,7 @@ struct ReportDetailView: View {
                                 }
                             }
                         }
-                        ForEach(report.sections) { section in sectionView(section) }
+                        ForEach(ReportPresentationModel(report: report).sections) { section in sectionView(section) }
                         if let diagnostics = report.diagnostics, !diagnostics.failures.isEmpty {
                             PremiumPanel(tint: AppTheme.yellow) {
                                 VStack(alignment: .leading, spacing: 10) {
@@ -280,6 +281,45 @@ struct ReportDetailView: View {
         .padding(16).background(AppTheme.card)
         .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(AppTheme.cardBorder, lineWidth: 1))
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    private func evidencePanel(_ report: ReportDetail) -> some View {
+        let evidence = ReportPresentationModel(report: report).evidence
+        return InsightPanel(title: "证据与范围", icon: evidence.isPartial ? "exclamationmark.shield" : "checkmark.shield", tint: evidence.isPartial ? AppTheme.yellow : AppTheme.green) {
+            VStack(alignment: .leading, spacing: 10) {
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 8) {
+                        evidenceBadges(evidence)
+                    }
+                    VStack(alignment: .leading, spacing: 8) {
+                        evidenceBadges(evidence)
+                    }
+                }
+                Text("样本 \(evidence.sampleCount) 条 · 命中 \(evidence.matchedCount) 条 · 来源 \(evidence.sourceCount) 个")
+                    .font(AppTheme.captionFont)
+                    .foregroundStyle(AppTheme.textSecondary)
+                Text(evidenceWindow(evidence))
+                    .font(AppTheme.captionFont)
+                    .foregroundStyle(AppTheme.textSecondary)
+                Text("引用 \(evidence.citedItemCount) 条 · 失败来源 \(evidence.failedSourceCount) 个")
+                    .font(AppTheme.captionFont)
+                    .foregroundStyle(evidence.failedSourceCount > 0 ? AppTheme.yellow : AppTheme.textSecondary)
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("证据与范围，样本 \(evidence.sampleCount) 条，命中 \(evidence.matchedCount) 条，引用 \(evidence.citedItemCount) 条，失败来源 \(evidence.failedSourceCount) 个，\(evidence.generationMethod)")
+        }
+    }
+
+    @ViewBuilder
+    private func evidenceBadges(_ evidence: ReportEvidenceSummary) -> some View {
+        StatusBadge(title: evidence.isPartial ? "部分完成" : "数据完整", systemImage: evidence.isPartial ? "exclamationmark.circle" : "checkmark.circle", tint: evidence.isPartial ? AppTheme.yellow : AppTheme.green)
+        StatusBadge(title: evidence.generationMethod, systemImage: "gearshape.2", tint: AppTheme.cyan)
+    }
+
+    private func evidenceWindow(_ evidence: ReportEvidenceSummary) -> String {
+        let end = evidence.windowEnd.formatted(date: .numeric, time: .shortened)
+        guard let start = evidence.windowStart else { return "数据窗口：截至 \(end)" }
+        return "数据窗口：\(start.formatted(date: .numeric, time: .shortened)) 至 \(end)"
     }
 
     private func sectionView(_ section: ReportSection) -> some View {

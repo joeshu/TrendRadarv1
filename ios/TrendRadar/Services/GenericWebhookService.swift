@@ -38,6 +38,7 @@ enum WebhookChannel: String, Sendable {
 struct WebhookPayloadRenderer: Sendable {
     func render(report: ReportDetail, template: String, batchContent: String, batchIndex: Int, batchTotal: Int, channel: WebhookChannel = .generic) throws -> Data {
         let reportJSON = try JSONEncoder.webhook.encode(report)
+        let evidence = ReportPresentationModel(report: report).evidence
         if template.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && channel != .generic {
             switch channel {
             case .feishu:
@@ -69,6 +70,14 @@ struct WebhookPayloadRenderer: Sendable {
                 "report_type": report.type.rawValue,
                 "generated_at": values["generated_at"] ?? "",
                 "data_complete": !report.metadata.isPartial,
+                "sample_count": evidence.sampleCount,
+                "matched_count": evidence.matchedCount,
+                "source_count": evidence.sourceCount,
+                "failed_source_count": evidence.failedSourceCount,
+                "citation_count": evidence.citedItemCount,
+                "window_start": (evidence.windowStart.map { ISO8601DateFormatter().string(from: $0) } as Any?) ?? NSNull(),
+                "window_end": ISO8601DateFormatter().string(from: evidence.windowEnd),
+                "generation_method": evidence.generationMethod,
                 "batch_index": batchIndex,
                 "batch_total": batchTotal
             ], options: [.sortedKeys])

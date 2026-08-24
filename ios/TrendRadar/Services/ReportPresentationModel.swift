@@ -1,5 +1,17 @@
 import Foundation
 
+struct ReportEvidenceSummary: Equatable, Sendable {
+    let sampleCount: Int
+    let matchedCount: Int
+    let sourceCount: Int
+    let failedSourceCount: Int
+    let citedItemCount: Int
+    let windowStart: Date?
+    let windowEnd: Date
+    let isPartial: Bool
+    let generationMethod: String
+}
+
 /// The channel-neutral report view model consumed by Markdown, Webhook and HTML renderers.
 /// It deliberately derives from the persisted ReportDetail so old reports remain readable.
 struct ReportPresentationModel: Sendable {
@@ -24,6 +36,26 @@ struct ReportPresentationModel: Sendable {
         !(report.aiAnalysis?.standaloneSummaries.isEmpty ?? true)
     }
 
+    var evidence: ReportEvidenceSummary {
+        let itemIDs = Set(report.sections.flatMap(\.items).map(\.id))
+        let analysisMethod = report.aiAnalysis.flatMap { analysis -> String? in
+            guard analysis.hasContent else { return nil }
+            let model = (analysis.model ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            return model.isEmpty ? "增强分析" : "增强分析 · \(model)"
+        }
+        return ReportEvidenceSummary(
+            sampleCount: report.metadata.collectedItemCount,
+            matchedCount: report.metadata.matchedItemCount,
+            sourceCount: report.statistics.sourceCount,
+            failedSourceCount: report.diagnostics?.failures.count ?? 0,
+            citedItemCount: itemIDs.count,
+            windowStart: report.metadata.windowStart,
+            windowEnd: report.generatedAt,
+            isPartial: report.metadata.isPartial,
+            generationMethod: analysisMethod ?? "本地规则"
+        )
+    }
+
     private static func orderedSections(_ sections: [ReportSection], regionOrder: [String]) -> [ReportSection] {
         let positions = Dictionary(uniqueKeysWithValues: regionOrder.enumerated().map { ($1, $0) })
         return sections.enumerated().sorted { left, right in
@@ -44,6 +76,7 @@ struct ReportPresentationModel: Sendable {
 struct ReportMarkdownRenderer: Sendable {
     func render(_ report: ReportDetail) -> String {
         let model = ReportPresentationModel(report: report)
+        let evidence = model.evidence
         var lines: [String] = [
             "# \(report.title)",
             "",
@@ -56,7 +89,9 @@ struct ReportMarkdownRenderer: Sendable {
             "- RSS \(report.statistics.rssCount) 条 · \(report.statistics.rssSourceCount) 个来源",
             "- 未读 \(report.statistics.unreadCount) 条 · 收藏 \(report.statistics.favoriteCount) 条",
             "- 命中关键词 \(report.statistics.keywordCount) 个",
-            "- 数据完整度：\(report.metadata.isPartial ? "部分完成" : "完整") · 原始采集 \(report.metadata.collectedItemCount) 条 · 命中 \(report.metadata.matchedItemCount) 条"
+            "- 数据完整度：\(evidence.isPartial ? "部分完成" : "完整") · 原始采集 \(evidence.sampleCount) 条 · 命中 \(evidence.matchedCount) 条",
+            "- 数据窗口：\(window(evidence))",
+            "- 证据：\(evidence.citedItemCount) 条引用 · \(evidence.failedSourceCount) 个失败来源 · \(evidence.generationMethod)"
         ]
 
         appendTopicStats(report.topicStats, to: &lines)
@@ -203,6 +238,11 @@ struct ReportMarkdownRenderer: Sendable {
 
     private func date(_ value: Date) -> String {
         value.formatted(date: .numeric, time: .shortened)
+    }
+
+    private func window(_ evidence: ReportEvidenceSummary) -> String {
+        guard let start = evidence.windowStart else { return "截至 \(date(evidence.windowEnd))" }
+        return "\(date(start)) 至 \(date(evidence.windowEnd))"
     }
 
     private func percent(_ value: Double) -> String { "\(Int((value * 100).rounded()))%" }

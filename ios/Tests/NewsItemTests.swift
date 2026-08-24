@@ -709,6 +709,38 @@ final class NewsItemTests: XCTestCase {
         XCTAssertEqual(json["data_complete"] as? Bool, true)
     }
 
+    func testReportOutputsShareEvidenceSummary() throws {
+        var settings = AppSettings()
+        settings.keywords = ["AI"]
+        let generatedAt = Date(timeIntervalSince1970: 10_000)
+        let diagnostics = ReportDiagnostics(
+            failures: [ReportSourceFailure(sourceType: .rss, source: "Feed B", message: "timeout")],
+            collectedAt: generatedAt
+        )
+        let report = ReportGenerationService().generate(
+            request: ReportGenerationRequest(batchID: "evidence", type: .manual, trigger: .manual, generatedAt: generatedAt, settings: settings, windowStart: generatedAt.addingTimeInterval(-3_600), diagnostics: diagnostics),
+            items: [NewsItem(id: "evidence-1", title: "AI release", source: "Feed A")]
+        )
+
+        let evidence = ReportPresentationModel(report: report).evidence
+        let markdown = ReportMarkdownRenderer().render(report)
+        let html = ReportHTMLFormatter().render(report)
+        let payload = try WebhookPayloadRenderer().render(report: report, template: "", batchContent: markdown, batchIndex: 1, batchTotal: 1)
+        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: payload) as? [String: Any])
+
+        XCTAssertEqual(evidence.sampleCount, 1)
+        XCTAssertEqual(evidence.failedSourceCount, 1)
+        XCTAssertEqual(evidence.citedItemCount, 1)
+        XCTAssertEqual(evidence.generationMethod, "本地规则")
+        XCTAssertTrue(markdown.contains("证据：1 条引用 · 1 个失败来源 · 本地规则"))
+        XCTAssertTrue(html.contains("证据与范围"))
+        XCTAssertTrue(html.contains("引用 1 条 · 失败来源 1 个 · 本地规则"))
+        XCTAssertEqual(json["sample_count"] as? Int, 1)
+        XCTAssertEqual(json["failed_source_count"] as? Int, 1)
+        XCTAssertEqual(json["citation_count"] as? Int, 1)
+        XCTAssertEqual(json["generation_method"] as? String, "本地规则")
+    }
+
     func testReportMarkdownRendererHonorsConfiguredRegionOrder() {
         var settings = AppSettings()
         settings.display.regionOrder = ["rss", "hotlist", "ai_analysis"]
