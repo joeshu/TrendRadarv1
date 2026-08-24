@@ -154,6 +154,9 @@ struct ReportDetailView: View {
     let reportID: UUID
     @State private var report: ReportDetail?
     @State private var showingDeleteConfirmation = false
+    @State private var queryText = ""
+    @State private var queryResult: InsightQueryResult?
+    @State private var isQuerying = false
 
     var body: some View {
         ZStack {
@@ -165,6 +168,7 @@ struct ReportDetailView: View {
                         PremiumPanel(tint: AppTheme.brandCyan) { detailHeader(report) }
                         PremiumPanel(tint: AppTheme.brandIndigo) { statistics(report) }
                         evidencePanel(report)
+                        reportQueryPanel(report)
                         if let analysis = report.aiAnalysis, analysis.hasContent {
                             PremiumPanel(tint: AppTheme.brandMagenta) {
                                 VStack(alignment: .leading, spacing: 12) {
@@ -279,6 +283,37 @@ struct ReportDetailView: View {
     }
 
     private func loadReport() async { report = await reportStore.detail(id: reportID) }
+
+    private func reportQueryPanel(_ report: ReportDetail) -> some View {
+        InsightPanel(title: "向报告追问", icon: "bubble.left.and.text.bubble.right", tint: AppTheme.brandCyan) {
+            VStack(alignment: .leading, spacing: 10) {
+                TextField("例如：最值得关注的风险是什么？", text: $queryText, axis: .vertical)
+                    .lineLimit(2...5)
+                Button {
+                    let question = queryText.trimmingCharacters(in: .whitespacesAndNewlines)
+                    guard !question.isEmpty else { return }
+                    isQuerying = true
+                    Task {
+                        defer { isQuerying = false }
+                        do { queryResult = try await AIService().query(question: question, report: report, settings: settingsStore.settings) }
+                        catch { queryResult = InsightQueryResult(answer: "追问失败：\(error.localizedDescription)", citations: [], createdAt: Date()) }
+                    }
+                } label: { Label(isQuerying ? "分析中" : "基于本报告回答", systemImage: "sparkles") }
+                    .buttonStyle(OutlineButtonStyle()).disabled(isQuerying || queryText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                if let result = queryResult {
+                    ReportRichText(content: result.answer)
+                    ForEach(result.citations) { citation in
+                        if let url = citation.url {
+                            Link("引用：\(citation.source) · \(citation.title)", destination: url)
+                                .font(AppTheme.captionFont).foregroundStyle(AppTheme.brandCyan)
+                        } else {
+                            Text("引用：\(citation.source) · \(citation.title)").font(AppTheme.captionFont).foregroundStyle(AppTheme.textSecondary)
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     @ViewBuilder
     private func analysisBlock(title: String, content: String?) -> some View {

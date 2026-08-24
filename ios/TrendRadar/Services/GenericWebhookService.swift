@@ -33,6 +33,10 @@ enum WebhookChannel: String, Sendable {
     case feishu
     case dingtalk
     case wework
+    case slack
+    case bark
+    case ntfy
+    case telegram
 }
 
 struct WebhookPayloadRenderer: Sendable {
@@ -47,6 +51,13 @@ struct WebhookPayloadRenderer: Sendable {
                 return try JSONSerialization.data(withJSONObject: ["msgtype": "markdown", "markdown": ["title": report.title, "text": batchContent]], options: [.sortedKeys])
             case .wework:
                 return try JSONSerialization.data(withJSONObject: ["msgtype": "markdown", "markdown": ["content": batchContent]], options: [.sortedKeys])
+            case .slack:
+                return try JSONSerialization.data(withJSONObject: ["text": batchContent], options: [.sortedKeys])
+            case .bark:
+                return try JSONSerialization.data(withJSONObject: ["title": report.title, "body": batchContent, "group": "TrendRadar"], options: [.sortedKeys])
+            case .ntfy:
+                return try JSONSerialization.data(withJSONObject: ["title": report.title, "message": batchContent, "tags": ["chart_with_upwards_trend"]], options: [.sortedKeys])
+            case .telegram: break
             case .generic: break
             }
         }
@@ -152,20 +163,36 @@ struct GenericWebhookService: Sendable {
     @discardableResult
     func sendConfiguredChannels(report: ReportDetail, settings: AppSettings) async -> Bool {
         guard settings.notification.enabled else { return false }
-        var configured: [(WebhookChannel, String, String, Int)] = []
+        var configured: [(WebhookChannel, String, String, Int, [String: String])] = []
         let channels = settings.notification.channels
         let feishu = keychain.read("notify-feishu").trimmingCharacters(in: .whitespacesAndNewlines)
         let dingtalk = keychain.read("notify-dingtalk").trimmingCharacters(in: .whitespacesAndNewlines)
         let wework = keychain.read("notify-wework").trimmingCharacters(in: .whitespacesAndNewlines)
         let generic = keychain.read("notify-generic").trimmingCharacters(in: .whitespacesAndNewlines)
-        if !feishu.isEmpty { configured.append((.feishu, feishu, "", settings.advanced.feishuBatchSize)) }
-        if !dingtalk.isEmpty { configured.append((.dingtalk, dingtalk, "", settings.advanced.dingtalkBatchSize)) }
-        if !wework.isEmpty { configured.append((.wework, wework, "", settings.advanced.defaultBatchSize)) }
-        if !generic.isEmpty { configured.append((.generic, generic, channels.genericPayloadTemplate, settings.advanced.defaultBatchSize)) }
+        let slack = keychain.read("notify-slack").trimmingCharacters(in: .whitespacesAndNewlines)
+        let bark = keychain.read("notify-bark").trimmingCharacters(in: .whitespacesAndNewlines)
+        let ntfyToken = keychain.read("notify-ntfy-token").trimmingCharacters(in: .whitespacesAndNewlines)
+        let telegramToken = keychain.read("notify-telegram-token").trimmingCharacters(in: .whitespacesAndNewlines)
+        let telegramChat = keychain.read("notify-telegram-chat").trimmingCharacters(in: .whitespacesAndNewlines)
+        if !feishu.isEmpty { configured.append((.feishu, feishu, "", settings.advanced.feishuBatchSize, [:])) }
+        if !dingtalk.isEmpty { configured.append((.dingtalk, dingtalk, "", settings.advanced.dingtalkBatchSize, [:])) }
+        if !wework.isEmpty { configured.append((.wework, wework, "", settings.advanced.defaultBatchSize, [:])) }
+        if !slack.isEmpty { configured.append((.slack, slack, "", settings.advanced.slackBatchSize, [:])) }
+        if !bark.isEmpty { configured.append((.bark, bark, "", settings.advanced.barkBatchSize, [:])) }
+        let ntfyServer = channels.ntfyServerURL.trimmingCharacters(in: CharacterSet(charactersIn: "/ "))
+        let ntfyTopic = channels.ntfyTopic.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !ntfyServer.isEmpty, !ntfyTopic.isEmpty {
+            configured.append((.ntfy, ntfyServer + "/" + ntfyTopic, "", settings.advanced.defaultBatchSize, ntfyToken.isEmpty ? [:] : ["Authorization": "Bearer \(ntfyToken)"]))
+        }
+        if !telegramToken.isEmpty, !telegramChat.isEmpty,
+           let templateData = try? JSONSerialization.data(withJSONObject: ["chat_id": telegramChat, "text": "{content}"], options: [.sortedKeys]) {
+            configured.append((.telegram, "https://api.telegram.org/bot\(telegramToken)/sendMessage", String(decoding: templateData, as: UTF8.self), settings.advanced.defaultBatchSize, [:]))
+        }
+        if !generic.isEmpty { configured.append((.generic, generic, channels.genericPayloadTemplate, settings.advanced.defaultBatchSize, [:])) }
         guard !configured.isEmpty else { return true }
         var allSucceeded = true
-        for (channel, url, template, limit) in configured {
-            if !(await deliver(report: report, urlValue: url, template: template, channel: channel, maxBytes: max(500, limit))) { allSucceeded = false }
+        for (channel, url, template, limit, headers) in configured {
+            if !(await deliver(report: report, urlValue: url, template: template, channel: channel, maxBytes: max(500, limit), headers: headers)) { allSucceeded = false }
         }
         return allSucceeded
     }
@@ -193,7 +220,7 @@ struct GenericWebhookService: Sendable {
         return Self.records().first ?? WebhookDeliveryRecord(reportID: nil, status: nil, success: false, attempts: 0, message: GenericWebhookError.emptyResponse.localizedDescription)
     }
 
-    private func deliver(report: ReportDetail, urlValue: String, template: String, channel: WebhookChannel, maxBytes: Int) async -> Bool {
+    private func deliver(report: ReportDetail, urlValue: String, template: String, channel: WebhookChannel, maxBytes: Int, headers: [String: String] = [:]) async -> Bool {
         guard let url = URL(string: urlValue), url.scheme?.lowercased() == "https" else {
             Self.record(WebhookDeliveryRecord(reportID: report.id.uuidString, status: nil, success: false, attempts: 0, message: GenericWebhookError.invalidURL.localizedDescription, channel: channel.rawValue))
             return false
@@ -205,7 +232,7 @@ struct GenericWebhookService: Sendable {
             do {
                 let decorated = chunks.count > 1 ? "【TrendRadar \(offset + 1)/\(chunks.count)】\n\(chunk)\n\n— 报告结束：\(report.title) —" : chunk
                 let payload = try renderer.render(report: report, template: template, batchContent: decorated, batchIndex: offset + 1, batchTotal: chunks.count, channel: channel)
-                let result = try await post(payload, to: url)
+                let result = try await post(payload, to: url, headers: headers)
                 Self.record(WebhookDeliveryRecord(reportID: report.id.uuidString, status: result.statusCode, success: true, attempts: result.attempts, message: "第 \(offset + 1)/\(chunks.count) 批已发送", channel: channel.rawValue, batchIndex: offset + 1, batchTotal: chunks.count, responseSummary: result.responseSummary))
             } catch {
                 allSucceeded = false
@@ -217,7 +244,7 @@ struct GenericWebhookService: Sendable {
         return allSucceeded
     }
 
-    private func post(_ payload: Data, to url: URL) async throws -> (statusCode: Int, attempts: Int, responseSummary: String?) {
+    private func post(_ payload: Data, to url: URL, headers: [String: String] = [:]) async throws -> (statusCode: Int, attempts: Int, responseSummary: String?) {
         var lastError: Error = GenericWebhookError.emptyResponse
         for attempt in 1...3 {
             do {
@@ -226,6 +253,7 @@ struct GenericWebhookService: Sendable {
                 request.timeoutInterval = 30
                 request.setValue("application/json", forHTTPHeaderField: "Content-Type")
                 request.setValue("TrendRadar-iOS/1.0", forHTTPHeaderField: "User-Agent")
+                for (name, value) in headers { request.setValue(value, forHTTPHeaderField: name) }
                 request.httpBody = payload
                 let (data, response) = try await URLSession.shared.data(for: request)
                 guard let http = response as? HTTPURLResponse else { throw GenericWebhookError.emptyResponse }

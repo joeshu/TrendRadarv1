@@ -1,4 +1,5 @@
 import SwiftUI
+import Charts
 
 struct OverviewView: View {
     @EnvironmentObject private var store: NewsStore
@@ -22,6 +23,7 @@ struct OverviewView: View {
                         header
                         briefing
                         metrics
+                        signalPulse
                         topicSection(title: "前三趋势", subtitle: "按当前最佳真实排名", icon: "chart.line.uptrend.xyaxis", topics: digest.topTopics)
                         topicSection(title: "快速升温", subtitle: "排名较上次采集提升", icon: "arrow.up.right", topics: digest.risingTopics)
                         if !digest.followedTopics.isEmpty {
@@ -101,6 +103,36 @@ struct OverviewView: View {
                 TodayMetric(value: "\(digest.unreadCount)", label: "未处理", icon: "circle.fill", tint: AppTheme.brandIndigo)
                 TodayMetric(value: "\(hotNewsStore.topics.count)", label: "趋势主题", icon: "waveform.path.ecg", tint: AppTheme.green)
                 TodayMetric(value: "\(failureCount)", label: "来源异常", icon: "exclamationmark.triangle", tint: failureCount == 0 ? AppTheme.green : AppTheme.yellow)
+            }
+        }
+    }
+
+    private var signalPoints: [TodaySignalPoint] {
+        let calendar = Calendar.current
+        let dates = store.items.compactMap(\.publishedAt) + hotNewsStore.items.compactMap(\.publishedAt)
+        let recent = dates.filter { $0 >= Date().addingTimeInterval(-86_400) }
+        let grouped = Dictionary(grouping: recent) { date in
+            calendar.dateInterval(of: .hour, for: date)?.start ?? date
+        }
+        return grouped.map { TodaySignalPoint(hour: $0.key, count: $0.value.count) }.sorted { $0.hour < $1.hour }
+    }
+
+    @ViewBuilder
+    private var signalPulse: some View {
+        if signalPoints.count >= 2 {
+            PremiumPanel(tint: AppTheme.brandCyan) {
+                VStack(alignment: .leading, spacing: 10) {
+                    PremiumSectionHeader(eyebrow: "24H PULSE", title: "情报脉冲", subtitle: "按真实发布时间汇总", icon: "waveform.path.ecg", tint: AppTheme.brandCyan)
+                    Chart(signalPoints) { point in
+                        AreaMark(x: .value("时间", point.hour), y: .value("数量", point.count))
+                            .foregroundStyle(LinearGradient(colors: [AppTheme.brandCyan.opacity(0.45), AppTheme.brandMagenta.opacity(0.08)], startPoint: .top, endPoint: .bottom))
+                        LineMark(x: .value("时间", point.hour), y: .value("数量", point.count))
+                            .foregroundStyle(AppTheme.brandCyan).lineStyle(StrokeStyle(lineWidth: 2.5, lineCap: .round))
+                    }
+                    .chartXAxis { AxisMarks(values: .automatic(desiredCount: 4)) }
+                    .chartYAxis(.hidden)
+                    .frame(height: 118)
+                }
             }
         }
     }
@@ -187,6 +219,12 @@ struct OverviewView: View {
         await hotNewsStore.load()
         await reportStore.load()
     }
+}
+
+private struct TodaySignalPoint: Identifiable {
+    let hour: Date
+    let count: Int
+    var id: Date { hour }
 }
 
 private struct TodayMetric: View {

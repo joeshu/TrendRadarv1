@@ -22,6 +22,21 @@ struct AIService: Sendable {
         return InsightQueryResult(answer: answer, citations: citations, createdAt: Date())
     }
 
+    func query(question: String, report: ReportDetail, settings: AppSettings) async throws -> InsightQueryResult {
+        let snapshots = report.sections.flatMap(\.items)
+        guard !snapshots.isEmpty else { throw AIError.emptyInput }
+        let sources = snapshots.map { "[\($0.id)] \($0.title) | \($0.source) | \($0.summary ?? "") | \($0.url?.absoluteString ?? "")" }
+        let content = try await request(messages: AIPromptMessages(
+            system: "你是报告问答助手。只根据给定报告证据回答。输出 JSON，字段为 answer 和 citation_ids；citation_ids 只能来自输入 ID。",
+            user: "报告：\(report.title)\n问题：\(question)\n报告证据：\n\(sources.joined(separator: "\n"))"
+        ), settings: settings)
+        let decoded = try? JSONDecoder().decode(QueryResponse.self, from: Data(normalizedJSON(content).utf8))
+        let citations = (decoded?.citationIDs ?? []).compactMap { id in
+            snapshots.first(where: { $0.id == id }).map { InsightCitation(itemID: $0.id, title: $0.title, source: $0.source, url: $0.url) }
+        }
+        return InsightQueryResult(answer: decoded?.answer ?? content, citations: citations, createdAt: Date())
+    }
+
     private struct QueryResponse: Decodable {
         let answer: String
         let citationIDs: [String]

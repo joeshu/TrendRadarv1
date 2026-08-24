@@ -710,10 +710,17 @@ struct SettingsView: View {
             SecureField("Telegram Bot Token", text: channelBinding("telegram-token"))
             TextField("Telegram Chat ID", text: channelBinding("telegram-chat"))
             TextField("邮件发件人", text: $settingsStore.settings.notification.channels.emailFrom)
+                .disabled(true)
             SecureField("邮件密码或授权码", text: channelBinding("email-password"))
+                .disabled(true)
             TextField("邮件收件人（逗号分隔）", text: $settingsStore.settings.notification.channels.emailTo)
+                .disabled(true)
             TextField("SMTP 服务器", text: $settingsStore.settings.notification.channels.emailSMTPServer)
+                .disabled(true)
             TextField("SMTP 端口", text: $settingsStore.settings.notification.channels.emailSMTPPort)
+                .disabled(true)
+            Text("邮件 SMTP 暂未接入；以上字段仅用于兼容既有配置，不参与实际投递。")
+                .font(.caption).foregroundStyle(.secondary)
             TextField("ntfy 服务地址", text: $settingsStore.settings.notification.channels.ntfyServerURL)
             TextField("ntfy 主题", text: $settingsStore.settings.notification.channels.ntfyTopic)
             SecureField("ntfy Token", text: channelBinding("ntfy-token"))
@@ -754,7 +761,7 @@ struct SettingsView: View {
                     .font(.caption)
                     .foregroundStyle(last.success ? AppTheme.green : AppTheme.red)
             }
-            Text("纯 iOS 当前实际投递的是“通用 Webhook”；飞书、钉钉等可直接填其兼容 Webhook URL 和 JSON 模板。凭据只保存在本机 Keychain。")
+            Text("纯 iOS 当前可实际投递飞书、钉钉、企业微信、Slack、Bark、ntfy、Telegram 和通用 Webhook；凭据只保存在本机 Keychain。")
                 .font(.caption).foregroundStyle(.secondary)
         }
     }

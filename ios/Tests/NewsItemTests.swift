@@ -995,6 +995,25 @@ final class NewsItemTests: XCTestCase {
         XCTAssertEqual(object?["title"] as? String, report.title)
     }
 
+    func testNativeNotificationChannelPayloads() throws {
+        let settings = AppSettings()
+        let report = ReportGenerationService().generate(
+            request: ReportGenerationRequest(batchID: "native-channels", type: .manual, trigger: .manual, generatedAt: Date(), settings: settings),
+            items: [NewsItem(id: "item", title: "Channel report", source: "Feed")]
+        )
+        let renderer = WebhookPayloadRenderer()
+        let slack = try JSONSerialization.jsonObject(with: renderer.render(report: report, template: "", batchContent: "body", batchIndex: 1, batchTotal: 1, channel: .slack)) as? [String: Any]
+        let bark = try JSONSerialization.jsonObject(with: renderer.render(report: report, template: "", batchContent: "body", batchIndex: 1, batchTotal: 1, channel: .bark)) as? [String: Any]
+        let ntfy = try JSONSerialization.jsonObject(with: renderer.render(report: report, template: "", batchContent: "body", batchIndex: 1, batchTotal: 1, channel: .ntfy)) as? [String: Any]
+        let telegram = try JSONSerialization.jsonObject(with: renderer.render(report: report, template: #"{"chat_id":"123","text":"{content}"}"#, batchContent: "body", batchIndex: 1, batchTotal: 1, channel: .telegram)) as? [String: Any]
+
+        XCTAssertEqual(slack?["text"] as? String, "body")
+        XCTAssertEqual(bark?["body"] as? String, "body")
+        XCTAssertEqual(ntfy?["message"] as? String, "body")
+        XCTAssertEqual(telegram?["chat_id"] as? String, "123")
+        XCTAssertEqual(telegram?["text"] as? String, "body")
+    }
+
     func testLegacyWebhookDeliveryRecordsRemainDecodable() throws {
         let data = Data("""
         {

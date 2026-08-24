@@ -488,6 +488,16 @@ struct NewsDetailView: View {
     @State private var generatedSummary: String?
     @State private var translatedTitle: String?
     @State private var isTranslating = false
+    @State private var isFavorite = false
+
+    private var intelligenceTags: [String] {
+        let text = [item.title, item.summary ?? "", item.body ?? ""].joined(separator: " ")
+        let matched = settingsStore.settings.keywords.filter { keyword in
+            let clean = keyword.trimmingCharacters(in: CharacterSet(charactersIn: "+!"))
+            return !clean.isEmpty && text.localizedCaseInsensitiveContains(clean)
+        }
+        return Array(([item.source] + matched).prefix(6))
+    }
 
     var body: some View {
         ZStack {
@@ -505,6 +515,11 @@ struct NewsDetailView: View {
                         .font(AppTheme.titleFont)
                         .foregroundStyle(AppTheme.textPrimary)
                         .lineSpacing(3)
+                    if !intelligenceTags.isEmpty {
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 7) { ForEach(intelligenceTags, id: \.self) { PremiumTag(title: $0, tint: AppTheme.brandIndigo) } }
+                        }.accessibilityLabel("情报标签：\(intelligenceTags.joined(separator: "、"))")
+                    }
                     if translatedTitle != nil || item.translatedTitle != nil {
                         VStack(alignment: .leading, spacing: 5) {
                             Label("原文标题", systemImage: "text.quote")
@@ -540,7 +555,11 @@ struct NewsDetailView: View {
         .toolbarBackground(AppTheme.background, for: .navigationBar)
         .navigationTitle("情报详情")
         .navigationBarTitleDisplayMode(.inline)
-        .task { translatedTitle = store.items.first(where: { $0.id == item.id })?.translatedTitle ?? item.translatedTitle }
+        .task {
+            let current = store.items.first(where: { $0.id == item.id })
+            translatedTitle = current?.translatedTitle ?? item.translatedTitle
+            isFavorite = current?.isFavorite ?? item.isFavorite
+        }
     }
 
     @ViewBuilder
@@ -555,6 +574,13 @@ struct NewsDetailView: View {
         } label: { Label(isSummarizing ? "分析中" : "生成摘要", systemImage: "sparkles") }
         .buttonStyle(AccentButtonStyle())
         .disabled(isSummarizing)
+        Button {
+            Task { await store.toggleFavorite(item); isFavorite.toggle() }
+        } label: { Label(isFavorite ? "已收藏" : "收藏", systemImage: isFavorite ? "star.fill" : "star") }
+            .buttonStyle(OutlineButtonStyle())
+        ShareLink(item: item.url?.absoluteString ?? item.title, subject: Text(item.title), message: Text(item.summary ?? item.title)) {
+            Label("分享", systemImage: "square.and.arrow.up")
+        }.buttonStyle(OutlineButtonStyle())
         if settingsStore.settings.aiTranslation.enabled && settingsStore.settings.aiTranslation.translateRSS {
             Button {
                 isTranslating = true
