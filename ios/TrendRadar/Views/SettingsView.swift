@@ -197,6 +197,8 @@ struct SettingsView: View {
     @State private var isSaveConfirmation = false
     @State private var isResettingData = false
     @State private var isUpdatingInterestTags = false
+    @State private var isTestingAI = false
+    @State private var aiAvailabilityMessage: String?
     @State private var isTestingWebhook = false
     @State private var showingClearCacheConfirmation = false
     @State private var showingResetConfirmation = false
@@ -551,6 +553,17 @@ struct SettingsView: View {
             Stepper("失败重试：\(settingsStore.settings.ai.retries) 次", value: $settingsStore.settings.ai.retries, in: 0...5)
             Text("API Key 保存在 iPhone Keychain 中，仅供本机使用。")
                 .font(.caption).foregroundStyle(.secondary)
+            Button {
+                testAIAvailability()
+            } label: {
+                Label(isTestingAI ? "正在检测 AI 服务..." : "检测 AI 配置可用性", systemImage: "checkmark.shield")
+            }
+            .disabled(isTestingAI)
+            if let aiAvailabilityMessage {
+                Text(aiAvailabilityMessage)
+                    .font(.caption)
+                    .foregroundStyle(aiAvailabilityMessage.hasPrefix("AI 配置可用") ? AppTheme.green : AppTheme.red)
+            }
         }
     }
 
@@ -929,6 +942,29 @@ struct SettingsView: View {
         isSaveConfirmation = true
         settingsMessage = "设置已保存"
         showingSettingsMessage = true
+    }
+
+    private func testAIAvailability() {
+        isTestingAI = true
+        aiAvailabilityMessage = nil
+        keychain.write(apiBase.trimmingCharacters(in: .whitespacesAndNewlines), for: "api-base")
+        keychain.write(apiKey, for: "api-key")
+        keychain.write(aiModel.trimmingCharacters(in: .whitespacesAndNewlines), for: "ai-model")
+        let settings = settingsStore.settings
+        Task {
+            do {
+                try await AIService().checkAvailability(settings: settings)
+                await MainActor.run {
+                    aiAvailabilityMessage = "AI 配置可用：接口、密钥和模型检测通过"
+                    isTestingAI = false
+                }
+            } catch {
+                await MainActor.run {
+                    aiAvailabilityMessage = "AI 配置不可用：\(error.localizedDescription)"
+                    isTestingAI = false
+                }
+            }
+        }
     }
 
     private func updateInterestTags() {

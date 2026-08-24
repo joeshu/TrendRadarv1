@@ -314,6 +314,28 @@ struct AIService: Sendable {
         }
     }
 
+    /// 检测当前 AI Base URL、Key 和模型是否可用；使用最小请求，不生成业务报告。
+    func checkAvailability(settings: AppSettings) async throws {
+        let baseURL = keychain.read("api-base").trimmingCharacters(in: .whitespacesAndNewlines)
+        let apiKey = keychain.read("api-key")
+        let model = keychain.read("ai-model").trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !baseURL.isEmpty, !apiKey.isEmpty, !model.isEmpty else {
+            throw AIError.missingConfiguration
+        }
+        let endpoint = baseURL.hasSuffix("/chat/completions") ? baseURL : baseURL.trimmingCharacters(in: CharacterSet(charactersIn: "/")) + "/chat/completions"
+        guard let url = URL(string: endpoint) else { throw AIError.invalidURL }
+        _ = try await requestContent(
+            url: url,
+            apiKey: apiKey,
+            models: modelCandidates(primary: model, settings: settings),
+            messages: [
+                Message(role: "system", content: "只回复 OK。"),
+                Message(role: "user", content: "连接测试，请回复 OK。")
+            ],
+            settings: settings
+        )
+    }
+
     func reportAnalysis(for items: [NewsItem], settings: AppSettings) async -> ReportAIAnalysis {
         await reportAnalysis(hotlistItems: [], rssItems: items, settings: settings)
     }
