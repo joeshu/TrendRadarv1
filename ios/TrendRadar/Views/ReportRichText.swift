@@ -42,8 +42,9 @@ struct ReportRichText: View {
             while let range = source.range(of: marker, range: searchStart..<source.endIndex) {
                 let start = source.distance(from: source.startIndex, to: range.lowerBound)
                 let end = source.distance(from: source.startIndex, to: range.upperBound)
-                if let a = value.index(value.startIndex, offsetBy: start, limitedBy: value.endIndex),
-                   let b = value.index(value.startIndex, offsetBy: end, limitedBy: value.endIndex) {
+                if start < value.characters.count, end <= value.characters.count {
+                    let a = value.index(value.startIndex, offsetBy: start)
+                    let b = value.index(value.startIndex, offsetBy: end)
                     value[a..<b].foregroundColor = AppTheme.brandIndigo
                     value[a..<b].font = .subheadline
                 }
