@@ -27,18 +27,23 @@ actor RefreshPipelineExecutor {
         let filtered = try await FilterStage().execute(collected)
         try Task.checkCancellation()
 
-        _ = try await PersistStage().execute(filtered)
+        let persisted = try await PersistStage().execute(filtered)
         try Task.checkCancellation()
 
-        var reportDelivered = false
-        if let report = try await ReportStage().execute(items: filtered, settings: settings) {
-            _ = await DeliveryStage().execute(report: report, settings: settings)
-            reportDelivered = true
+        var reportCreated = false
+        var deliveryCompleted = false
+
+        if let report = try await ReportStage().execute(items: persisted, settings: settings) {
+            reportCreated = true
+            let delivery = await DeliveryStage().execute(report: report, settings: settings)
+            deliveryCompleted = delivery.failureMessage == nil
         }
 
         return RefreshPipelineResult(
-            status: reportDelivered ? .completed : .completed,
-            context: context
+            status: .completed,
+            context: context,
+            reportCreated: reportCreated,
+            deliveryCompleted: deliveryCompleted
         )
     }
 
@@ -59,4 +64,18 @@ struct RefreshPipelineResult: Sendable {
 
     let status: Status
     let context: PipelineExecutionContext
+    let reportCreated: Bool
+    let deliveryCompleted: Bool
+
+    init(
+        status: Status,
+        context: PipelineExecutionContext,
+        reportCreated: Bool = false,
+        deliveryCompleted: Bool = false
+    ) {
+        self.status = status
+        self.context = context
+        self.reportCreated = reportCreated
+        self.deliveryCompleted = deliveryCompleted
+    }
 }
