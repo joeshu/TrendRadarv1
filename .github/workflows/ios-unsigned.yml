@@ -54,7 +54,7 @@ jobs:
           xcodebuild test \
             -project TrendRadar.xcodeproj \
             -scheme TrendRadar \
-            -destination 'platform=iOS Simulator,name=iPhone 16' \
+            -destination 'platform=iOS Simulator' \
             -derivedDataPath build/TestDerivedData \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
