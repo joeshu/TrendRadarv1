@@ -766,6 +766,42 @@ final class NewsItemTests: XCTestCase {
         XCTAssertEqual(object?["title"] as? String, report.title)
     }
 
+    func testLegacyWebhookDeliveryRecordsRemainDecodable() throws {
+        let data = Data("""
+        {
+          "id": "legacy",
+          "createdAt": 0,
+          "reportID": "report",
+          "status": 200,
+          "success": true,
+          "attempts": 1,
+          "message": "sent"
+        }
+        """.utf8)
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .secondsSince1970
+        let record = try decoder.decode(WebhookDeliveryRecord.self, from: data)
+
+        XCTAssertEqual(record.id, "legacy")
+        XCTAssertNil(record.channel)
+        XCTAssertNil(record.batchIndex)
+        XCTAssertNil(record.responseSummary)
+    }
+
+    func testReportDeliverySkipsWhenNotificationsAreDisabled() async {
+        var settings = AppSettings()
+        settings.notification.enabled = false
+        let report = ReportGenerationService().generate(
+            request: ReportGenerationRequest(batchID: "delivery-skipped", type: .manual, trigger: .manual, generatedAt: Date(), settings: settings),
+            items: [NewsItem(id: "item", title: "Report", source: "Feed")]
+        )
+
+        let result = await ReportDeliveryService().deliver(report: report, settings: settings)
+
+        XCTAssertTrue(result.succeeded)
+        XCTAssertNil(result.failureMessage)
+    }
+
     func testBackgroundRefreshRejectsLiveContainerHosts() {
         XCTAssertFalse(BackgroundRefreshService.isSupportedHost(
             processName: "LiveProcess",

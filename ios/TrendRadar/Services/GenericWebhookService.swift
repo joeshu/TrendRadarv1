@@ -8,8 +8,12 @@ struct WebhookDeliveryRecord: Codable, Equatable, Sendable, Identifiable {
     let success: Bool
     let attempts: Int
     let message: String
+    let channel: String?
+    let batchIndex: Int?
+    let batchTotal: Int?
+    let responseSummary: String?
 
-    init(reportID: String?, status: Int?, success: Bool, attempts: Int, message: String, createdAt: Date = Date()) {
+    init(reportID: String?, status: Int?, success: Bool, attempts: Int, message: String, createdAt: Date = Date(), channel: String? = nil, batchIndex: Int? = nil, batchTotal: Int? = nil, responseSummary: String? = nil) {
         id = UUID().uuidString
         self.createdAt = createdAt
         self.reportID = reportID
@@ -17,6 +21,10 @@ struct WebhookDeliveryRecord: Codable, Equatable, Sendable, Identifiable {
         self.success = success
         self.attempts = attempts
         self.message = message
+        self.channel = channel
+        self.batchIndex = batchIndex
+        self.batchTotal = batchTotal
+        self.responseSummary = responseSummary
     }
 }
 
@@ -178,7 +186,7 @@ struct GenericWebhookService: Sendable {
 
     private func deliver(report: ReportDetail, urlValue: String, template: String, channel: WebhookChannel, maxBytes: Int) async -> Bool {
         guard let url = URL(string: urlValue), url.scheme?.lowercased() == "https" else {
-            Self.record(WebhookDeliveryRecord(reportID: report.id.uuidString, status: nil, success: false, attempts: 0, message: GenericWebhookError.invalidURL.localizedDescription))
+            Self.record(WebhookDeliveryRecord(reportID: report.id.uuidString, status: nil, success: false, attempts: 0, message: GenericWebhookError.invalidURL.localizedDescription, channel: channel.rawValue))
             return false
         }
         let content = ReportFormatter().render(report, format: .markdown)
@@ -189,18 +197,18 @@ struct GenericWebhookService: Sendable {
                 let decorated = chunks.count > 1 ? "【TrendRadar \(offset + 1)/\(chunks.count)】\n\(chunk)\n\n— 报告结束：\(report.title) —" : chunk
                 let payload = try renderer.render(report: report, template: template, batchContent: decorated, batchIndex: offset + 1, batchTotal: chunks.count, channel: channel)
                 let result = try await post(payload, to: url)
-                Self.record(WebhookDeliveryRecord(reportID: report.id.uuidString, status: result.statusCode, success: true, attempts: result.attempts, message: "第 \(offset + 1)/\(chunks.count) 批已发送"))
+                Self.record(WebhookDeliveryRecord(reportID: report.id.uuidString, status: result.statusCode, success: true, attempts: result.attempts, message: "第 \(offset + 1)/\(chunks.count) 批已发送", channel: channel.rawValue, batchIndex: offset + 1, batchTotal: chunks.count, responseSummary: result.responseSummary))
             } catch {
                 allSucceeded = false
                 let failure = error as? WebhookRequestFailure
-                Self.record(WebhookDeliveryRecord(reportID: report.id.uuidString, status: failure?.statusCode, success: false, attempts: failure?.attempts ?? 0, message: error.localizedDescription))
+                Self.record(WebhookDeliveryRecord(reportID: report.id.uuidString, status: failure?.statusCode, success: false, attempts: failure?.attempts ?? 0, message: error.localizedDescription, channel: channel.rawValue, batchIndex: offset + 1, batchTotal: chunks.count))
                 break
             }
         }
         return allSucceeded
     }
 
-    private func post(_ payload: Data, to url: URL) async throws -> (statusCode: Int, attempts: Int) {
+    private func post(_ payload: Data, to url: URL) async throws -> (statusCode: Int, attempts: Int, responseSummary: String?) {
         var lastError: Error = GenericWebhookError.emptyResponse
         for attempt in 1...3 {
             do {
@@ -210,12 +218,14 @@ struct GenericWebhookService: Sendable {
                 request.setValue("application/json", forHTTPHeaderField: "Content-Type")
                 request.setValue("TrendRadar-iOS/1.0", forHTTPHeaderField: "User-Agent")
                 request.httpBody = payload
-                let (_, response) = try await URLSession.shared.data(for: request)
+                let (data, response) = try await URLSession.shared.data(for: request)
                 guard let http = response as? HTTPURLResponse else { throw GenericWebhookError.emptyResponse }
                 guard 200..<300 ~= http.statusCode else {
                     throw WebhookRequestFailure(statusCode: http.statusCode, attempts: attempt, underlying: GenericWebhookError.httpStatus(http.statusCode))
                 }
-                return (http.statusCode, attempt)
+                let responseSummary = String(data: data.prefix(500), encoding: .utf8)?
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                return (http.statusCode, attempt, responseSummary?.isEmpty == true ? nil : responseSummary)
             } catch {
                 lastError = error
                 let status = (error as? WebhookRequestFailure)?.statusCode

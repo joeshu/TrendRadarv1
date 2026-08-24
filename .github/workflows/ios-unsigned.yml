@@ -50,11 +50,20 @@ jobs:
         working-directory: ios
         run: |
           set -o pipefail
+          SIMULATOR_UDID=$(xcrun simctl list devices available -j | python3 -c '
+          import json, sys
+          devices = json.load(sys.stdin)["devices"]
+          candidates = [device for runtime in devices.values() for device in runtime if device["name"].startswith("iPhone") and device["isAvailable"]]
+          if not candidates:
+              raise SystemExit("No available iPhone simulator")
+          print(candidates[0]["udid"])
+          ')
+          echo "Using simulator: $SIMULATOR_UDID"
           xcodebuild \
             -project TrendRadar.xcodeproj \
             -scheme TrendRadar \
             -sdk iphonesimulator \
-            -destination 'platform=iOS Simulator,name=iPhone 16' \
+            -destination "platform=iOS Simulator,id=$SIMULATOR_UDID" \
             test 2>&1 | tee build-tests.log
 
       - name: Build unsigned app
@@ -79,7 +88,7 @@ jobs:
           {
             echo "## Xcode build errors"
             echo '```text'
-            grep -E "error:|fatal error:" build/xcodebuild.log || true
+            grep -E "error:|fatal error:|Testing failed|XCTAssert" ios/build-tests.log ios/build/xcodebuild.log 2>/dev/null || true
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -88,7 +97,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: TrendRadar-iOS-build-log
-          path: ios/build/xcodebuild.log
+          path: |
+            ios/build-tests.log
+            ios/build/xcodebuild.log
           if-no-files-found: warn
 
       - name: Package raw and ad-hoc IPA

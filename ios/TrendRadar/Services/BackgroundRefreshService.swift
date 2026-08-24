@@ -167,9 +167,9 @@ enum BackgroundRefreshService {
                 try Task.checkCancellation()
                 try await localStore.save(report)
                 reportID = report.id.uuidString
-                let webhookDelivered = await GenericWebhookService().send(report: report, settings: settings)
-                if !webhookDelivered, let delivery = GenericWebhookService.records().first(where: { $0.reportID == reportID }) {
-                    executionErrors["webhook"] = delivery.message
+                let delivery = await ReportDeliveryService().deliver(report: report, settings: settings)
+                if let message = delivery.failureMessage {
+                    executionErrors["notification"] = message
                     executionStatus = .partial
                 }
             }
