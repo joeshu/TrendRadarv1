@@ -97,6 +97,7 @@ struct ReportSummaryCard: View {
 
 struct ReportDetailView: View {
     @EnvironmentObject private var reportStore: ReportStore
+    @EnvironmentObject private var settingsStore: SettingsStore
     @Environment(\.dismiss) private var dismiss
     let reportID: UUID
     @State private var report: ReportDetail?
@@ -176,8 +177,13 @@ struct ReportDetailView: View {
                                 }
                             }
                         }
-                        Button {
-                            // The toolbar menu remains available for Markdown/HTML export.
+                        Menu {
+                            ShareLink(item: ReportFormatter().render(report, format: .markdown)) {
+                                Label("分享 Markdown", systemImage: "doc.text")
+                            }
+                            ShareLink(item: ReportHTMLExport(report: report), preview: SharePreview(report.title, image: Image(systemName: "doc.richtext"))) {
+                                Label("导出 HTML 报告", systemImage: "doc.richtext")
+                            }
                         } label: {
                             Label("导出报告", systemImage: "square.and.arrow.up")
                                 .font(AppTheme.cardTitleFont)
@@ -185,11 +191,6 @@ struct ReportDetailView: View {
                                 .frame(minHeight: 50)
                         }
                         .buttonStyle(AccentButtonStyle())
-                        .contextMenu {
-                            ShareLink(item: ReportFormatter().render(report, format: .markdown)) {
-                                Label("分享 Markdown", systemImage: "doc.text")
-                            }
-                        }
                     }
                     .padding(.horizontal, 16)
                     .padding(.top, 10)
@@ -208,6 +209,11 @@ struct ReportDetailView: View {
                     Menu {
                         ShareLink(item: ReportFormatter().render(report, format: .markdown)) { Label("分享 Markdown", systemImage: "square.and.arrow.up") }
                         ShareLink(item: ReportHTMLExport(report: report), preview: SharePreview(report.title, image: Image(systemName: "doc.richtext"))) { Label("导出 HTML 报告", systemImage: "doc.richtext") }
+                        NavigationLink {
+                            ReportOutputPreviewView(settings: settingsStore.settings, reportID: report.id)
+                        } label: {
+                            Label("输出预览", systemImage: "eye")
+                        }
                         Button { Task { await reportStore.toggleFavorite(id: report.id); await loadReport() } } label: { Label(report.isFavorite ? "取消收藏" : "收藏", systemImage: report.isFavorite ? "star.slash" : "star") }
                         Button(role: .destructive) { showingDeleteConfirmation = true } label: { Label("删除报告", systemImage: "trash") }
                     } label: { ToolbarIconLabel(systemName: "ellipsis.circle", label: "报告操作") }

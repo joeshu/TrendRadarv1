@@ -75,7 +75,17 @@ struct DiscoverHubView: View {
                 PremiumMetricCard(value: "\(Set(store.items.map { $0.source }).count)", label: "来源", icon: "antenna.radiowaves.left.and.right", tint: AppTheme.brandIndigo)
             }
             if filtered.isEmpty { FeatureEmptyState(icon: "newspaper", title: "暂无订阅内容", message: "刷新 RSS 或检查订阅源配置") }
-            else { ForEach(filtered) { item in CompactFeedCard(item: item) } }
+            else {
+                ForEach(filtered) { item in
+                    NavigationLink {
+                        FeedReaderView(item: item)
+                            .task { await store.markRead(item) }
+                    } label: {
+                        CompactFeedCard(item: item)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
         }
     }
 
@@ -92,13 +102,18 @@ struct DiscoverHubView: View {
                 Label("打开完整洞察", systemImage: "arrow.up.right").frame(maxWidth: .infinity)
             }.buttonStyle(AccentButtonStyle())
             if let report = reportStore.reports.first {
-                PremiumPanel(tint: AppTheme.brandCyan) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("最近报告").font(AppTheme.captionFont).foregroundStyle(AppTheme.brandCyan)
-                        Text(report.title).font(AppTheme.headlineFont).foregroundStyle(AppTheme.textPrimary)
-                        Text(report.generatedAt.formatted(date: .abbreviated, time: .shortened)).font(AppTheme.captionFont).foregroundStyle(AppTheme.textTertiary)
+                NavigationLink {
+                    ReportDetailView(reportID: report.id)
+                } label: {
+                    PremiumPanel(tint: AppTheme.brandCyan) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("最近报告").font(AppTheme.captionFont).foregroundStyle(AppTheme.brandCyan)
+                            Text(report.title).font(AppTheme.cardTitleFont).foregroundStyle(AppTheme.textPrimary)
+                            Text(report.generatedAt.formatted(date: .abbreviated, time: .shortened)).font(AppTheme.captionFont).foregroundStyle(AppTheme.textTertiary)
+                        }
                     }
                 }
+                .buttonStyle(.plain)
             }
         }
     }

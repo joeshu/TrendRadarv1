@@ -4,6 +4,7 @@ struct ReportOutputPreviewView: View {
     @EnvironmentObject private var reportStore: ReportStore
     @Environment(\.dismiss) private var dismiss
     let settings: AppSettings
+    var reportID: UUID? = nil
     @State private var report: ReportDetail?
     @State private var selectedFormat = 0
 
@@ -45,14 +46,22 @@ struct ReportOutputPreviewView: View {
         .navigationTitle("报告输出预览")
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(AppTheme.background, for: .navigationBar)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                ShareLink(item: preview) {
+                    ToolbarIconLabel(systemName: "square.and.arrow.up", label: "分享当前预览")
+                }
+                .disabled(report == nil)
+            }
+        }
         .overlay {
             if report == nil {
                 ContentUnavailableView("暂无报告", systemImage: "doc.text", description: Text("先生成一份报告后再预览最终输出。"))
             }
         }
         .task {
-            if let first = reportStore.reports.first {
-                report = await reportStore.detail(id: first.id)
+            if let targetID = reportID ?? reportStore.reports.first?.id {
+                report = await reportStore.detail(id: targetID)
             }
         }
     }

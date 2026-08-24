@@ -8,6 +8,7 @@ struct FeedsView: View {
     @State private var selectedFeedID: String?
     @State private var showingFeedInfo = false
     @State private var showingSourceManager = false
+    @State private var showingDiscover = false
     @State private var selectedInboxState: InboxState = .unprocessed
 
     private var enabledFeeds: [ConfigFeed] {
@@ -88,6 +89,11 @@ struct FeedsView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(AppTheme.background, for: .navigationBar)
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button { showingDiscover = true } label: {
+                        ToolbarIconLabel(systemName: "magnifyingglass.circle", label: "发现与检索")
+                    }
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { showingSourceManager = true } label: {
                         ToolbarIconLabel(systemName: "slider.horizontal.3", label: "管理信息源")
@@ -99,6 +105,9 @@ struct FeedsView: View {
             }
             .sheet(isPresented: $showingSourceManager) {
                 SubscriptionSourceManager()
+            }
+            .sheet(isPresented: $showingDiscover) {
+                DiscoverHubView()
             }
         }
     }
@@ -121,13 +130,22 @@ struct FeedsView: View {
     }
 
     private var feedIntro: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("管理信息源")
-                .font(AppTheme.headlineFont)
-                .foregroundStyle(AppTheme.textPrimary)
-            Text("选择来源，阅读对应的订阅内容。")
-                .font(AppTheme.captionFont)
-                .foregroundStyle(AppTheme.textSecondary)
+        HStack(alignment: .top, spacing: 12) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("管理信息源")
+                    .font(AppTheme.headlineFont)
+                    .foregroundStyle(AppTheme.textPrimary)
+                Text("选择来源，阅读对应的订阅内容。")
+                    .font(AppTheme.captionFont)
+                    .foregroundStyle(AppTheme.textSecondary)
+            }
+            Spacer(minLength: 0)
+            Button { showingFeedInfo = true } label: {
+                Image(systemName: "info.circle")
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
+            }
+            .accessibilityLabel("订阅运行说明")
         }
         .padding(16)
         .background(AppTheme.heroGradient)
@@ -1386,11 +1404,17 @@ struct ReportCenterView: View {
     }
 
     private var reportStatusStrip: some View {
-        HStack(spacing: 8) {
-            PremiumMetricCard(value: "\(reportStore.reports.count)", label: "全部报告", icon: "doc.text", tint: AppTheme.brandCyan)
-            PremiumMetricCard(value: "\(reportStore.reports.filter(\.isFavorite).count)", label: "已收藏", icon: "star.fill", tint: AppTheme.yellow)
-            PremiumMetricCard(value: "\(reportStore.reports.filter { $0.type == .daily }.count)", label: "日报", icon: "calendar", tint: AppTheme.brandMagenta)
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 8) { reportMetrics }
+            VStack(spacing: 8) { reportMetrics }
         }
+    }
+
+    @ViewBuilder
+    private var reportMetrics: some View {
+        PremiumMetricCard(value: "\(reportStore.reports.count)", label: "全部报告", icon: "doc.text", tint: AppTheme.brandCyan)
+        PremiumMetricCard(value: "\(reportStore.reports.filter(\.isFavorite).count)", label: "已收藏", icon: "star.fill", tint: AppTheme.yellow)
+        PremiumMetricCard(value: "\(reportStore.reports.filter { $0.type == .daily }.count)", label: "日报", icon: "calendar", tint: AppTheme.brandMagenta)
     }
 
     private var reportToolbar: some View {
