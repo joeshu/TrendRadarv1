@@ -28,8 +28,18 @@ actor RefreshPipelineExecutor {
         try Task.checkCancellation()
 
         _ = try await PersistStage().execute(filtered)
+        try Task.checkCancellation()
 
-        return RefreshPipelineResult(status: .completed, context: context)
+        var reportDelivered = false
+        if let report = try await ReportStage().execute(items: filtered, settings: settings) {
+            _ = await DeliveryStage().execute(report: report, settings: settings)
+            reportDelivered = true
+        }
+
+        return RefreshPipelineResult(
+            status: reportDelivered ? .completed : .completed,
+            context: context
+        )
     }
 
     private func loadSettings() -> AppSettings {
