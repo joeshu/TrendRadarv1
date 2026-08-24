@@ -15,7 +15,8 @@ struct ReportGeneratorSheet: View {
                             eyebrow: "NEW REPORT",
                             title: "生成一份新的趋势报告",
                             subtitle: "先采集当前热榜与 RSS，再生成可保存的新闻快照",
-                            icon: "doc.badge.plus"
+                            icon: "doc.badge.plus",
+                            assetName: "TrendRadar-ReportsHero"
                         )
                         VStack(alignment: .leading, spacing: 14) {
                             Label("报告类型", systemImage: "doc.text.magnifyingglass")
@@ -101,6 +102,7 @@ struct ReportDetailView: View {
             if let report {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 16) {
+                        PageVisualBanner(assetName: "TrendRadar-ReportsHero", height: 128)
                         PremiumPanel(tint: AppTheme.brandCyan) { detailHeader(report) }
                         PremiumPanel(tint: AppTheme.brandIndigo) { statistics(report) }
                         evidencePanel(report)

@@ -28,7 +28,7 @@ struct FeedsView: View {
                 IntelligenceScreenBackground()
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 16) {
-                        IntelligencePageHeader(eyebrow: "SUBSCRIPTION INBOX", title: "订阅与发现", subtitle: "管理信息源，阅读最新内容", icon: "newspaper.fill")
+                        IntelligencePageHeader(eyebrow: "SUBSCRIPTION INBOX", title: "订阅与发现", subtitle: "管理信息源，阅读最新内容", icon: "newspaper.fill", assetName: "TrendRadar-SubscriptionHero")
                         feedIntro
                         sourceSummary
                         inboxFilter
@@ -330,6 +330,7 @@ struct FeedReaderView: View {
             IntelligenceScreenBackground()
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
+                    PageVisualBanner(assetName: "TrendRadar-ReadingHero")
                     Text(item.source.uppercased())
                         .font(AppTheme.captionFont)
                         .foregroundStyle(AppTheme.cyan)
@@ -439,7 +440,8 @@ struct InsightView: View {
             eyebrow: "LOCAL INTELLIGENCE",
             title: "今天值得关注什么",
             subtitle: "基于当前已抓取的新闻与真实排名",
-            icon: "sparkles"
+            icon: "sparkles",
+            assetName: "TrendRadar-InsightHero"
         )
     }
 
@@ -774,7 +776,7 @@ struct HotNewsView: View {
                 IntelligenceScreenBackground()
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 16) {
-                        IntelligencePageHeader(eyebrow: "LIVE RADAR", title: "热榜雷达", subtitle: "跨平台排名与真实变化趋势", icon: "dot.radiowaves.left.and.right")
+                        IntelligencePageHeader(eyebrow: "LIVE RADAR", title: "热榜雷达", subtitle: "跨平台排名与真实变化趋势", icon: "dot.radiowaves.left.and.right", assetName: "TrendRadar-RadarHero")
                         hotNewsOverview
                         radarSummary
                         radarStateFilters
@@ -984,6 +986,7 @@ struct HotNewsTrendView: View {
             IntelligenceScreenBackground()
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
+                    PageVisualBanner(assetName: "TrendRadar-RadarHero", height: 120)
                     Text(topic.title)
                         .font(AppTheme.titleFont)
                         .foregroundStyle(AppTheme.textPrimary)
@@ -1208,7 +1211,8 @@ struct FavoritesView: View {
             eyebrow: "LOCAL LIBRARY",
             title: "保存真正重要的信号",
             subtitle: "新闻、趋势和报告统一归档，随时检索与分享",
-            icon: "archivebox.fill"
+            icon: "archivebox.fill",
+            assetName: "TrendRadar-LibraryHero"
         )
     }
 
@@ -1447,7 +1451,8 @@ struct ReportCenterView: View {
             eyebrow: "REPORT ARCHIVE",
             title: "本地情报档案",
             subtitle: "保存采集时刻的新闻快照和分析结果",
-            icon: "doc.text.magnifyingglass"
+            icon: "doc.text.magnifyingglass",
+            assetName: "TrendRadar-ReportsHero"
         )
     }
 }

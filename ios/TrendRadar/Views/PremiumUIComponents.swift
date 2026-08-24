@@ -116,6 +116,15 @@ struct IntelligencePageHeader: View {
     let title: String
     let subtitle: String
     let icon: String
+    let assetName: String?
+
+    init(eyebrow: String, title: String, subtitle: String, icon: String, assetName: String? = nil) {
+        self.eyebrow = eyebrow
+        self.title = title
+        self.subtitle = subtitle
+        self.icon = icon
+        self.assetName = assetName
+    }
 
     var body: some View {
         HStack(alignment: .bottom, spacing: 14) {
@@ -140,5 +149,49 @@ struct IntelligencePageHeader: View {
                 .clipShape(RoundedRectangle(cornerRadius: 17, style: .continuous))
                 .overlay(RoundedRectangle(cornerRadius: 17, style: .continuous).stroke(AppTheme.cardBorder.opacity(0.55), lineWidth: 1))
         }
+        .padding(assetName == nil ? 0 : 18)
+        .frame(minHeight: assetName == nil ? nil : 158, alignment: .bottom)
+        .background {
+            if let assetName {
+                Image(assetName)
+                    .resizable()
+                    .scaledToFill()
+                    .overlay {
+                        LinearGradient(
+                            colors: [Color.black.opacity(0.08), Color.black.opacity(0.62)],
+                            startPoint: .topTrailing,
+                            endPoint: .bottomLeading
+                        )
+                    }
+                    .accessibilityHidden(true)
+            }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .overlay {
+            if assetName != nil {
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .stroke(AppTheme.cardBorder.opacity(0.55), lineWidth: 1)
+            }
+        }
+    }
+}
+
+struct PageVisualBanner: View {
+    let assetName: String
+    var height: CGFloat = 132
+
+    var body: some View {
+        Image(assetName)
+            .resizable()
+            .scaledToFill()
+            .frame(maxWidth: .infinity)
+            .frame(height: height)
+            .clipped()
+            .overlay {
+                LinearGradient(colors: [.clear, AppTheme.background.opacity(0.56)], startPoint: .top, endPoint: .bottom)
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(AppTheme.cardBorder.opacity(0.5), lineWidth: 1))
+            .accessibilityHidden(true)
     }
 }

@@ -63,7 +63,8 @@ struct OverviewView: View {
                 eyebrow: Date.now.formatted(.dateTime.month(.wide).day().weekday(.wide)),
                 title: "今日情报简报",
                 subtitle: "聚合本机订阅、热榜与分析结果",
-                icon: "sun.max.fill"
+                icon: "sun.max.fill",
+                assetName: "TrendRadar-TodayHero"
             )
             Label(isRefreshing ? "正在刷新本机数据" : lastUpdated.map { "更新于 \($0.formatted(date: .omitted, time: .shortened))" } ?? "等待首次刷新", systemImage: isRefreshing ? "arrow.triangle.2.circlepath" : "clock")
                 .font(.caption)
