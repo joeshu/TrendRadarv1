@@ -517,7 +517,7 @@ struct NewsDetailView: View {
                         .lineSpacing(3)
                     if !intelligenceTags.isEmpty {
                         ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 7) { ForEach(intelligenceTags, id: \.self) { PremiumTag(title: $0, tint: AppTheme.brandIndigo) } }
+                            HStack(spacing: 7) { ForEach(intelligenceTags, id: \.self) { PremiumTag(text: $0, tint: AppTheme.brandIndigo) } }
                         }.accessibilityLabel("情报标签：\(intelligenceTags.joined(separator: "、"))")
                     }
                     if translatedTitle != nil || item.translatedTitle != nil {
