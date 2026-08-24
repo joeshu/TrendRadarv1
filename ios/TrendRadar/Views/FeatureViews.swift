@@ -905,6 +905,9 @@ struct HotNewsView: View {
                     LazyVStack(alignment: .leading, spacing: 16) {
                         PageVisualBanner(assetName: "TrendRadar-RadarHero", height: 118)
                         hotNewsOverview
+                        if !hotNewsStore.items.isEmpty {
+                            radarSummary
+                        }
                         radarStateFilters
                         hotNewsFilters
                         if !hotNewsStore.sourceFailures.isEmpty {
