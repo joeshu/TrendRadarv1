@@ -311,7 +311,9 @@ struct FeedReaderView: View {
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(20)
+                .padding(.horizontal, 16)
+                .padding(.top, 12)
+                .padding(.bottom, 120)
             }
         }
         .navigationTitle("阅读器")

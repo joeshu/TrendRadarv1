@@ -61,11 +61,17 @@ struct ReportSummaryCard: View {
     let report: ReportSummary
 
     var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: report.isFavorite ? "star.fill" : "doc.text")
-                .foregroundStyle(report.isFavorite ? AppTheme.yellow : AppTheme.pink)
-            VStack(alignment: .leading, spacing: 4) {
-                Text(report.title).font(AppTheme.headlineFont).foregroundStyle(AppTheme.textPrimary).lineLimit(2)
+        HStack(spacing: 14) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill((report.isFavorite ? AppTheme.yellow : AppTheme.brandCyan).opacity(0.12))
+                Image(systemName: report.isFavorite ? "star.fill" : "doc.text")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundStyle(report.isFavorite ? AppTheme.yellow : AppTheme.brandCyan)
+            }
+            .frame(width: 44, height: 44)
+            VStack(alignment: .leading, spacing: 5) {
+                Text(report.title).font(.system(size: 17, weight: .semibold)).foregroundStyle(AppTheme.textPrimary).lineLimit(2)
                 HStack(spacing: 6) {
                     Text(report.type.displayName); Text("·"); Text("\(report.newsCount) 条情报"); Text("·"); Text(report.generatedAt, style: .relative)
                 }
