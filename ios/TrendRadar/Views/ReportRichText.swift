@@ -12,19 +12,19 @@ struct ReportRichText: View {
 
     private var attributedContent: AttributedString {
         let normalized = content
-            .replacingOccurrences(of: "\\r\\n", with: "\\n")
-            .replacingOccurrences(of: "\\r", with: "\\n")
+            .replacingOccurrences(of: "\r\n", with: "\n")
+            .replacingOccurrences(of: "\r", with: "\n")
         var output = AttributedString()
         let lines = normalized.components(separatedBy: "\\n")
         for (index, line) in lines.enumerated() {
             var rendered = AttributedString(line)
-            rendered.font = .system(size: 16, weight: .regular)
+            rendered.font = .body
             rendered.foregroundColor = AppTheme.textSecondary
             if line.trimmingCharacters(in: .whitespaces).hasPrefix("【") {
-                rendered.font = .system(size: 16, weight: .semibold)
+                rendered.font = .headline
                 rendered.foregroundColor = AppTheme.brandCyan
             } else if line.range(of: "^\\s*[0-9]+\\.\\s*", options: .regularExpression) != nil {
-                rendered.font = .system(size: 16, weight: .medium)
+                rendered.font = .subheadline
                 rendered.foregroundColor = AppTheme.textPrimary
             }
             applyInlineStyles(to: &rendered, source: line)
@@ -45,7 +45,7 @@ struct ReportRichText: View {
                 if let a = value.index(value.startIndex, offsetBy: start, limitedBy: value.endIndex),
                    let b = value.index(value.startIndex, offsetBy: end, limitedBy: value.endIndex) {
                     value[a..<b].foregroundColor = AppTheme.brandIndigo
-                    value[a..<b].font = .system(size: 16, weight: .semibold)
+                    value[a..<b].font = .subheadline
                 }
                 searchStart = range.upperBound
             }
