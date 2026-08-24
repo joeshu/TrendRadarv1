@@ -303,6 +303,17 @@ final class NewsItemTests: XCTestCase {
         XCTAssertEqual(topic.state, .new)
     }
 
+    func testRadarFiltersUseObservedStateAndFavorites() {
+        let now = Date()
+        let rising = HotNewsItem(id: "rising", title: "上升主题", url: nil, platformID: "weibo", platformName: "微博", rank: 2, publishedAt: nil, extraInfo: nil, topicKey: "rising", firstSeenAt: now.addingTimeInterval(-900), previousRank: 8, isRead: false, isFavorite: false)
+        let followed = HotNewsItem(id: "followed", title: "关注主题", url: nil, platformID: "zhihu", platformName: "知乎", rank: 5, publishedAt: nil, extraInfo: nil, topicKey: "followed", firstSeenAt: now.addingTimeInterval(-25_000), previousRank: 5, isRead: false, isFavorite: true)
+
+        XCTAssertTrue(RadarFilter.rising.includes(HotNewsTopic(id: "rising", title: rising.title, items: [rising]), now: now))
+        XCTAssertTrue(RadarFilter.sustained.includes(HotNewsTopic(id: "followed", title: followed.title, items: [followed]), now: now))
+        XCTAssertTrue(RadarFilter.following.includes(HotNewsTopic(id: "followed", title: followed.title, items: [followed]), now: now))
+        XCTAssertFalse(RadarFilter.new.includes(HotNewsTopic(id: "rising", title: rising.title, items: [rising]), now: now))
+    }
+
     func testSourceHealthStorePersistsFailureAndRecovery() async throws {
         let suiteName = "SourceHealthStoreTests.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))

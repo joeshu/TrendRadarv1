@@ -732,6 +732,7 @@ struct HotNewsView: View {
                         PremiumSectionHeader(eyebrow: "LIVE RADAR", title: "热榜雷达", subtitle: "跨平台排名与真实变化趋势", icon: "dot.radiowaves.left.and.right", tint: AppTheme.brandCyan)
                         hotNewsOverview
                         radarSummary
+                        radarStateFilters
                         hotNewsFilters
                         if !hotNewsStore.sourceFailures.isEmpty {
                             SourceHealthBanner(title: "部分热榜平台暂不可用", detail: hotNewsStore.sourceFailures.joined(separator: "、"), tint: AppTheme.yellow)
@@ -768,10 +769,13 @@ struct HotNewsView: View {
                             .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(AppTheme.cardBorder, lineWidth: 1))
                             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                         } else {
-                            ForEach(hotNewsStore.topics) { topic in
-                                NavigationLink {
-                                    HotNewsTrendView(topic: topic)
-                                } label: {
+                            if hotNewsStore.radarTopics.isEmpty {
+                                FeatureEmptyState(icon: "line.3.horizontal.decrease.circle", title: "没有符合条件的趋势", message: "切换筛选条件，或刷新以获取新的真实排名快照。")
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.top, 24)
+                            }
+                            ForEach(hotNewsStore.radarTopics) { topic in
+                                NavigationLink(value: topic) {
                                     HotNewsTopicCard(topic: topic)
                                 }
                                 .buttonStyle(.plain)
@@ -785,13 +789,37 @@ struct HotNewsView: View {
             .navigationTitle("热榜")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(AppTheme.background, for: .navigationBar)
-            .toolbarColorScheme(.light, for: .navigationBar)
+            .navigationDestination(for: HotNewsTopic.self) { topic in
+                HotNewsTrendView(topic: topic)
+            }
             .refreshable { await hotNewsStore.refresh(settings: settingsStore.settings) }
             .task { await hotNewsStore.refresh(settings: settingsStore.settings, showError: false) }
             .alert("热榜刷新", isPresented: Binding(get: { hotNewsStore.errorMessage != nil }, set: { if !$0 { hotNewsStore.errorMessage = nil } })) {
                 Button("确定", role: .cancel) { hotNewsStore.errorMessage = nil }
             } message: {
                 Text(hotNewsStore.errorMessage ?? "")
+            }
+        }
+    }
+
+    private var radarStateFilters: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(RadarFilter.allCases) { filter in
+                    Button {
+                        withAnimation(AppAnimation.standard) { hotNewsStore.selectedRadarFilter = filter }
+                    } label: {
+                        Label(filter.title, systemImage: filter.systemImage)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(hotNewsStore.selectedRadarFilter == filter ? Color.white : AppTheme.textSecondary)
+                            .padding(.horizontal, 14)
+                            .frame(minHeight: 44)
+                            .background(hotNewsStore.selectedRadarFilter == filter ? AppTheme.brandCyan : AppTheme.card, in: Capsule())
+                            .overlay { Capsule().stroke(AppTheme.cardBorder, lineWidth: hotNewsStore.selectedRadarFilter == filter ? 0 : 1) }
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityAddTraits(hotNewsStore.selectedRadarFilter == filter ? .isSelected : [])
+                }
             }
         }
     }
@@ -911,7 +939,8 @@ private struct HotNewsTopicCard: View {
 struct HotNewsTrendView: View {
     @EnvironmentObject private var hotNewsStore: HotNewsStore
     let topic: HotNewsTopic
-    @State private var points: [HotNewsStore.TrendPoint] = []
+    @State private var snapshots: [RankSnapshot] = []
+    @State private var isFollowing = false
 
     var body: some View {
         ZStack {
@@ -927,7 +956,9 @@ struct HotNewsTrendView: View {
                     Text("跨平台出现 · 点击查看排名轨迹")
                         .font(.system(size: 11, weight: .medium, design: .default))
                         .foregroundStyle(AppTheme.textTertiary)
-                    TrendChart(points: points)
+                    trendMetrics
+                    TrendChart(snapshots: snapshots)
+                    sourceDistribution
                     ForEach(topic.items) { item in
                         HotNewsTrendRow(item: item)
                     }
@@ -939,7 +970,53 @@ struct HotNewsTrendView: View {
             }
         .navigationTitle("排名时间线")
         .navigationBarTitleDisplayMode(.inline)
-        .task { points = await hotNewsStore.trend(for: topic.id) }
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    isFollowing.toggle()
+                    Task { await hotNewsStore.toggleFavorite(for: topic) }
+                } label: {
+                    Image(systemName: isFollowing ? "star.fill" : "star")
+                }
+                .accessibilityLabel(isFollowing ? "取消关注主题" : "关注主题")
+            }
+        }
+        .task {
+            isFollowing = topic.items.contains(where: \.isFavorite)
+            snapshots = await hotNewsStore.rankSnapshots(for: topic.id)
+        }
+    }
+
+    private var trendMetrics: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                StatusBadge(title: "最佳 #\(topic.bestRank)", systemImage: "number", tint: AppTheme.brandCyan)
+                StatusBadge(title: "\(topic.platformCount) 个平台", systemImage: "square.stack.3d.up", tint: AppTheme.green)
+                StatusBadge(title: "\(snapshots.count) 次快照", systemImage: "clock.arrow.circlepath", tint: AppTheme.yellow)
+            }
+        }
+    }
+
+    private var sourceDistribution: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("来源分布")
+                .font(AppTheme.headlineFont)
+                .foregroundStyle(AppTheme.textPrimary)
+            ForEach(Dictionary(grouping: topic.items, by: \.platformName).keys.sorted(), id: \.self) { name in
+                HStack {
+                    Text(name)
+                        .font(AppTheme.bodyFont)
+                        .foregroundStyle(AppTheme.textSecondary)
+                    Spacer()
+                    Text("\(topic.items.filter { $0.platformName == name }.count) 条")
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(AppTheme.textTertiary)
+                }
+                Divider()
+            }
+        }
+        .padding(16)
+        .background(AppTheme.card, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 }
 
@@ -965,18 +1042,18 @@ private struct HotNewsTrendRow: View {
 }
 
 private struct TrendChart: View {
-    let points: [HotNewsStore.TrendPoint]
+    let snapshots: [RankSnapshot]
 
     var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: 16, style: .continuous).fill(AppTheme.card)
-            if points.count >= 2 {
-                Chart(points) { point in
-                    LineMark(x: .value("时间", point.date), y: .value("排名", point.rank))
-                        .foregroundStyle(AppTheme.pink)
+            if snapshots.count >= 2 {
+                Chart(snapshots) { snapshot in
+                    LineMark(x: .value("时间", snapshot.capturedAt), y: .value("排名", snapshot.rank))
+                        .foregroundStyle(by: .value("平台", snapshot.sourceName))
                         .lineStyle(StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round))
-                    PointMark(x: .value("时间", point.date), y: .value("排名", point.rank))
-                        .foregroundStyle(AppTheme.pink)
+                    PointMark(x: .value("时间", snapshot.capturedAt), y: .value("排名", snapshot.rank))
+                        .foregroundStyle(by: .value("平台", snapshot.sourceName))
                 }
                 .chartYScale(domain: .automatic(includesZero: false, reversed: true))
                 .chartYAxis { AxisMarks(position: .leading) }
@@ -996,6 +1073,28 @@ private struct TrendChart: View {
             }
         }
         .frame(height: 220)
+    }
+}
+
+private extension RadarFilter {
+    var title: String {
+        switch self {
+        case .all: return "全部"
+        case .rising: return "上升"
+        case .new: return "新进"
+        case .sustained: return "持续"
+        case .following: return "关注"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .all: return "line.3.horizontal.decrease"
+        case .rising: return "arrow.up.right"
+        case .new: return "sparkles"
+        case .sustained: return "clock"
+        case .following: return "star"
+        }
     }
 }
 

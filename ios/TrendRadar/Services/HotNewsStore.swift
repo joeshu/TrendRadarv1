@@ -10,6 +10,7 @@ final class HotNewsStore: ObservableObject {
     @Published private(set) var sourceFailures: [String] = []
     @Published private(set) var sourceFailureDetails: [String: String] = [:]
     @Published var selectedPlatformID: String?
+    @Published var selectedRadarFilter: RadarFilter = .all
     @Published private(set) var blockedTopicKeys: Set<String> = []
 
     struct TrendPoint: Identifiable, Sendable {
@@ -65,6 +66,10 @@ final class HotNewsStore: ObservableObject {
         return records.map { TrendPoint(date: $0.date, rank: $0.rank) }
     }
 
+    var radarTopics: [HotNewsTopic] {
+        topics.filter { selectedRadarFilter.includes($0) }
+    }
+
     func rankSnapshots(for topicKey: String) async -> [RankSnapshot] {
         await localStore.loadRankSnapshots(for: topicKey)
     }
@@ -77,8 +82,9 @@ final class HotNewsStore: ObservableObject {
 
     func toggleFavorite(for topic: HotNewsTopic) async {
         let topicIDs = Set(topic.items.map(\.id))
+        let shouldFavorite = !topic.items.allSatisfy(\.isFavorite)
         for index in items.indices where topicIDs.contains(items[index].id) {
-            items[index].isFavorite.toggle()
+            items[index].isFavorite = shouldFavorite
         }
         try? await localStore.saveHotNews(items)
     }

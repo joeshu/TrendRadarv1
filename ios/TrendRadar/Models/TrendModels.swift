@@ -17,6 +17,28 @@ enum TrendState: String, Codable, CaseIterable, Sendable {
     case sustained
 }
 
+enum RadarFilter: String, CaseIterable, Identifiable, Sendable {
+    case all
+    case rising
+    case new
+    case sustained
+    case following
+
+    var id: String { rawValue }
+
+    func includes(_ topic: HotNewsTopic, now: Date = Date()) -> Bool {
+        switch self {
+        case .all: return true
+        case .rising: return topic.strongestTrend == .up
+        case .new: return topic.strongestTrend == .new
+        case .sustained:
+            guard let firstSeenAt = topic.firstSeenAt else { return false }
+            return now.timeIntervalSince(firstSeenAt) >= 6 * 60 * 60
+        case .following: return topic.items.contains(where: \.isFavorite)
+        }
+    }
+}
+
 struct TrendTopic: Codable, Hashable, Identifiable, Sendable {
     let id: String
     let normalizedTitle: String
