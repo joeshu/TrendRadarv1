@@ -668,13 +668,14 @@ struct SettingsView: View {
     private var aiTranslationSection: some View {
         Section("翻译") {
             Toggle("启用标题翻译", isOn: $settingsStore.settings.aiTranslation.enabled)
-                .disabled(true)
             TextField("目标语言", text: $settingsStore.settings.aiTranslation.language)
-                .disabled(true)
+                .disabled(!settingsStore.settings.aiTranslation.enabled)
+            Toggle("订阅阅读支持翻译", isOn: $settingsStore.settings.aiTranslation.translateRSS)
+                .disabled(!settingsStore.settings.aiTranslation.enabled)
             TextField("提示词文件", text: $settingsStore.settings.aiTranslation.promptFile)
                 .textInputAutocapitalization(.never).autocorrectionDisabled()
-                .disabled(true)
-            Text("标题翻译尚未接入本地阅读链路，当前版本保留配置结构。")
+                .disabled(!settingsStore.settings.aiTranslation.enabled)
+            Text("当前支持在订阅列表、情报详情和离线阅读器中按需翻译；译文保存在本机。")
                 .font(.caption).foregroundStyle(.secondary)
         }
     }

@@ -408,11 +408,16 @@ private struct NewsCard: View {
                     Spacer()
                     if item.isFavorite { Image(systemName: "star.fill").font(.caption).foregroundStyle(AppTheme.yellow) }
                 }
-                Text(item.title)
+                Text(item.translatedTitle ?? item.title)
                     .font(item.isRead ? AppTheme.bodyFont : AppTheme.cardTitleFont)
                     .foregroundStyle(item.isRead ? AppTheme.textSecondary : AppTheme.textPrimary)
                     .multilineTextAlignment(.leading)
                     .lineLimit(dynamicTypeSize.isAccessibilitySize ? 4 : 2)
+                if item.translatedTitle != nil {
+                    Label("已翻译", systemImage: "character.book.closed")
+                        .font(AppTheme.metadataFont)
+                        .foregroundStyle(AppTheme.brandIndigo)
+                }
                 HStack(spacing: 7) {
                     Text(item.publishedAt?.relativeDescription ?? "刚刚")
                     if item.summary != nil { Text("·"); Label("已摘要", systemImage: "sparkles") }
@@ -478,8 +483,11 @@ private struct HotNewsCard: View {
 struct NewsDetailView: View {
     let item: NewsItem
     @EnvironmentObject private var store: NewsStore
+    @EnvironmentObject private var settingsStore: SettingsStore
     @State private var isSummarizing = false
     @State private var generatedSummary: String?
+    @State private var translatedTitle: String?
+    @State private var isTranslating = false
 
     var body: some View {
         ZStack {
@@ -493,10 +501,18 @@ struct NewsDetailView: View {
                         Spacer()
                         Text(item.publishedAt?.relativeDescription ?? "刚刚").font(AppTheme.captionFont).foregroundStyle(AppTheme.textTertiary)
                     }
-                    Text(item.title)
+                    Text(translatedTitle ?? item.translatedTitle ?? item.title)
                         .font(AppTheme.titleFont)
                         .foregroundStyle(AppTheme.textPrimary)
                         .lineSpacing(3)
+                    if translatedTitle != nil || item.translatedTitle != nil {
+                        VStack(alignment: .leading, spacing: 5) {
+                            Label("原文标题", systemImage: "text.quote")
+                                .font(AppTheme.metadataFont)
+                                .foregroundStyle(AppTheme.brandIndigo)
+                            Text(item.title).font(AppTheme.captionFont).foregroundStyle(AppTheme.textSecondary)
+                        }
+                    }
                     if let summary = generatedSummary ?? item.summary, !summary.isEmpty {
                         VStack(alignment: .leading, spacing: 11) {
                             Label("AI 摘要", systemImage: "sparkles")
@@ -524,6 +540,7 @@ struct NewsDetailView: View {
         .toolbarBackground(AppTheme.background, for: .navigationBar)
         .navigationTitle("情报详情")
         .navigationBarTitleDisplayMode(.inline)
+        .task { translatedTitle = store.items.first(where: { $0.id == item.id })?.translatedTitle ?? item.translatedTitle }
     }
 
     @ViewBuilder
@@ -538,6 +555,19 @@ struct NewsDetailView: View {
         } label: { Label(isSummarizing ? "分析中" : "生成摘要", systemImage: "sparkles") }
         .buttonStyle(AccentButtonStyle())
         .disabled(isSummarizing)
+        if settingsStore.settings.aiTranslation.enabled && settingsStore.settings.aiTranslation.translateRSS {
+            Button {
+                isTranslating = true
+                Task {
+                    translatedTitle = await store.translateTitle(item)
+                    isTranslating = false
+                }
+            } label: {
+                Label(isTranslating ? "翻译中" : (translatedTitle == nil && item.translatedTitle == nil ? "翻译标题" : "重新翻译"), systemImage: "character.book.closed")
+            }
+            .buttonStyle(OutlineButtonStyle())
+            .disabled(isTranslating)
+        }
         if let url = item.url {
             Link(destination: url) { Label("阅读原文", systemImage: "arrow.up.right") }
                 .buttonStyle(OutlineButtonStyle())

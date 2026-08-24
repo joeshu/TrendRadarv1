@@ -54,6 +54,25 @@ struct AIService: Sendable {
         )
     }
 
+    func translateTitle(_ title: String, settings: AppSettings = AppSettings()) async throws -> String {
+        let source = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !source.isEmpty else { throw AIError.emptyInput }
+        let targetLanguage = settings.aiTranslation.language.trimmingCharacters(in: .whitespacesAndNewlines)
+        let fallback = AIPromptMessages(
+            system: "你是专业新闻标题翻译器。保持专有名词、数字和事实准确，只输出译文，不要解释。",
+            user: "请将以下新闻标题翻译为{language}：\n{title}"
+        )
+        let prompt = AIPromptTemplate.load(fileName: settings.aiTranslation.promptFile, fallback: fallback)
+        let content = try await request(messages: prompt.messages(values: [
+            "language": targetLanguage.isEmpty ? "中文" : targetLanguage,
+            "title": source,
+            "news_content": source
+        ]), settings: settings)
+        let translation = content.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !translation.isEmpty else { throw AIError.emptyResponse }
+        return translation
+    }
+
     func analyze(_ items: [NewsItem], settings: AppSettings = AppSettings()) async throws -> StructuredAIAnalysis {
         try await analyze(hotlistItems: [], rssItems: items, settings: settings)
     }

@@ -332,6 +332,9 @@ struct SubscriptionSourceManager: View {
 struct FeedReaderView: View {
     let item: NewsItem
     @EnvironmentObject private var store: NewsStore
+    @EnvironmentObject private var settingsStore: SettingsStore
+    @State private var translatedTitle: String?
+    @State private var isTranslating = false
 
     var body: some View {
         ZStack {
@@ -342,9 +345,15 @@ struct FeedReaderView: View {
                     Text(item.source.uppercased())
                         .font(AppTheme.captionFont)
                         .foregroundStyle(AppTheme.cyan)
-                    Text(item.title)
+                    Text(translatedTitle ?? item.translatedTitle ?? item.title)
                         .font(AppTheme.titleFont)
                         .foregroundStyle(AppTheme.textPrimary)
+                    if translatedTitle != nil || item.translatedTitle != nil {
+                        Text(item.title)
+                            .font(AppTheme.captionFont)
+                            .foregroundStyle(AppTheme.textSecondary)
+                            .accessibilityLabel("原文标题：\(item.title)")
+                    }
                     if let author = item.author, !author.isEmpty {
                         Text(author).font(AppTheme.captionFont).foregroundStyle(AppTheme.textSecondary)
                     }
@@ -359,11 +368,9 @@ struct FeedReaderView: View {
                     }
                     .padding(18)
                     .intelligenceCard(tint: AppTheme.brandIndigo, cornerRadius: 18)
-                    if let url = item.url {
-                        Link(destination: url) {
-                            Label("阅读原文", systemImage: "arrow.up.right")
-                        }
-                        .buttonStyle(OutlineButtonStyle())
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: 10) { readerActions }
+                        VStack(alignment: .leading, spacing: 10) { readerActions }
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -375,7 +382,31 @@ struct FeedReaderView: View {
         .navigationTitle("阅读器")
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(AppTheme.background, for: .navigationBar)
-        .task { await store.markRead(item) }
+        .task {
+            translatedTitle = store.items.first(where: { $0.id == item.id })?.translatedTitle ?? item.translatedTitle
+            await store.markRead(item)
+        }
+    }
+
+    @ViewBuilder
+    private var readerActions: some View {
+        if settingsStore.settings.aiTranslation.enabled && settingsStore.settings.aiTranslation.translateRSS {
+            Button {
+                isTranslating = true
+                Task {
+                    translatedTitle = await store.translateTitle(item)
+                    isTranslating = false
+                }
+            } label: {
+                Label(isTranslating ? "翻译中" : (translatedTitle == nil && item.translatedTitle == nil ? "翻译标题" : "重新翻译"), systemImage: "character.book.closed")
+            }
+            .buttonStyle(AccentButtonStyle())
+            .disabled(isTranslating)
+        }
+        if let url = item.url {
+            Link(destination: url) { Label("阅读原文", systemImage: "arrow.up.right") }
+                .buttonStyle(OutlineButtonStyle())
+        }
     }
 }
 
@@ -1494,11 +1525,16 @@ struct CompactFeedCard: View {
                     Spacer()
                     if item.isFavorite { Image(systemName: "star.fill").foregroundStyle(AppTheme.yellow) }
                 }
-                Text(item.title)
+                Text(item.translatedTitle ?? item.title)
                     .font(AppTheme.headlineFont)
                     .foregroundStyle(AppTheme.textPrimary)
                     .multilineTextAlignment(.leading)
                     .lineLimit(2)
+                if item.translatedTitle != nil {
+                    Label("已翻译", systemImage: "character.book.closed")
+                        .font(AppTheme.captionFont)
+                        .foregroundStyle(AppTheme.brandIndigo)
+                }
                 HStack(spacing: 6) {
                     Text(item.publishedAt?.relativeDescription ?? "刚刚")
                     Text("·")

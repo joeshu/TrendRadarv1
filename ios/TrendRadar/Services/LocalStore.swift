@@ -382,6 +382,7 @@ actor LocalStore {
         record.urlString = item.url?.absoluteString
         record.publishedAt = item.publishedAt
         record.summary = item.summary
+        record.translatedTitle = item.translatedTitle
         record.author = item.author
         record.body = item.body
         record.bodyCachedAt = item.bodyCachedAt

@@ -28,6 +28,15 @@ final class NewsItemTests: XCTestCase {
         let decoded = try JSONDecoder().decode(NewsItem.self, from: JSONEncoder().encode(original))
         XCTAssertEqual(decoded.inboxState, .readLater)
     }
+
+    func testTranslatedTitleRoundTripsAndLegacyDataDefaultsToNil() throws {
+        let original = NewsItem(id: "translated", title: "New model released", source: "Feed", translatedTitle: "新模型发布")
+        let decoded = try JSONDecoder().decode(NewsItem.self, from: JSONEncoder().encode(original))
+        XCTAssertEqual(decoded.translatedTitle, "新模型发布")
+
+        let legacy = try JSONDecoder().decode(NewsItem.self, from: Data(#"{"id":"legacy","title":"Legacy","source":"Feed"}"#.utf8))
+        XCTAssertNil(legacy.translatedTitle)
+    }
     private let feed = RSSFeed(id: "test", name: "Test Feed", url: URL(string: "https://example.com/rss")!)
 
     @MainActor
@@ -489,6 +498,15 @@ final class NewsItemTests: XCTestCase {
         let restored = try JSONDecoder().decode(AppSettings.self, from: JSONEncoder().encode(settings))
         XCTAssertEqual(restored.ai.retries, 3)
         XCTAssertEqual(restored.ai.fallbackModels, ["backup-model"])
+    }
+
+    func testAITranslationSettingsRoundTrip() throws {
+        var settings = AppSettings()
+        settings.aiTranslation.language = "Japanese"
+        settings.aiTranslation.translateRSS = false
+        let restored = try JSONDecoder().decode(AppSettings.self, from: JSONEncoder().encode(settings))
+        XCTAssertEqual(restored.aiTranslation.language, "Japanese")
+        XCTAssertFalse(restored.aiTranslation.translateRSS)
     }
 
     func testAIPromptTemplateReplacesConfiguredVariables() {

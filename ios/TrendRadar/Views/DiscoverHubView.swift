@@ -17,7 +17,11 @@ struct DiscoverHubView: View {
     private var filtered: [NewsItem] {
         let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
         let sourceFiltered = selectedSource == "全部来源" ? store.items : store.items.filter { $0.source == selectedSource }
-        let result = q.isEmpty ? sourceFiltered : sourceFiltered.filter { $0.title.localizedCaseInsensitiveContains(q) || $0.source.localizedCaseInsensitiveContains(q) }
+        let result = q.isEmpty ? sourceFiltered : sourceFiltered.filter {
+            $0.title.localizedCaseInsensitiveContains(q)
+                || ($0.translatedTitle?.localizedCaseInsensitiveContains(q) == true)
+                || $0.source.localizedCaseInsensitiveContains(q)
+        }
         return Array(result.prefix(30))
     }
 

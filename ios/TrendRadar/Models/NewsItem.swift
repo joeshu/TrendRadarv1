@@ -29,6 +29,7 @@ struct NewsItem: Codable, Identifiable, Hashable, Sendable {
     let url: URL?
     let publishedAt: Date?
     var summary: String?
+    var translatedTitle: String?
     var author: String?
     var body: String?
     var bodyCachedAt: Date?
@@ -36,15 +37,16 @@ struct NewsItem: Codable, Identifiable, Hashable, Sendable {
     var isFavorite: Bool = false
     var inboxState: InboxState = .unprocessed
 
-    private enum CodingKeys: String, CodingKey { case id, title, source, url, publishedAt, summary, author, body, bodyCachedAt, isRead, isFavorite, inboxState }
+    private enum CodingKeys: String, CodingKey { case id, title, source, url, publishedAt, summary, translatedTitle, author, body, bodyCachedAt, isRead, isFavorite, inboxState }
 
-    init(id: String = UUID().uuidString, title: String, source: String, url: URL? = nil, publishedAt: Date? = nil, summary: String? = nil, author: String? = nil, body: String? = nil, bodyCachedAt: Date? = nil, isRead: Bool = false, isFavorite: Bool = false, inboxState: InboxState = .unprocessed) {
+    init(id: String = UUID().uuidString, title: String, source: String, url: URL? = nil, publishedAt: Date? = nil, summary: String? = nil, translatedTitle: String? = nil, author: String? = nil, body: String? = nil, bodyCachedAt: Date? = nil, isRead: Bool = false, isFavorite: Bool = false, inboxState: InboxState = .unprocessed) {
         self.id = id
         self.title = title
         self.source = source
         self.url = url
         self.publishedAt = publishedAt
         self.summary = summary
+        self.translatedTitle = translatedTitle
         self.author = author
         self.body = body
         self.bodyCachedAt = bodyCachedAt
@@ -61,6 +63,7 @@ struct NewsItem: Codable, Identifiable, Hashable, Sendable {
         url = try container.decodeIfPresent(URL.self, forKey: .url)
         publishedAt = try container.decodeIfPresent(Date.self, forKey: .publishedAt)
         summary = try container.decodeIfPresent(String.self, forKey: .summary)
+        translatedTitle = try container.decodeIfPresent(String.self, forKey: .translatedTitle)
         author = try container.decodeIfPresent(String.self, forKey: .author)
         body = try container.decodeIfPresent(String.self, forKey: .body)
         bodyCachedAt = try container.decodeIfPresent(Date.self, forKey: .bodyCachedAt)

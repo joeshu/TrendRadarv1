@@ -120,6 +120,7 @@ final class NewsStore: ObservableObject {
                 updated.isRead = oldByID[item.id]?.isRead ?? false
                 updated.isFavorite = oldByID[item.id]?.isFavorite ?? false
                 updated.inboxState = oldByID[item.id]?.inboxState ?? .unprocessed
+                updated.translatedTitle = oldByID[item.id]?.translatedTitle
                 return updated
             }
             let refreshedIDs = Set(refreshedItems.map(\.id))
@@ -206,6 +207,21 @@ final class NewsStore: ObservableObject {
             await localStore.save(items)
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    @discardableResult
+    func translateTitle(_ item: NewsItem) async -> String? {
+        guard settings.aiTranslation.enabled, settings.aiTranslation.translateRSS,
+              let index = items.firstIndex(where: { $0.id == item.id }) else { return nil }
+        do {
+            let translation = try await aiService.translateTitle(items[index].title, settings: settings)
+            items[index].translatedTitle = translation
+            await localStore.save(items)
+            return translation
+        } catch {
+            errorMessage = error.localizedDescription
+            return nil
         }
     }
 
