@@ -19,12 +19,31 @@ struct OverviewView: View {
     private var latestTopics: [HotNewsTopic] { Array(hotNewsStore.topics.prefix(5)) }
     private var failureCount: Int { store.sourceFailures.count + hotNewsStore.sourceFailures.count }
 
+    private var overviewDynamicTypeSize: DynamicTypeSize {
+        switch settingsStore.settings.display.fontScale {
+        case ..<0.90: return .xSmall
+        case ..<0.98: return .small
+        case ..<1.06: return .medium
+        case ..<1.14: return .xLarge
+        case ..<1.23: return .xxLarge
+        default: return .xxxLarge
+        }
+    }
+
+    private var overviewHorizontalPadding: CGFloat {
+        16 * settingsStore.settings.display.uiScale
+    }
+
+    private var overviewCardSpacing: CGFloat {
+        settingsStore.settings.display.cardSpacing * settingsStore.settings.display.uiScale
+    }
+
     var body: some View {
         NavigationStack {
             ZStack {
                 AppTheme.background.ignoresSafeArea()
                 ScrollView {
-                    VStack(alignment: .leading, spacing: settingsStore.settings.display.cardSpacing) {
+                    VStack(alignment: .leading, spacing: overviewCardSpacing) {
                         OverviewHeroCard(date: Date())
                         sourceHealthCard
                         metricsRow
@@ -32,16 +51,12 @@ struct OverviewView: View {
                         liveRadarCard
                         latestIntelCard
                     }
-                    .padding(.horizontal, 16)
+                    .padding(.horizontal, overviewHorizontalPadding)
                     .padding(.top, 8)
                     .padding(.bottom, 118)
                 }
                 .refreshable { await refreshAll() }
-                .dynamicTypeSize(.small ... .xxxLarge)
-                .scaleEffect(
-                    settingsStore.settings.display.uiScale * settingsStore.settings.display.fontScale,
-                    anchor: .top
-                )
+                .dynamicTypeSize(overviewDynamicTypeSize)
             }
             .navigationTitle("总览")
             .navigationBarTitleDisplayMode(.inline)
