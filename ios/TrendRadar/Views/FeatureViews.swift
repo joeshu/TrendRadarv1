@@ -498,6 +498,33 @@ struct InsightView: View {
     @State private var latestAnalysis: ReportAIAnalysis?
     @State private var actionFeedback: ActionFeedback?
 
+    private var aiResultStore: [String: AIItemResult] { AIResultStore().load() }
+
+    private var aiProcessedCount: Int {
+        windowItems.filter { aiResultStore[$0.id]?.score != nil }.count
+    }
+
+    private var aiMatchedCount: Int {
+        windowItems.filter { aiResultStore[$0.id]?.matched == true }.count
+    }
+
+    private var translatedCount: Int {
+        windowItems.filter { $0.translatedTitle != nil }.count
+    }
+
+    private var aiPipelineCard: some View {
+        InsightPanel(title: "AI 情报流水线", icon: "sparkles", tint: AppTheme.brandIndigo) {
+            HStack(spacing: 12) {
+                InsightMetric(value: "\(aiMatchedCount)", label: "智能筛选", tint: AppTheme.green)
+                InsightMetric(value: "\(translatedCount)", label: "已翻译", tint: AppTheme.cyan)
+                InsightMetric(value: "\(aiProcessedCount)", label: "已分析", tint: AppTheme.brandIndigo)
+            }
+            Text("筛选结果、翻译结果和分析简报会随报告一起保存到资料库。")
+                .font(AppTheme.captionFont)
+                .foregroundStyle(AppTheme.textTertiary)
+        }
+    }
+
     private var keywordMatches: [NewsItem] {
         let filterEngine = FilterEngine(settings: settingsStore.settings)
         return store.items.filter { filterEngine.includes($0) }
@@ -516,6 +543,7 @@ struct InsightView: View {
                     LazyVStack(alignment: .leading, spacing: 16) {
                         insightWindowPicker
                         signalCard
+                        aiPipelineCard
                         sentimentCard
                         keywordCard
                         hotNewsInsightCard

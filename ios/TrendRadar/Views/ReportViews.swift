@@ -168,6 +168,7 @@ struct ReportDetailView: View {
                     LazyVStack(alignment: .leading, spacing: 16) {
                         PremiumPanel(tint: AppTheme.brandCyan) { detailHeader(report) }
                         PremiumPanel(tint: AppTheme.brandIndigo) { statistics(report) }
+                        PremiumPanel(tint: AppTheme.brandIndigo) { aiPipelinePanel(report) }
                         evidencePanel(report)
                         reportQueryPanel(report)
                         if let analysis = report.aiAnalysis, analysis.hasContent {
@@ -352,6 +353,27 @@ struct ReportDetailView: View {
                     ReportRichText(content: clean)
                 }
             }
+        }
+    }
+
+    private func aiPipelinePanel(_ report: ReportDetail) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            PremiumSectionHeader(eyebrow: "AI PIPELINE", title: "AI 处理状态", subtitle: "从筛选、翻译到分析简报的本次快照", icon: "sparkles", tint: AppTheme.brandIndigo)
+            pipelineRow("AI 智能筛选", status: report.aiAnalysis?.hasContent == true ? "已完成" : "未完成", icon: "checkmark.seal", tint: report.aiAnalysis?.hasContent == true ? AppTheme.green : AppTheme.yellow)
+            pipelineRow("AI 翻译", status: "按需翻译", icon: "character.book.closed", tint: AppTheme.cyan)
+            pipelineRow("AI 分析简报", status: report.aiAnalysis?.hasContent == true ? "已完成并归档" : "未生成", icon: "doc.text.magnifyingglass", tint: report.aiAnalysis?.hasContent == true ? AppTheme.green : AppTheme.red)
+            Text(report.aiAnalysis?.model.map { "模型：\($0)" } ?? "报告保留原始情报快照，AI 分析尚未生成")
+                .font(AppTheme.captionFont)
+                .foregroundStyle(AppTheme.textTertiary)
+        }
+    }
+
+    private func pipelineRow(_ title: String, status: String, icon: String, tint: Color) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: icon).foregroundStyle(tint).frame(width: 22)
+            Text(title).font(AppTheme.headlineFont).foregroundStyle(AppTheme.textPrimary)
+            Spacer()
+            Text(status).font(AppTheme.captionFont.weight(.semibold)).foregroundStyle(tint)
         }
     }
 

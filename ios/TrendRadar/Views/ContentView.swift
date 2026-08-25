@@ -412,6 +412,10 @@ private struct NewsCard: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let item: NewsItem
 
+    private var aiResult: AIItemResult? {
+        AIResultStore().load()[item.id]
+    }
+
     var body: some View {
         HStack(alignment: .top, spacing: 13) {
             VStack(spacing: 4) {
@@ -436,6 +440,14 @@ private struct NewsCard: View {
                     Label("已翻译", systemImage: "character.book.closed")
                         .font(AppTheme.metadataFont)
                         .foregroundStyle(AppTheme.brandIndigo)
+                }
+                if let result = aiResult, let score = result.score {
+                    HStack(spacing: 6) {
+                        Label("AI 相关度 \(Int(score * 100))%", systemImage: result.matched ? "checkmark.seal.fill" : "minus.circle")
+                        if !result.tagIDs.isEmpty { Text("标签 \(result.tagIDs.map(String.init).joined(separator: ","))") }
+                    }
+                    .font(AppTheme.metadataFont)
+                    .foregroundStyle(result.matched ? AppTheme.green : AppTheme.textTertiary)
                 }
                 HStack(spacing: 7) {
                     Text(item.publishedAt?.relativeDescription ?? "刚刚")
