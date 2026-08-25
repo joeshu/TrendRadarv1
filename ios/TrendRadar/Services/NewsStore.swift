@@ -15,6 +15,7 @@ final class NewsStore: ObservableObject {
     private let localStore = LocalStore.shared
     private let crawler = NewsCrawler()
     private let aiService = AIService()
+    private let aiResultStore = AIResultStore()
     var settings: AppSettings = AppSettings()
 
     var feeds: [RSSFeed] {
@@ -110,7 +111,19 @@ final class NewsStore: ObservableObject {
             var filteredResults = uniqueResults.filter { filterEngine.includes($0) }
             if settings.ai.enabled, settings.ai.filterMethod == "ai", !settings.ai.interests.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 do {
-                    filteredResults = try await aiService.filter(Array(filteredResults), settings: settings)
+                    let candidates = Array(filteredResults)
+                    let matches = try await aiService.classify(candidates, settings: settings)
+                    let minimumScore = min(max(settings.ai.minimumScore, 0), 1)
+                    let accepted = Set(matches.filter { $0.score >= minimumScore }.compactMap { $0.id > 0 && $0.id <= candidates.count ? candidates[$0.id - 1].id : nil })
+                    let matchByID = Dictionary(uniqueKeysWithValues: matches.compactMap { match -> (String, AIFilterMatch)? in
+                        guard match.id > 0, match.id <= candidates.count else { return nil }
+                        return (candidates[match.id - 1].id, match)
+                    })
+                    aiResultStore.merge(candidates.map { item in
+                        let match = matchByID[item.id]
+                        return AIItemResult(itemID: item.id, matched: accepted.contains(item.id), score: match?.score, tagIDs: match.map { [$0.tagID] } ?? [], filterFingerprint: settings.ai.interests)
+                    })
+                    filteredResults = candidates.filter { accepted.contains($0.id) }
                 } catch {
                     errorMessage = "AI 筛选失败，已保留关键词筛选结果：\(error.localizedDescription)"
                 }
@@ -131,6 +144,9 @@ final class NewsStore: ObservableObject {
                         refreshedItems = refreshedItems.map { item in
                             var updated = item
                             updated.translatedTitle = translations[item.id] ?? item.translatedTitle
+                            if let translated = updated.translatedTitle {
+                                aiResultStore.merge([AIItemResult(itemID: item.id, matched: true, translatedTitle: translated)])
+                            }
                             return updated
                         }
                     } catch {
