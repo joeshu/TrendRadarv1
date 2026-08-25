@@ -187,7 +187,7 @@ struct AIService: Sendable {
             apiKey: apiKey,
             models: modelCandidates(primary: model, settings: settings),
             messages: [
-                Message(role: "system", content: messages.system + "\n应用接口要求：严格遵循提示词定义的 JSON 字段，只输出合法 JSON。字段使用 core_trends、sentiment_controversy、signals、rss_insights、outlook_strategy、standalone_summaries。不要输出 Markdown 代码块。"),
+                Message(role: "system", content: messages.system + "\n这是一期完整报告的 AI 分析。必须只输出合法 JSON，并完整填充五个字段：core_trends=趋势概述、signals=热点关键词分析、rss_insights=跨平台关联、sentiment_controversy=情绪倾向、outlook_strategy=潜在影响与策略建议；同时输出 standalone_summaries、sentiment_positive、sentiment_neutral、sentiment_negative、weak_signals。不得编造输入中不存在的事件、来源、排名或数字。不要输出 Markdown 代码块。"),
                 Message(role: "user", content: messages.user)
             ],
             settings: settings

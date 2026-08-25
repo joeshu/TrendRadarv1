@@ -64,7 +64,12 @@ struct ReportHTMLFormatter {
     private func renderAI(_ analysis: ReportAIAnalysis?) -> String {
         guard let analysis, analysis.hasContent || analysis.failureMessage != nil else { return "" }
         let body = [analysis.content ?? analysis.coreTrends, analysis.signals, analysis.sentimentControversy, analysis.rssInsights, analysis.recommendation].compactMap { $0 }.filter { !$0.isEmpty }.map { "<p>\(escape($0))</p>" }.joined()
-        return "<section class=\"panel\"><h2>✨ AI 洞察</h2>\(body)\(analysis.failureMessage.map { "<p class=\"failure\">分析失败：\(escape($0))</p>" } ?? "")</section>"
+        return "<section class=\"panel\"><h2>✨ AI 热点分析</h2><h3>一、趋势概述</h3>\(paragraph(analysis.coreTrends ?? analysis.content))<h3>二、热点关键词分析</h3>\(paragraph(analysis.signals))<h3>三、跨平台关联</h3>\(paragraph(analysis.rssInsights))<h3>四、情绪倾向</h3>\(paragraph(analysis.sentimentControversy))<h3>五、潜在影响与策略建议</h3>\(paragraph(analysis.recommendation))\(analysis.failureMessage.map { "<p class=\"failure\">分析失败：\(escape($0))</p>" } ?? "")</section>"
+    }
+
+    private func paragraph(_ value: String?) -> String {
+        guard let value, !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return "<p>暂无分析内容。</p>" }
+        return "<p>\(escape(value))</p>"
     }
 
     private func renderNewItems(_ items: [ReportItemSnapshot]) -> String {

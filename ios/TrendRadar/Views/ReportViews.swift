@@ -172,38 +172,6 @@ struct ReportDetailView: View {
                         PremiumPanel(tint: AppTheme.brandIndigo) { aiPipelinePanel(report) }
                         evidencePanel(report)
                         reportQueryPanel(report)
-                        if let analysis = report.aiAnalysis, analysis.hasContent {
-                            PremiumPanel(tint: AppTheme.brandMagenta) {
-                                VStack(alignment: .leading, spacing: 12) {
-                                    PremiumSectionHeader(eyebrow: "AI HOTSPOT ANALYSIS", title: "AI 热点分析", subtitle: "趋势概述、跨平台关联、情绪倾向与潜在影响", icon: "sparkles", tint: AppTheme.brandMagenta)
-                                    analysisBlock(title: "一、趋势概述", content: analysis.coreTrends ?? analysis.content)
-                                    analysisBlock(title: "二、热点关键词分析", content: analysis.signals)
-                                    analysisBlock(title: "三、跨平台关联", content: analysis.rssInsights)
-                                    analysisBlock(title: "四、情绪倾向", content: analysis.sentimentControversy)
-                                    analysisBlock(title: "五、潜在影响与策略建议", content: analysis.recommendation)
-                                    if let positive = analysis.sentimentPositive, let neutral = analysis.sentimentNeutral, let negative = analysis.sentimentNegative {
-                                        HStack(spacing: 8) {
-                                            SentimentPill(label: "正面", value: positive, tint: AppTheme.green)
-                                            SentimentPill(label: "中性", value: neutral, tint: AppTheme.yellow)
-                                            SentimentPill(label: "负面", value: negative, tint: AppTheme.red)
-                                        }
-                                    }
-                                    if let recommendation = analysis.recommendation, !recommendation.isEmpty {
-                                        analysisBlock(title: "研判策略建议", content: recommendation)
-                                    }
-                                    if !analysis.standaloneSummaries.isEmpty {
-                                        VStack(alignment: .leading, spacing: 8) {
-                                            Text("独立源点速览").font(AppTheme.headlineFont).foregroundStyle(AppTheme.cyan)
-                                            ForEach(analysis.standaloneSummaries.keys.sorted(), id: \.self) { source in
-                                                if let summary = analysis.standaloneSummaries[source], !summary.isEmpty { Text("[\(source)] \(summary)").font(AppTheme.captionFont).foregroundStyle(AppTheme.textSecondary) }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        } else if let message = report.aiAnalysis?.failureMessage {
-                            InsightPanel(title: "AI 洞察", icon: "exclamationmark.triangle", tint: AppTheme.yellow) { Text(message).font(AppTheme.captionFont).foregroundStyle(AppTheme.textSecondary) }
-                        }
                         if !report.newItems.isEmpty {
                             PremiumPanel(tint: AppTheme.brandCyan) {
                                 VStack(alignment: .leading, spacing: 10) {
@@ -221,6 +189,11 @@ struct ReportDetailView: View {
                             }
                         }
                         ForEach(ReportPresentationModel(report: report).sections) { section in sectionView(section) }
+                        if let analysis = report.aiAnalysis, analysis.hasContent {
+                            PremiumPanel(tint: AppTheme.brandMagenta) { aiReportPanel(analysis) }
+                        } else if let message = report.aiAnalysis?.failureMessage {
+                            InsightPanel(title: "AI 热点分析", icon: "exclamationmark.triangle", tint: AppTheme.yellow) { Text(message).font(AppTheme.captionFont).foregroundStyle(AppTheme.textSecondary) }
+                        }
                         if let diagnostics = report.diagnostics, !diagnostics.failures.isEmpty {
                             PremiumPanel(tint: AppTheme.yellow) {
                                 VStack(alignment: .leading, spacing: 10) {
@@ -342,7 +315,28 @@ struct ReportDetailView: View {
         }
     }
 
-    @ViewBuilder
+    private func aiReportPanel(_ analysis: ReportAIAnalysis) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            PremiumSectionHeader(eyebrow: "AI HOTSPOT ANALYSIS", title: "AI 热点分析", subtitle: "本期报告的五段式分析结果", icon: "sparkles", tint: AppTheme.brandMagenta)
+            analysisBlock(title: "一、趋势概述", content: analysis.coreTrends ?? analysis.content)
+            analysisBlock(title: "二、热点关键词分析", content: analysis.signals)
+            analysisBlock(title: "三、跨平台关联", content: analysis.rssInsights)
+            analysisBlock(title: "四、情绪倾向", content: analysis.sentimentControversy)
+            if let positive = analysis.sentimentPositive, let neutral = analysis.sentimentNeutral, let negative = analysis.sentimentNegative {
+                HStack(spacing: 8) {
+                    SentimentPill(label: "正面", value: positive, tint: AppTheme.green)
+                    SentimentPill(label: "中性", value: neutral, tint: AppTheme.yellow)
+                    SentimentPill(label: "负面", value: negative, tint: AppTheme.red)
+                }
+            }
+            analysisBlock(title: "五、潜在影响与策略建议", content: analysis.recommendation)
+            if !analysis.weakSignals.isEmpty { analysisBlock(title: "弱信号", content: analysis.weakSignals.joined(separator: "\n")) }
+            if !analysis.standaloneSummaries.isEmpty {
+                analysisBlock(title: "独立展示区摘要", content: analysis.standaloneSummaries.sorted { $0.key < $1.key }.map { "[\($0.key)] \($0.value)" }.joined(separator: "\n\n"))
+            }
+        }
+    }
+
     private func analysisBlock(title: String, content: String?) -> some View {
         if let content {
             let clean = content
