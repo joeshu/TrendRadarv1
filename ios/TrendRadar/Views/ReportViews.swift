@@ -337,6 +337,7 @@ struct ReportDetailView: View {
         }
     }
 
+    @ViewBuilder
     private func analysisBlock(title: String, content: String?) -> some View {
         if let content {
             let clean = content
