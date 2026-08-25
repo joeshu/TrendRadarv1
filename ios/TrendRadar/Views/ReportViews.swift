@@ -123,6 +123,7 @@ struct ReportSummaryCard: View {
                 Text(report.title).font(AppTheme.cardTitleFont).foregroundStyle(AppTheme.textPrimary).lineLimit(dynamicTypeSize.isAccessibilitySize ? 4 : 2)
                 HStack(spacing: 6) {
                     Text(report.type.displayName); Text("·"); Text("\(report.newsCount) 条情报"); Text("·"); Text(report.generatedAt, style: .relative)
+                    if report.hasAIAnalysis { Text("·"); Text("AI 报告") }
                     if dynamicTypeSize.isAccessibilitySize { Text("·"); Text(report.hasAIAnalysis ? "已分析" : "本地快照") }
                 }
                 .font(AppTheme.captionFont).foregroundStyle(AppTheme.textTertiary)
@@ -167,18 +168,19 @@ struct ReportDetailView: View {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 16) {
                         PremiumPanel(tint: AppTheme.brandCyan) { detailHeader(report) }
-                        PremiumPanel(tint: AppTheme.brandIndigo) { statistics(report) }
+                        PremiumPanel(tint: AppTheme.brandIndigo) { reportOverview(report) }
                         PremiumPanel(tint: AppTheme.brandIndigo) { aiPipelinePanel(report) }
                         evidencePanel(report)
                         reportQueryPanel(report)
                         if let analysis = report.aiAnalysis, analysis.hasContent {
                             PremiumPanel(tint: AppTheme.brandMagenta) {
                                 VStack(alignment: .leading, spacing: 12) {
-                                    PremiumSectionHeader(eyebrow: "AI INSIGHTS", title: "AI 洞察", subtitle: "结构化分析与趋势判断", icon: "sparkles", tint: AppTheme.brandMagenta)
-                                    analysisBlock(title: "核心热点态势", content: analysis.coreTrends ?? analysis.content)
-                                    analysisBlock(title: "舆论风向争议", content: analysis.sentimentControversy)
-                                    analysisBlock(title: "异动与弱信号", content: analysis.signals ?? analysis.weakSignals.joined(separator: "\n"))
-                                    analysisBlock(title: "RSS 深度洞察", content: analysis.rssInsights)
+                                    PremiumSectionHeader(eyebrow: "AI HOTSPOT ANALYSIS", title: "AI 热点分析", subtitle: "趋势概述、跨平台关联、情绪倾向与潜在影响", icon: "sparkles", tint: AppTheme.brandMagenta)
+                                    analysisBlock(title: "一、趋势概述", content: analysis.coreTrends ?? analysis.content)
+                                    analysisBlock(title: "二、热点关键词分析", content: analysis.signals)
+                                    analysisBlock(title: "三、跨平台关联", content: analysis.rssInsights)
+                                    analysisBlock(title: "四、情绪倾向", content: analysis.sentimentControversy)
+                                    analysisBlock(title: "五、潜在影响与策略建议", content: analysis.recommendation)
                                     if let positive = analysis.sentimentPositive, let neutral = analysis.sentimentNeutral, let negative = analysis.sentimentNegative {
                                         HStack(spacing: 8) {
                                             SentimentPill(label: "正面", value: positive, tint: AppTheme.green)
@@ -374,6 +376,21 @@ struct ReportDetailView: View {
             Text(title).font(AppTheme.headlineFont).foregroundStyle(AppTheme.textPrimary)
             Spacer()
             Text(status).font(AppTheme.captionFont.weight(.semibold)).foregroundStyle(tint)
+        }
+    }
+
+    private func reportOverview(_ report: ReportDetail) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            PremiumSectionHeader(eyebrow: "REPORT OVERVIEW", title: "报告总览", subtitle: "本次任务的完整统计与来源健康度", icon: "chart.bar.doc.horizontal", tint: AppTheme.brandIndigo)
+            statistics(report)
+            HStack(spacing: 8) {
+                StatusBadge(title: "新增热点 \(report.newItems.count)", systemImage: "sparkles", tint: AppTheme.green)
+                StatusBadge(title: "主题 \(report.topicStats.count)", systemImage: "tag", tint: AppTheme.yellow)
+                StatusBadge(title: report.diagnostics?.failures.isEmpty == false ? "部分来源失败" : "来源完整", systemImage: report.diagnostics?.failures.isEmpty == false ? "exclamationmark.triangle" : "checkmark.circle", tint: report.diagnostics?.failures.isEmpty == false ? AppTheme.yellow : AppTheme.green)
+            }
+            Text("更新时间：\(report.generatedAt.formatted(date: .numeric, time: .shortened))")
+                .font(AppTheme.captionFont)
+                .foregroundStyle(AppTheme.textTertiary)
         }
     }
 
